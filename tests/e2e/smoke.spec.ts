@@ -1694,7 +1694,7 @@ test('an unpushed commit message can be edited in place while a pushed one canno
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
 
   await page.getByText('refactor(core): extract lane allocator').first().click();
   await expect(inspector.getByRole('heading', { name: 'refactor(core): extract lane allocator' })).toBeVisible();
@@ -1767,7 +1767,7 @@ test('the fonts card changes the interface, code and terminal fonts and remember
 
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await dialog.getByRole('button', { name: '外观', exact: true }).click();
   await expect(dialog.getByRole('button', { name: '重置字体' })).toHaveCount(0);
 
   await dialog.getByRole('combobox', { name: '界面字体' }).click();
@@ -1799,7 +1799,7 @@ test('the fonts card changes the interface, code and terminal fonts and remember
   await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const reopened = page.getByRole('dialog');
-  await reopened.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await reopened.getByRole('button', { name: '外观', exact: true }).click();
   await expect(reopened.getByRole('combobox', { name: '终端字体', exact: true })).toContainText('Menlo');
   await reopened.getByRole('button', { name: '重置字体' }).click();
   await expect.poll(() => rootVar('--font-sans')).not.toContain('Helvetica Neue');
@@ -1836,7 +1836,7 @@ test('the commit file list filters by kind of change from the summary tokens', a
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByText('feat(graph): virtualize commit rows').first().click();
-  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
   const all = inspector.getByRole('button', { name: '全部', exact: true });
   await expect(all).toHaveAttribute('aria-pressed', 'true');
@@ -1855,7 +1855,7 @@ test('the All files view lists every file at a commit and opens an unchanged one
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByText('feat(graph): virtualize commit rows').first().click();
-  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
   await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
 
@@ -1883,7 +1883,7 @@ test('the All files view shows the whole working tree with changed files still a
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
   await expect(inspector.getByText('README.md')).toHaveCount(0);
 
   await page.getByRole('button', { name: '全部文件' }).click();

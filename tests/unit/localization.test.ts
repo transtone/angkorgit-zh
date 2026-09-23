@@ -7,10 +7,10 @@ const source = (path: string) => readFileSync(new URL(`../../${path}`, import.me
 describe('Chinese localization of the upstream collaboration update', () => {
   it('keeps smoke navigation selectors aligned with the Chinese interface', () => {
     const smoke = source('tests/e2e/smoke.spec.ts');
-    for (const selector of ["name: 'Toggle terminal'", "name: 'Settings'", "getByText('Clone repository'", "getByPlaceholder('Destination folder'"]) {
+    for (const selector of ["name: 'Toggle terminal'", "name: 'Settings'", "getByText('Clone repository'", "getByPlaceholder('Destination folder'", "name: 'Inspector'", "name: 'Appearance'", "name: 'Add account'", "name: 'Fetch', exact", "name: 'Pull', exact", "name: 'Edit commit message'", "name: 'Save message'", "name: 'Resize description'", "name: 'All files'", "getByText('Token', { exact: true })"]) {
       expect(smoke).not.toContain(selector);
     }
-    for (const selector of ["name: '切换终端'", "name: '设置'", "getByText('克隆仓库'", "getByPlaceholder('目标文件夹'"]) {
+    for (const selector of ["name: '切换终端'", "name: '设置'", "getByText('克隆仓库'", "getByPlaceholder('目标文件夹'", "name: '检查器'", "name: '外观'", "name: '添加账户'", "name: '获取', exact", "name: '拉取', exact", "name: '编辑提交消息'", "name: '保存消息'", "name: '调整描述高度'", "name: '全部文件'", "getByText('令牌', { exact: true })"]) {
       expect(smoke).toContain(selector);
     }
   });
