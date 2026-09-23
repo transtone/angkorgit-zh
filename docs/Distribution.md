@@ -37,25 +37,14 @@ Click **Allow** (not "始终允许" — it has no effect). One prompt per launch
 是未签名构建的预期行为；付费的 Developer ID 签名是
 让授权永久有效的唯一途径。
 
-**macOS folder-access prompts (Desktop/Documents/Downloads)**: consent is
-keyed to the app's code signature, so the bundle must carry one. Releases up to
-0.15.0 shipped with only the linker's throwaway signature on the arm64 slice and
-no bundle signature at all (`codesign -d -r- AngKorGit.app` said "not signed at
-all"), so tccd could not validate any stored grant (Security error -67062) and
-asked again on every protected-folder access, discarding each Allow. Since
-0.16.0 `bundle.macOS.signingIdentity` is `"-"`: the bundler ad-hoc signs the
-frameworks and the whole .app (both slices, Info.plist bound, resources
-sealed). The stored requirement is the build's cdhash, so one installed build
-means one prompt per folder, and each update re-asks once. No grant can match
-while the binary on disk differs from the running process (a dmg dragged over a
-running app, or `pnpm install:mac` while the old instance is open, which is why
-that script quits the app first), so relaunch after installing. Stale records:
-`tccutil reset All dev.angkorgit.app`, then relaunch and Allow once. Users
-must drag the app out of the dmg into /Applications — running it from inside
-the dmg triggers app translocation, where grants can never persist. Possible
-follow-up, untested: signing with a custom designated requirement
-(`identifier "dev.angkorgit.app"`) would let the grant survive updates, but it
-needs a re-sign step after the bundler runs and a live tccd test first.
+**macOS 文件夹访问提示（桌面/文稿/下载）**：授权与
+应用的代码签名绑定。一个已安装构建 → 每个文件夹一次提示，
+之后便记住。每次 UPDATE（新的 ad-hoc 签名）可能再问一次。
+无休止的提示循环意味着被替换二进制留下了过期/冲突的记录
+（常见于安装了多个构建的开发机）：用以下命令修复
+`tccutil reset All dev.angkorgit.app`，然后重新启动并点一次“允许”。用户
+必须把应用从 dmg 拖到 /Applications——在 dmg 内部运行时
+会触发应用位移，授权将永远无法持久。
 
 安全上的诚实：未签名 ≠ 不安全。发布版由公开的 GitHub
 Actions 从公开源码构建，更新经 minisign 校验（§3），用户可以
