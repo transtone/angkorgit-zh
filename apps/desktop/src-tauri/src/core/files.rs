@@ -58,7 +58,7 @@ fn blob_bytes(repo: &Repository, file: &str, oid: &str) -> AppResult<Vec<u8>> {
         .get_path(std::path::Path::new(file))
         .map_err(|_| {
             AppError::other(format!(
-                "{file} is not part of commit {}",
+                "{file} 不属于提交 {}",
                 &oid[..oid.len().min(7)]
             ))
         })?;

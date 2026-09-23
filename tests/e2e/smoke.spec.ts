@@ -1415,7 +1415,7 @@ test('the status bar says when the repository was last fetched', async ({ page }
 test('auto fetch tries all remotes again after a partial failure', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
   await page.clock.install();
 
   await page.evaluate(async () => {
@@ -1441,7 +1441,7 @@ test('auto fetch tries all remotes again after a partial failure', async ({ page
 
   const calls = () => page.evaluate(() => (window as unknown as { __autoFetchCalls: string[] }).__autoFetchCalls);
   await expect.poll(calls).toEqual(['origin', 'upstream']);
-  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
   await expect(page.locator('[data-fetch-status]')).toHaveText(/获取未完成/);
 
   await page.clock.runFor(61_000);
@@ -1451,7 +1451,7 @@ test('auto fetch tries all remotes again after a partial failure', async ({ page
 test('partial fetches keep the timestamp and name failed remotes without raw errors', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
 
   await page.evaluate(async () => {
     const [{ ipc }, { useRepo }, { useSettings }] = await Promise.all([
@@ -1471,14 +1471,14 @@ test('partial fetches keep the timestamp and name failed remotes without raw err
     await useRepo.getState().refresh();
   });
 
-  const fetchButton = page.getByRole('button', { name: 'Fetch', exact: true });
+  const fetchButton = page.getByRole('button', { name: '获取', exact: true });
   await fetchButton.click();
-  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
   const incomplete = page.locator('[data-fetch-status]');
   await expect(incomplete).toHaveText(/获取未完成/);
   await expect(incomplete).toHaveClass(/text-faint/);
   await incomplete.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Failed to fetch: upstream');
+  await expect(page.getByRole('tooltip')).toHaveText('获取失败：upstream');
 
   await page.evaluate(async () => {
     const { ipc } = await import('/src/core/ipc.ts');
@@ -1487,15 +1487,15 @@ test('partial fetches keep the timestamp and name failed remotes without raw err
   await fetchButton.click();
   await expect(page.locator('[data-last-fetch]')).toBeVisible();
   await incomplete.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Failed to fetch: origin, upstream');
+  await expect(page.getByRole('tooltip')).toHaveText('获取失败：origin, upstream');
 
   await page.evaluate(async () => {
     const { useRepo } = await import('/src/features/repository/store.ts');
     useRepo.setState({ lastFetchAt: Date.now() - 2 * 60 * 60_000 });
   });
-  await expect(page.locator('[data-last-fetch]')).not.toHaveText(/Fetched just now/);
-  await page.getByRole('button', { name: 'Pull', exact: true }).click();
-  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(page.locator('[data-last-fetch]')).not.toHaveText(/已获取 · 刚刚/);
+  await page.getByRole('button', { name: '拉取', exact: true }).click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
   await expect(incomplete).toHaveText(/获取未完成/);
 
   await page.evaluate(async () => {
@@ -1516,7 +1516,7 @@ test('partial fetches keep the timestamp and name failed remotes without raw err
   await expect(fetchButton).toBeDisabled();
   await page.mouse.move(0, 0);
   await fetchButton.locator('..').hover();
-  await expect(page.getByRole('tooltip')).toHaveText('No remotes configured');
+  await expect(page.getByRole('tooltip')).toHaveText('未配置远端');
 });
 
 test('the diff header opens blame inside file history with authors per hunk', async ({ page }) => {
@@ -1749,8 +1749,8 @@ test('the GitHub account form offers fine-grained and classic token pages', asyn
     'href',
     'https://github.com/settings/personal-access-tokens/new',
   );
-  await expect(dialog.getByText(/Contents and 拉取请求 set to read and write/)).toBeVisible();
-  await dialog.getByText('Token', { exact: true }).click();
+  await expect(dialog.getByText(/Contents 与拉取请求读写权限/)).toBeVisible();
+  await dialog.getByText('令牌', { exact: true }).click();
   await expect(dialog.getByPlaceholder('粘贴令牌')).toBeFocused();
 });
 
@@ -1840,7 +1840,7 @@ test('the commit file list filters by kind of change from the summary tokens', a
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
   const all = inspector.getByRole('button', { name: '全部', exact: true });
   await expect(all).toHaveAttribute('aria-pressed', 'true');
-  await inspector.getByRole('button', { name: '1 added' }).click();
+  await inspector.getByRole('button', { name: '1 新增' }).click();
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
   await expect(inspector.getByText('Architecture.md')).toBeHidden();
   await expect(inspector.getByText('1 of 5')).toBeVisible();
@@ -1889,8 +1889,8 @@ test('the All files view shows the whole working tree with changed files still a
   await page.getByRole('button', { name: '全部文件' }).click();
   await expect(inspector.getByText('6 changed')).toBeVisible();
   await expect(inspector.getByText('README.md')).toBeVisible();
-  await expect(inspector.getByLabel('Stage src/core/ipc.ts')).toBeVisible();
-  await expect(inspector.getByLabel('Unstage src/features/graph/CommitGraph.tsx')).toBeVisible();
+  await expect(inspector.getByLabel('暂存 src/core/ipc.ts')).toBeVisible();
+  await expect(inspector.getByLabel('取消暂存 src/features/graph/CommitGraph.tsx')).toBeVisible();
   await expect(inspector.getByText('DiffPanel.tsx')).toBeHidden();
 
   await inspector.getByText('README.md').click();

@@ -143,7 +143,7 @@ export function FontsCard() {
       action={
         customized ? (
           <Button variant="ghost" size="sm" onClick={resetFonts}>
-            Reset fonts
+            重置字体
           </Button>
         ) : undefined
       }

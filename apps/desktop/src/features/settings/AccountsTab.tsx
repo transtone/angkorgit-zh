@@ -68,7 +68,7 @@ const PROVIDERS: Record<ProviderKind, ProviderPreset> = {
         >
           fine-grained token
         </a>{' '}
-        with Contents and 拉取请求 set to read and write.
+        具备 Contents 与拉取请求读写权限。
       </>
     ),
     usernameHint: '用户名（从令牌中检测到）',

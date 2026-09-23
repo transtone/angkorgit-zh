@@ -1178,7 +1178,7 @@ ui	Classic token with the repo scope, or a	具有 repo 权限的 Classic token�
 ui	with Contents and Pull requests set to read and write.	具备 Contents 与拉取请求读写权限的。
 ui	Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.	使用本机已安装的 AI CLI——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode 或 Antigravity——以其自身的登录与配额运行，无需 API 密钥。
 e2e	Add account	添加账户
-rust	 {file} is not part of commit {}	 {file} 不属于提交 {}
+rust	{file} is not part of commit {}	{file} 不属于提交 {}
 rust	{file} is not a file in this commit	{file} 不是此次提交中的文件
 rust	{file} is larger than 10 MB	{file} 超过 10 MB
 rust	bare repositories have no working copy	裸仓库没有工作副本

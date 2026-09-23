@@ -368,7 +368,7 @@ export function CommitDetails({
         action: () => ipc.reword(repoPath, commit.oid, draft),
       });
       setEditing(false);
-      toast.success('提交消息 updated');
+      toast.success('提交消息已更新');
       await refresh();
       await reloadGraph(repoPath);
       select(newOid);

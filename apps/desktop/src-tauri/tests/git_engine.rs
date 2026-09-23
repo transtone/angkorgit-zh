@@ -2771,7 +2771,7 @@ fn file_contents_reads_a_file_at_a_commit_and_in_the_working_copy_as_context_lin
     let missing = core::file_contents(repo.path(), "nope.txt", Some(&oid))
         .err()
         .expect("a path missing from the commit must error");
-    assert!(missing.to_string().contains("not part of commit"));
+    assert!(missing.to_string().contains("不属于提交"));
 
     repo.write("blob.bin", "ab\0cd");
     let binary = core::file_contents(repo.path(), "blob.bin", None).unwrap();

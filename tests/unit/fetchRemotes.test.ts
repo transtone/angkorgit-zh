@@ -14,7 +14,7 @@ describe('fetchRemotes', () => {
       succeeded: ['origin', 'backup'],
       failed: [{ name: 'upstream', error: 'authentication failed' }],
     });
-    expect(fetchResultMessage(result)).toBe('Fetched 2 of 3 remotes. Failed: upstream: authentication failed');
+    expect(fetchResultMessage(result)).toBe('已获取 2/3 个远端，失败：upstream: authentication failed');
 
     const retried: string[] = [];
     const retry = await fetchRemotes(['origin', 'upstream', 'backup'], async (name) => {

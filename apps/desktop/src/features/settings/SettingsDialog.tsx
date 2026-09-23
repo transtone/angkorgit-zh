@@ -1325,7 +1325,7 @@ export function SettingsDialog() {
                     title="提供方"
                     description={
                       settings.ai.provider === 'cli'
-                        ? 'Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API 密钥 needed.'
+                        ? '使用本机已安装的 AI CLI——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode 或 Antigravity——以其自身的登录与配额运行，无需 API 密钥。'
                         : '用于提交消息、diff 解释、冲突帮助与审查。通过 Ollama 或 LM Studio 的本地模型无需 API 密钥。'
                     }
                     action={

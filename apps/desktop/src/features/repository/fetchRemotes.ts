@@ -21,7 +21,7 @@ export async function fetchRemotes(
 
 export function fetchResultMessage(result: FetchResult): string {
   const total = result.succeeded.length + result.failed.length;
-  if (total === 0) return '无远端 configured';
+  if (total === 0) return '未配置远端';
   if (result.failed.length === 0) return total === 1 ? '已获取 1 个远端' : `已获取全部 ${total} 个远端`;
   const failures = result.failed.map(({ name, error }) => `${name}: ${error}`).join('; ');
   return `已获取 ${result.succeeded.length}/${total} 个远端，失败：${failures}`;
