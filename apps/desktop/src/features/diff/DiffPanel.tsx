@@ -283,7 +283,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </Badge>
         )}
         {target.unchanged ? (
-          <Badge tone="neutral">unchanged</Badge>
+          <Badge tone="neutral">未更改</Badge>
         ) : (
           !target.oid && (
             <Badge tone={target.staged ? 'success' : 'info'}>{target.staged ? 'staged' : 'unstaged'}</Badge>

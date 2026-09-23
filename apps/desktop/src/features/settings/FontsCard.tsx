@@ -62,18 +62,18 @@ function FontSelect({
   const others = listed.filter((font) => !font.monospaced).map((font) => font.family);
   const groups: Array<[string, string[]]> = monospaceFirst
     ? [
-        ['Monospace', monospace],
-        ['Other fonts', others],
+        ['等宽字体', monospace],
+        ['其他字体', others],
       ]
     : [
-        ['Fonts', others],
-        ['Monospace', monospace],
+        ['字体', others],
+        ['等宽字体', monospace],
       ];
   const missing = isMissing(value, fonts, loading);
   return (
     <Select value={value || DEFAULT_VALUE} onValueChange={(next) => onChange(next === DEFAULT_VALUE ? '' : next)} disabled={loading}>
       <SelectTrigger aria-label={ariaLabel} className={className}>
-        <SelectValue placeholder="Reading installed fonts…" />
+        <SelectValue placeholder="正在读取已安装字体…" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={DEFAULT_VALUE}>
@@ -81,7 +81,7 @@ function FontSelect({
         </SelectItem>
         {missing && (
           <SelectItem value={value}>
-            {value} <span className="text-faint">(not installed)</span>
+            {value} <span className="text-faint">（未安装）</span>
           </SelectItem>
         )}
         {groups.map(([label, names]) =>
@@ -117,12 +117,12 @@ export function FontsCard() {
   const codeEffective = codeFamily || CODE_FONT_DEFAULT;
   const missingHint = (value: string, fallback: string) =>
     isMissing(value, fonts, loading) ? (
-      <span className="text-danger">Not installed here, using {fallback}</span>
+      <span className="text-danger">此处未安装，使用{fallback}</span>
     ) : undefined;
 
   return (
     <SettingCard
-      title="Fonts"
+      title="字体"
       description={
         <>
           从本机已安装的字体中任选。界面字体作用于整个应用，代码字体用于差异、哈希与提交详情，
@@ -149,9 +149,9 @@ export function FontsCard() {
       }
     >
       <div className="flex flex-col gap-3">
-        <Field label="Interface" hint={missingHint(interfaceFamily, INTERFACE_FONT_DEFAULT) ?? 'Menus, lists and dialogs'}>
+        <Field label="界面" hint={missingHint(interfaceFamily, INTERFACE_FONT_DEFAULT) ?? '菜单、列表与对话框'}>
           <FontSelect
-            ariaLabel="Interface font"
+            ariaLabel="界面字体"
             value={interfaceFamily}
             onChange={setInterfaceFamily}
             fonts={fonts}
@@ -159,12 +159,12 @@ export function FontsCard() {
             monospaceFirst={false}
             defaultFamily={INTERFACE_FONT_DEFAULT}
             defaultStack={interfaceFontStack('')}
-            defaultLabel="default"
+            defaultLabel="默认"
           />
         </Field>
-        <Field label="Code" hint={missingHint(codeFamily, CODE_FONT_DEFAULT) ?? 'Diffs, hashes and commit details'}>
+        <Field label="代码" hint={missingHint(codeFamily, CODE_FONT_DEFAULT) ?? '差异、哈希与提交详情'}>
           <FontSelect
-            ariaLabel="Code font"
+            ariaLabel="代码字体"
             value={codeFamily}
             onChange={setCodeFamily}
             fonts={fonts}
@@ -172,13 +172,13 @@ export function FontsCard() {
             monospaceFirst
             defaultFamily={CODE_FONT_DEFAULT}
             defaultStack={monoFontStack('')}
-            defaultLabel="default"
+            defaultLabel="默认"
           />
         </Field>
-        <Field label="Terminal" hint={missingHint(terminalFamily, codeEffective)}>
+        <Field label="终端" hint={missingHint(terminalFamily, codeEffective)}>
           <div className="flex gap-2">
             <FontSelect
-              ariaLabel="Terminal font"
+              ariaLabel="终端字体"
               className="min-w-0 flex-1"
               value={terminalFamily}
               onChange={setTerminalFamily}
@@ -187,10 +187,10 @@ export function FontsCard() {
               monospaceFirst
               defaultFamily={codeEffective}
               defaultStack={monoFontStack(codeFamily)}
-              defaultLabel="same as Code"
+              defaultLabel="与代码相同"
             />
             <Select value={String(size)} onValueChange={(value) => setSize(Number(value))}>
-              <SelectTrigger className="w-24 shrink-0" aria-label="Terminal font size">
+              <SelectTrigger className="w-24 shrink-0" aria-label="终端字号">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

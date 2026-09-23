@@ -65,9 +65,9 @@ fn blob_bytes(repo: &Repository, file: &str, oid: &str) -> AppResult<Vec<u8>> {
     let object = entry.to_object(repo)?;
     let blob = object
         .as_blob()
-        .ok_or_else(|| AppError::other(format!("{file} is not a file in this commit")))?;
+        .ok_or_else(|| AppError::other(format!("{file} 不是此次提交中的文件")))?;
     if blob.content().len() > MAX_CONTENT_BYTES {
-        return Err(AppError::other(format!("{file} is larger than 10 MB")));
+        return Err(AppError::other(format!("{file} 超过 10 MB")));
     }
     Ok(blob.content().to_vec())
 }
@@ -75,11 +75,11 @@ fn blob_bytes(repo: &Repository, file: &str, oid: &str) -> AppResult<Vec<u8>> {
 fn workdir_bytes(repo: &Repository, file: &str) -> AppResult<Vec<u8>> {
     let workdir = repo
         .workdir()
-        .ok_or_else(|| AppError::other("bare repositories have no working copy"))?;
+        .ok_or_else(|| AppError::other("裸仓库没有工作副本"))?;
     let full = workdir.join(file);
     let meta = std::fs::metadata(&full)?;
     if meta.len() > MAX_CONTENT_BYTES as u64 {
-        return Err(AppError::other(format!("{file} is larger than 10 MB")));
+        return Err(AppError::other(format!("{file} 超过 10 MB")));
     }
     Ok(std::fs::read(full)?)
 }

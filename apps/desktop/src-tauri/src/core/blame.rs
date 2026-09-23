@@ -170,7 +170,7 @@ fn file_content(repo: &Repository, file: &str, newest: Option<Oid>) -> AppResult
                 )));
             }
             let workdir = repo.workdir().ok_or_else(|| {
-                AppError::other("bare repositories have no working copy to blame")
+                AppError::other("裸仓库没有工作副本 to blame")
             })?;
             Ok(std::fs::read(workdir.join(file))?)
         }

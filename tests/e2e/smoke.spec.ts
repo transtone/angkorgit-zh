@@ -1442,7 +1442,7 @@ test('auto fetch tries all remotes again after a partial failure', async ({ page
   const calls = () => page.evaluate(() => (window as unknown as { __autoFetchCalls: string[] }).__autoFetchCalls);
   await expect.poll(calls).toEqual(['origin', 'upstream']);
   await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
-  await expect(page.locator('[data-fetch-status]')).toHaveText(/Fetch incomplete/);
+  await expect(page.locator('[data-fetch-status]')).toHaveText(/获取未完成/);
 
   await page.clock.runFor(61_000);
   await expect.poll(calls).toEqual(['origin', 'upstream', 'origin', 'upstream']);
@@ -1475,7 +1475,7 @@ test('partial fetches keep the timestamp and name failed remotes without raw err
   await fetchButton.click();
   await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
   const incomplete = page.locator('[data-fetch-status]');
-  await expect(incomplete).toHaveText(/Fetch incomplete/);
+  await expect(incomplete).toHaveText(/获取未完成/);
   await expect(incomplete).toHaveClass(/text-faint/);
   await incomplete.hover();
   await expect(page.getByRole('tooltip')).toHaveText('Failed to fetch: upstream');
@@ -1496,7 +1496,7 @@ test('partial fetches keep the timestamp and name failed remotes without raw err
   await expect(page.locator('[data-last-fetch]')).not.toHaveText(/Fetched just now/);
   await page.getByRole('button', { name: 'Pull', exact: true }).click();
   await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
-  await expect(incomplete).toHaveText(/Fetch incomplete/);
+  await expect(incomplete).toHaveText(/获取未完成/);
 
   await page.evaluate(async () => {
     const { ipc } = await import('/src/core/ipc.ts');
@@ -1698,27 +1698,27 @@ test('an unpushed commit message can be edited in place while a pushed one canno
 
   await page.getByText('refactor(core): extract lane allocator').first().click();
   await expect(inspector.getByRole('heading', { name: 'refactor(core): extract lane allocator' })).toBeVisible();
-  await expect(inspector.getByRole('button', { name: 'Edit commit message' })).toBeDisabled();
+  await expect(inspector.getByRole('button', { name: '编辑提交消息' })).toBeDisabled();
 
   await page.getByText('feat(graph): virtualize commit rows').first().click();
   const heading = inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows' });
   await expect(heading).toBeVisible();
-  await expect(inspector.getByRole('button', { name: 'Edit commit message' })).toBeEnabled();
+  await expect(inspector.getByRole('button', { name: '编辑提交消息' })).toBeEnabled();
 
   await heading.dblclick();
   const summary = inspector.getByLabel('提交摘要');
   await expect(summary).toBeFocused();
   await expect(summary).toHaveValue('feat(graph): virtualize commit rows');
-  await expect(inspector.getByRole('button', { name: 'Save message' })).toBeDisabled();
+  await expect(inspector.getByRole('button', { name: '保存消息' })).toBeDisabled();
   await summary.press('Escape');
   await expect(inspector.getByLabel('提交摘要')).toHaveCount(0);
   await expect(heading).toBeVisible();
 
-  await inspector.getByRole('button', { name: 'Edit commit message' }).click();
+  await inspector.getByRole('button', { name: '编辑提交消息' }).click();
   await inspector.getByLabel('提交摘要').fill('feat(graph): virtualize commit rows, faster');
   const description = inspector.getByLabel('提交说明');
   const before = (await description.boundingBox())!.height;
-  const handle = inspector.getByRole('separator', { name: 'Resize description' });
+  const handle = inspector.getByRole('separator', { name: '调整描述高度' });
   const grip = (await handle.boundingBox())!;
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
@@ -1728,7 +1728,7 @@ test('an unpushed commit message can be edited in place while a pushed one canno
   await handle.dblclick();
   await expect.poll(async () => (await description.boundingBox())!.height).toBe(before);
   await description.fill('Rows outside the viewport are never mounted.');
-  await inspector.getByRole('button', { name: 'Save message' }).click();
+  await inspector.getByRole('button', { name: '保存消息' }).click();
 
   await expect(inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows, faster' })).toBeVisible();
   await expect(inspector.getByText('Rows outside the viewport are never mounted.')).toBeVisible();
@@ -1742,7 +1742,7 @@ test('the GitHub account form offers fine-grained and classic token pages', asyn
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Authentication', exact: true }).click();
-  await dialog.getByRole('button', { name: 'Add account' }).click();
+  await dialog.getByRole('button', { name: '添加账户' }).click();
   await expect(dialog.getByPlaceholder('粘贴令牌')).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Create one on GitHub' })).toHaveAttribute('href', /settings\/tokens\/new/);
   await expect(dialog.getByRole('link', { name: 'fine-grained token' })).toHaveAttribute(
@@ -1768,25 +1768,25 @@ test('the fonts card changes the interface, code and terminal fonts and remember
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Appearance', exact: true }).click();
-  await expect(dialog.getByRole('button', { name: 'Reset fonts' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: '重置字体' })).toHaveCount(0);
 
-  await dialog.getByRole('combobox', { name: 'Interface font' }).click();
-  await expect(page.getByText('Fonts', { exact: true }).last()).toBeVisible();
+  await dialog.getByRole('combobox', { name: '界面字体' }).click();
+  await expect(page.getByText('字体', { exact: true }).last()).toBeVisible();
   await page.getByRole('option', { name: 'Helvetica Neue' }).click();
   await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
 
-  await dialog.getByRole('combobox', { name: 'Code font' }).click();
-  await expect(page.getByText('Other fonts', { exact: true })).toBeVisible();
+  await dialog.getByRole('combobox', { name: '代码字体' }).click();
+  await expect(page.getByText('其他字体', { exact: true })).toBeVisible();
   await page.getByRole('option', { name: 'Fira Code' }).click();
   await expect.poll(() => rootVar('--font-mono')).toContain('Fira Code');
   await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Fira Code');
-  await expect(dialog.getByRole('combobox', { name: 'Terminal font', exact: true })).toContainText('Fira Code');
+  await expect(dialog.getByRole('combobox', { name: '终端字体', exact: true })).toContainText('Fira Code');
 
-  await dialog.getByRole('combobox', { name: 'Terminal font', exact: true }).click();
+  await dialog.getByRole('combobox', { name: '终端字体', exact: true }).click();
   await page.getByRole('option', { name: 'Menlo' }).click();
   const preview = dialog.locator('[data-terminal-font-preview]');
   await expect.poll(() => preview.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Menlo');
-  await dialog.getByRole('combobox', { name: 'Terminal font size' }).click();
+  await dialog.getByRole('combobox', { name: '终端字号' }).click();
   await page.getByRole('option', { name: '16 px' }).click();
   await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Menlo');
   await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontSize)).toBe('16px');
@@ -1800,11 +1800,11 @@ test('the fonts card changes the interface, code and terminal fonts and remember
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const reopened = page.getByRole('dialog');
   await reopened.getByRole('button', { name: 'Appearance', exact: true }).click();
-  await expect(reopened.getByRole('combobox', { name: 'Terminal font', exact: true })).toContainText('Menlo');
-  await reopened.getByRole('button', { name: 'Reset fonts' }).click();
+  await expect(reopened.getByRole('combobox', { name: '终端字体', exact: true })).toContainText('Menlo');
+  await reopened.getByRole('button', { name: '重置字体' }).click();
   await expect.poll(() => rootVar('--font-sans')).not.toContain('Helvetica Neue');
-  await expect(reopened.getByRole('combobox', { name: 'Interface font' })).toContainText('Inter');
-  await expect(reopened.getByRole('button', { name: 'Reset fonts' })).toHaveCount(0);
+  await expect(reopened.getByRole('combobox', { name: '界面字体' })).toContainText('Inter');
+  await expect(reopened.getByRole('button', { name: '重置字体' })).toHaveCount(0);
 });
 
 test('sidebar section headers carry a gold icon tile and a count badge, with no dividers or fills', async ({ page }) => {
@@ -1838,7 +1838,7 @@ test('the commit file list filters by kind of change from the summary tokens', a
   await page.getByText('feat(graph): virtualize commit rows').first().click();
   const inspector = page.getByRole('complementary', { name: 'Inspector' });
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
-  const all = inspector.getByRole('button', { name: 'All', exact: true });
+  const all = inspector.getByRole('button', { name: '全部', exact: true });
   await expect(all).toHaveAttribute('aria-pressed', 'true');
   await inspector.getByRole('button', { name: '1 added' }).click();
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
@@ -1859,7 +1859,7 @@ test('the All files view lists every file at a commit and opens an unchanged one
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
   await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'All files' }).click();
+  await page.getByRole('button', { name: '全部文件' }).click();
   await expect(inspector.getByText('5 changed')).toBeVisible();
   await expect(inspector.getByText('Roadmap.md')).toBeVisible();
   await expect(inspector.getByText('Architecture.md')).toBeVisible();
@@ -1870,7 +1870,7 @@ test('the All files view lists every file at a commit and opens an unchanged one
   await inspector.getByText('Roadmap.md').click();
   const diff = page.locator('section[aria-label="文件差异：docs/Roadmap.md"]');
   await expect(diff).toBeVisible();
-  await expect(diff.getByText('unchanged', { exact: true })).toBeVisible();
+  await expect(diff.getByText('未更改', { exact: true })).toBeVisible();
   await expect(diff.getByText('import { render }')).toBeVisible();
   await expect(diff.getByText(/^@@/)).toHaveCount(0);
 
@@ -1886,7 +1886,7 @@ test('the All files view shows the whole working tree with changed files still a
   const inspector = page.getByRole('complementary', { name: 'Inspector' });
   await expect(inspector.getByText('README.md')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'All files' }).click();
+  await page.getByRole('button', { name: '全部文件' }).click();
   await expect(inspector.getByText('6 changed')).toBeVisible();
   await expect(inspector.getByText('README.md')).toBeVisible();
   await expect(inspector.getByLabel('Stage src/core/ipc.ts')).toBeVisible();
@@ -1895,7 +1895,7 @@ test('the All files view shows the whole working tree with changed files still a
 
   await inspector.getByText('README.md').click();
   const diff = page.locator('section[aria-label="文件差异：README.md"]');
-  await expect(diff.getByText('unchanged', { exact: true })).toBeVisible();
+  await expect(diff.getByText('未更改', { exact: true })).toBeVisible();
   await expect(diff.getByRole('button', { name: 'Stage file' })).toHaveCount(0);
 
   await page.getByRole('button', { name: '扁平文件列表' }).click();

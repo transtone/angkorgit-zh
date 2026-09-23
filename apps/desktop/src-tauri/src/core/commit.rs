@@ -148,26 +148,26 @@ pub fn amend(path: &str, message: Option<&str>) -> AppResult<String> {
 pub fn reword(path: &str, oid: &str, message: &str) -> AppResult<String> {
     let message = message.trim_end();
     if message.trim().is_empty() {
-        return Err(AppError::other("the commit message cannot be empty"));
+        return Err(AppError::other("提交消息不能为空"));
     }
     let repo = super::repo::open(path)?;
     let target = repo.find_commit(git2::Oid::from_str(oid)?)?;
     let head = repo
         .head()
-        .map_err(|_| AppError::other("nothing to reword: repository has no commits"))?
+        .map_err(|_| AppError::other("没有可改写的提交：仓库中还没有提交"))?
         .peel_to_commit()?;
     if target.id() == head.id() {
         return reword_head(&repo, &head, message);
     }
     let parent = target.parent(0).map_err(|_| {
-        AppError::other("the root commit can only be reworded while it is the latest commit")
+        AppError::other("根提交仅在其为最新提交时才能改写")
     })?;
     let parent_oid = parent.id().to_string();
     let target_oid = target.id().to_string();
     let range = super::branch::rebase_commits(path, &parent_oid)?;
     let Some(index) = range.iter().position(|c| c.oid == target_oid) else {
         return Err(AppError::other(
-            "only commits on the current branch can be reworded",
+            "只能改写当前分支上的提交",
         ));
     };
     let todo: Vec<RebaseTodoEntry> = range

@@ -105,15 +105,15 @@ function ChangeFilter({
     .filter((p) => p.count > 0);
   const token = 'flex h-5 items-center gap-1 rounded px-1 tabular-nums transition-colors hover:bg-surface-raised';
   return (
-    <span className="flex items-center gap-0.5 whitespace-nowrap" role="group" aria-label="Filter files by kind of change">
+    <span className="flex items-center gap-0.5 whitespace-nowrap" role="group" aria-label="按变更类型筛选文件">
       <button
         type="button"
         aria-pressed={value === null}
-        title="Show every file"
+        title="显示全部文件"
         className={cn(token, value === null ? 'bg-surface-raised font-medium text-foreground' : 'text-muted')}
         onClick={() => onChange(null)}
       >
-        All
+        全部
       </button>
       {parts.map(({ status, count }) => (
         <button
@@ -364,7 +364,7 @@ export function CommitDetails({
       const newOid = await useUndo.getState().tracked({
         path: repoPath,
         kind: 'reword',
-        label: 'edit commit message',
+        label: '编辑提交消息',
         action: () => ipc.reword(repoPath, commit.oid, draft),
       });
       setEditing(false);
@@ -664,7 +664,7 @@ export function CommitDetails({
                   draftSummaryRef.current?.focus();
                 }
               }}
-              placeholder="Description"
+              placeholder="提交说明"
               aria-label="提交说明"
               rows={Math.min(12, Math.max(3, draftParts.body.split('\n').length + 1))}
               style={descHeight === null ? undefined : { height: descHeight }}
@@ -677,14 +677,14 @@ export function CommitDetails({
                   取消
                 </Button>
                 <Button size="sm" onClick={() => void saveMessage()} disabled={!canSave}>
-                  {saving ? 'Saving…' : 'Save message'}
+                  {saving ? '保存中…' : '保存消息'}
                 </Button>
               </span>
             </div>
             <div
               role="separator"
               aria-orientation="horizontal"
-              aria-label="Resize description"
+              aria-label="调整描述高度"
               title="拖动调整大小 · 双击重置"
               onMouseDown={startDescResize}
               onDoubleClick={() => setDescHeight(null)}
@@ -796,13 +796,13 @@ export function CommitDetails({
           {stash ? (
             <span />
           ) : (
-            <Hint label={canReword ? 'Edit the commit message' : 'Already pushed to a remote'}>
+            <Hint label={canReword ? '编辑提交消息' : '已推送到远端'}>
               <span className="inline-flex">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-muted"
-                  aria-label="Edit commit message"
+                  aria-label="编辑提交消息"
                   disabled={!canReword || editing}
                   onClick={startEditing}
                 >
@@ -980,7 +980,7 @@ export function CommitDetails({
             </div>
           ) : shownEntries.length === 0 ? (
             <p className="px-2 py-1.5 text-xs text-faint">
-              {filtering ? 'No files match the filter.' : 'This commit has no files.'}
+              {filtering ? '没有文件符合过滤条件。' : '此提交没有文件。'}
             </p>
           ) : (
             <FileTree

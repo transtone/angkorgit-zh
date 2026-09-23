@@ -120,7 +120,7 @@ export function StatusBar() {
         <Hint label={`获取失败：${fetchFailures.join(', ')}`}>
           <span className="flex items-center gap-1 text-faint" data-fetch-status>
             <RefreshCw className="size-3" />
-            Fetch incomplete
+            获取未完成
           </span>
         </Hint>
       )}

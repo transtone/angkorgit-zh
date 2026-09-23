@@ -120,11 +120,11 @@ export function Inspector() {
               <FolderTree className="size-3.5" />
             </Button>
           </Hint>
-          <Hint label={commit || commitError ? 'All files at this commit' : 'All files in the working copy'}>
+          <Hint label={commit || commitError ? '所选提交的全部文件' : '工作副本的全部文件'}>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="All files"
+              aria-label="全部文件"
               aria-pressed={fileView === 'all'}
               className={cn(fileView === 'all' && 'bg-surface-raised text-foreground')}
               onClick={() => setFileView('all')}

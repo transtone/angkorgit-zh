@@ -57,7 +57,7 @@ const PROVIDERS: Record<ProviderKind, ProviderPreset> = {
     tokenPage: () => 'https://github.com/settings/tokens/new?scopes=repo&description=AngKorGit',
     tokenHint: (
       <>
-        Classic token with the repo scope, or a{' '}
+        具有 repo 权限的 Classic token，或{' '}
         <a
           href={FINE_GRAINED_TOKEN_URL}
           className="text-primary hover:underline"

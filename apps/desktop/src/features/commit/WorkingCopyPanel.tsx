@@ -1004,7 +1004,7 @@ export function WorkingCopyPanel() {
               </div>
             ) : shownEntries.length === 0 ? (
               <p className="px-2 pb-2 text-xs text-faint">
-                {filtering ? 'No files match the filter.' : 'No tracked files yet.'}
+                {filtering ? '没有文件符合过滤条件。' : '暂无已跟踪文件。'}
               </p>
             ) : (
               <FileTree
