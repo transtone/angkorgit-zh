@@ -159,16 +159,14 @@ pub fn reword(path: &str, oid: &str, message: &str) -> AppResult<String> {
     if target.id() == head.id() {
         return reword_head(&repo, &head, message);
     }
-    let parent = target.parent(0).map_err(|_| {
-        AppError::other("根提交仅在其为最新提交时才能改写")
-    })?;
+    let parent = target
+        .parent(0)
+        .map_err(|_| AppError::other("根提交仅在其为最新提交时才能改写"))?;
     let parent_oid = parent.id().to_string();
     let target_oid = target.id().to_string();
     let range = super::branch::rebase_commits(path, &parent_oid)?;
     let Some(index) = range.iter().position(|c| c.oid == target_oid) else {
-        return Err(AppError::other(
-            "只能改写当前分支上的提交",
-        ));
+        return Err(AppError::other("只能改写当前分支上的提交"));
     };
     let todo: Vec<RebaseTodoEntry> = range
         .iter()

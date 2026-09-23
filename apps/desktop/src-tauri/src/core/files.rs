@@ -56,12 +56,7 @@ fn blob_bytes(repo: &Repository, file: &str, oid: &str) -> AppResult<Vec<u8>> {
     let entry = commit
         .tree()?
         .get_path(std::path::Path::new(file))
-        .map_err(|_| {
-            AppError::other(format!(
-                "{file} 不属于提交 {}",
-                &oid[..oid.len().min(7)]
-            ))
-        })?;
+        .map_err(|_| AppError::other(format!("{file} 不属于提交 {}", &oid[..oid.len().min(7)])))?;
     let object = entry.to_object(repo)?;
     let blob = object
         .as_blob()

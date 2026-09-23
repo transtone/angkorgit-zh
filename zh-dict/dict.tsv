@@ -1187,3 +1187,4 @@ rust	nothing to reword: repository has no commits	没有可改写的提交：仓
 rust	the root commit can only be reworded while it is the latest commit	根提交仅在其为最新提交时才能改写
 rust	only commits on the current branch can be reworded	只能改写当前分支上的提交
 ui	Terminal	终端	label="Terminal"
+rust	bare repositories have no working copy to blame	裸仓库没有工作副本，无法查看 blame
