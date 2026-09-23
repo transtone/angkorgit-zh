@@ -2669,7 +2669,7 @@ fn reword_an_earlier_commit_rewrites_the_commits_above_it() {
     repo.write("f3.txt", "dirty\n");
     let one = history_oid_of(&repo, "one");
     let err = core::reword(repo.path(), &one, "one, again").unwrap_err();
-    assert!(err.to_string().contains("uncommitted changes"));
+    assert!(err.to_string().contains("未提交的更改"));
     assert_eq!(history_oid_of(&repo, "one"), one);
 }
 
