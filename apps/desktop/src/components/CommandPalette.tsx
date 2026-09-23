@@ -144,7 +144,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
       try {
         const result = (await op()) as { status?: string; message?: string } | undefined;
         if (label.startsWith('Pull') && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
-        toastOutcome(result, `${label} done`);
+        toastOutcome(result, `${label} 已完成`);
         await onRefresh();
       } catch (error) {
         toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
@@ -335,7 +335,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
             icon={<RefreshCw />}
             label={remotes.length > 1 ? 'Fetch all remotes (with tags)' : '拉取（含标签）'}
             onSelect={() =>
-              run('Fetch', async () => {
+              run('获取', async () => {
                 const result = await fetchRemotes(remotes.map((r) => r.name), (name) => ipc.fetch(path, name, true, true));
                 const message = fetchResultMessage(result);
                 if (useRepo.getState().repo?.path === path) {

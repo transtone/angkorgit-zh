@@ -1693,7 +1693,7 @@ test('a diff selection keeps its lines after scrolling away and back', async ({ 
 test('an unpushed commit message can be edited in place while a pushed one cannot', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const inspector = page.getByRole('complementary', { name: 'Inspector' });
 
   await page.getByText('refactor(core): extract lane allocator').first().click();
@@ -1706,17 +1706,17 @@ test('an unpushed commit message can be edited in place while a pushed one canno
   await expect(inspector.getByRole('button', { name: 'Edit commit message' })).toBeEnabled();
 
   await heading.dblclick();
-  const summary = inspector.getByLabel('Commit summary');
+  const summary = inspector.getByLabel('提交摘要');
   await expect(summary).toBeFocused();
   await expect(summary).toHaveValue('feat(graph): virtualize commit rows');
   await expect(inspector.getByRole('button', { name: 'Save message' })).toBeDisabled();
   await summary.press('Escape');
-  await expect(inspector.getByLabel('Commit summary')).toHaveCount(0);
+  await expect(inspector.getByLabel('提交摘要')).toHaveCount(0);
   await expect(heading).toBeVisible();
 
   await inspector.getByRole('button', { name: 'Edit commit message' }).click();
-  await inspector.getByLabel('Commit summary').fill('feat(graph): virtualize commit rows, faster');
-  const description = inspector.getByLabel('Commit description');
+  await inspector.getByLabel('提交摘要').fill('feat(graph): virtualize commit rows, faster');
+  const description = inspector.getByLabel('提交说明');
   const before = (await description.boundingBox())!.height;
   const handle = inspector.getByRole('separator', { name: 'Resize description' });
   const grip = (await handle.boundingBox())!;
@@ -1738,34 +1738,34 @@ test('an unpushed commit message can be edited in place while a pushed one canno
 test('the GitHub account form offers fine-grained and classic token pages', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Authentication', exact: true }).click();
   await dialog.getByRole('button', { name: 'Add account' }).click();
-  await expect(dialog.getByPlaceholder('Paste the token')).toBeVisible();
+  await expect(dialog.getByPlaceholder('粘贴令牌')).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Create one on GitHub' })).toHaveAttribute('href', /settings\/tokens\/new/);
   await expect(dialog.getByRole('link', { name: 'fine-grained token' })).toHaveAttribute(
     'href',
     'https://github.com/settings/personal-access-tokens/new',
   );
-  await expect(dialog.getByText(/Contents and Pull requests set to read and write/)).toBeVisible();
+  await expect(dialog.getByText(/Contents and 拉取请求 set to read and write/)).toBeVisible();
   await dialog.getByText('Token', { exact: true }).click();
-  await expect(dialog.getByPlaceholder('Paste the token')).toBeFocused();
+  await expect(dialog.getByPlaceholder('粘贴令牌')).toBeFocused();
 });
 
 test('the fonts card changes the interface, code and terminal fonts and remembers them', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Toggle terminal' }).click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '切换终端' }).click();
   const rows = page.locator('.terminal-host .xterm-rows');
   await expect(rows).toBeVisible();
   await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontSize)).toBe('12px');
   const rootVar = (name: string) =>
     page.evaluate((v) => getComputedStyle(document.documentElement).getPropertyValue(v), name);
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Appearance', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Reset fonts' })).toHaveCount(0);
@@ -1795,9 +1795,9 @@ test('the fonts card changes the interface, code and terminal fonts and remember
 
   await page.reload();
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: '设置', exact: true }).click();
   const reopened = page.getByRole('dialog');
   await reopened.getByRole('button', { name: 'Appearance', exact: true }).click();
   await expect(reopened.getByRole('combobox', { name: 'Terminal font', exact: true })).toContainText('Menlo');
@@ -1810,7 +1810,7 @@ test('the fonts card changes the interface, code and terminal fonts and remember
 test('sidebar section headers carry a gold icon tile and a count badge, with no dividers or fills', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const sections = page.locator('[data-sidebar-section]');
   await expect(sections).toHaveCount(7);
   const borders = await sections.evaluateAll((els) => els.map((el) => getComputedStyle(el).borderTopWidth));
@@ -1834,7 +1834,7 @@ test('sidebar section headers carry a gold icon tile and a count badge, with no 
 test('the commit file list filters by kind of change from the summary tokens', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByText('feat(graph): virtualize commit rows').first().click();
   const inspector = page.getByRole('complementary', { name: 'Inspector' });
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
@@ -1853,7 +1853,7 @@ test('the commit file list filters by kind of change from the summary tokens', a
 test('the All files view lists every file at a commit and opens an unchanged one read-only', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByText('feat(graph): virtualize commit rows').first().click();
   const inspector = page.getByRole('complementary', { name: 'Inspector' });
   await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
@@ -1868,13 +1868,13 @@ test('the All files view lists every file at a commit and opens an unchanged one
   await expect(inspector.getByText('DiffPanel.tsx')).toBeVisible();
 
   await inspector.getByText('Roadmap.md').click();
-  const diff = page.locator('section[aria-label="Diff for docs/Roadmap.md"]');
+  const diff = page.locator('section[aria-label="文件差异：docs/Roadmap.md"]');
   await expect(diff).toBeVisible();
   await expect(diff.getByText('unchanged', { exact: true })).toBeVisible();
   await expect(diff.getByText('import { render }')).toBeVisible();
   await expect(diff.getByText(/^@@/)).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Folder tree' }).click();
+  await page.getByRole('button', { name: '文件夹树' }).click();
   await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
   await expect(inspector.getByText('Architecture.md')).toBeVisible();
 });
@@ -1882,7 +1882,7 @@ test('the All files view lists every file at a commit and opens an unchanged one
 test('the All files view shows the whole working tree with changed files still actionable', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const inspector = page.getByRole('complementary', { name: 'Inspector' });
   await expect(inspector.getByText('README.md')).toHaveCount(0);
 
@@ -1894,11 +1894,11 @@ test('the All files view shows the whole working tree with changed files still a
   await expect(inspector.getByText('DiffPanel.tsx')).toBeHidden();
 
   await inspector.getByText('README.md').click();
-  const diff = page.locator('section[aria-label="Diff for README.md"]');
+  const diff = page.locator('section[aria-label="文件差异：README.md"]');
   await expect(diff.getByText('unchanged', { exact: true })).toBeVisible();
   await expect(diff.getByRole('button', { name: 'Stage file' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Flat file list' }).click();
+  await page.getByRole('button', { name: '扁平文件列表' }).click();
   await expect(inspector.getByText('README.md')).toHaveCount(0);
   await expect(inspector.getByText(/^Changes/)).toBeVisible();
 });
@@ -1909,7 +1909,7 @@ test('dragging a diff selection past the bottom edge keeps growing it and copies
   await page.getByText('palette-seed.sql').first().click();
   await expect(page.getByText('temple gold').first()).toBeVisible();
 
-  const scroller = page.locator('section[aria-label^="Diff for"] div.overflow-y-auto');
+  const scroller = page.locator('section[aria-label^="文件差异："] div.overflow-y-auto');
   await scroller.evaluate((el) => {
     el.scrollTop = Math.max(0, el.scrollTop - 1500);
   });

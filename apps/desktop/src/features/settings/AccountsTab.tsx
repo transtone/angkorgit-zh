@@ -68,41 +68,41 @@ const PROVIDERS: Record<ProviderKind, ProviderPreset> = {
         >
           fine-grained token
         </a>{' '}
-        with Contents and Pull requests set to read and write.
+        with Contents and 拉取请求 set to read and write.
       </>
     ),
-    usernameHint: 'username (detected from the token)',
+    usernameHint: '用户名（从令牌中检测到）',
   },
   gitlab: {
     label: 'GitLab.com',
     defaultHost: 'gitlab.com',
     hostEditable: false,
     tokenPage: () => 'https://gitlab.com/-/user_settings/personal_access_tokens',
-    tokenHint: 'Personal access token with "read_repository" + "write_repository" scopes',
-    usernameHint: 'username (detected from the token)',
+    tokenHint: '具有“read_repository” + “write_repository”权限范围的个人访问令牌',
+    usernameHint: '用户名（从令牌中检测到）',
   },
   'gitlab-self': {
     label: 'GitLab（自托管）',
     defaultHost: '',
     hostEditable: true,
     tokenPage: (host) => (host ? `http://${host}/-/user_settings/personal_access_tokens` : null),
-    tokenHint: 'Personal access token with "read_repository" + "write_repository" scopes',
-    usernameHint: 'username (detected from the token)',
+    tokenHint: '具有“read_repository” + “write_repository”权限范围的个人访问令牌',
+    usernameHint: '用户名（从令牌中检测到）',
   },
   bitbucket: {
     label: 'Bitbucket',
     defaultHost: 'bitbucket.org',
     hostEditable: false,
     tokenPage: () => 'https://id.atlassian.com/manage-profile/security/api-tokens',
-    tokenHint: 'API token with read:repository:bitbucket + write:repository:bitbucket scopes',
-    usernameHint: 'Atlassian account email (your Bitbucket username is detected)',
+    tokenHint: '具有 read:repository:bitbucket + write:repository:bitbucket 权限范围的 API 令牌',
+    usernameHint: 'Atlassian 账户邮箱（已检测到你的 Bitbucket 用户名）',
   },
   other: {
     label: '其他主机',
     defaultHost: '',
     hostEditable: true,
     tokenPage: () => null,
-    tokenHint: 'Token or password used for HTTPS git access',
+    tokenHint: '用于 HTTPS git 访问的令牌或密码',
     usernameHint: 'username',
   },
 };

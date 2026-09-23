@@ -100,7 +100,7 @@ export function Inspector() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Flat file list"
+              aria-label="扁平文件列表"
               aria-pressed={fileView === 'list'}
               className={cn(fileView === 'list' && 'bg-surface-raised text-foreground')}
               onClick={() => setFileView('list')}
@@ -112,7 +112,7 @@ export function Inspector() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Folder tree"
+              aria-label="文件夹树"
               aria-pressed={fileView === 'tree'}
               className={cn(fileView === 'tree' && 'bg-surface-raised text-foreground')}
               onClick={() => setFileView('tree')}

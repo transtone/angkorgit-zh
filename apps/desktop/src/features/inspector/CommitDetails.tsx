@@ -98,7 +98,7 @@ function ChangeFilter({
   value: ChangeKind | null;
   onChange: (kind: ChangeKind | null) => void;
 }) {
-  if (diffs.length === 0) return <>No changes</>;
+  if (diffs.length === 0) return <>无更改</>;
   const order: ChangeKind[] = ['modified', 'new', 'deleted', 'renamed'];
   const parts = order
     .map((status) => ({ status, count: diffs.filter((d) => d.status === status).length }))
@@ -368,7 +368,7 @@ export function CommitDetails({
         action: () => ipc.reword(repoPath, commit.oid, draft),
       });
       setEditing(false);
-      toast.success('Commit message updated');
+      toast.success('提交消息 updated');
       await refresh();
       await reloadGraph(repoPath);
       select(newOid);
@@ -648,8 +648,8 @@ export function CommitDetails({
                   draftBodyRef.current?.focus();
                 }
               }}
-              placeholder="Summary"
-              aria-label="Commit summary"
+              placeholder="摘要"
+              aria-label="提交摘要"
               spellCheck
               className="h-9 w-full min-w-0 bg-transparent px-3 text-sm font-medium text-foreground outline-none placeholder:font-normal placeholder:text-faint"
             />
@@ -665,7 +665,7 @@ export function CommitDetails({
                 }
               }}
               placeholder="Description"
-              aria-label="Commit description"
+              aria-label="提交说明"
               rows={Math.min(12, Math.max(3, draftParts.body.split('\n').length + 1))}
               style={descHeight === null ? undefined : { height: descHeight }}
               className="min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:border-0 focus-visible:ring-0"
@@ -674,7 +674,7 @@ export function CommitDetails({
               <span className="text-[11px] text-faint">{isMac ? '⌘⏎' : 'Ctrl+⏎'} to save · Esc to cancel</span>
               <span className="flex items-center gap-1.5">
                 <Button variant="ghost" size="sm" onClick={cancelEditing} disabled={saving}>
-                  Cancel
+                  取消
                 </Button>
                 <Button size="sm" onClick={() => void saveMessage()} disabled={!canSave}>
                   {saving ? 'Saving…' : 'Save message'}
@@ -685,7 +685,7 @@ export function CommitDetails({
               role="separator"
               aria-orientation="horizontal"
               aria-label="Resize description"
-              title="Drag to resize · double-click to reset"
+              title="拖动调整大小 · 双击重置"
               onMouseDown={startDescResize}
               onDoubleClick={() => setDescHeight(null)}
               className="group/handle flex h-3 cursor-row-resize items-center justify-center"
@@ -890,7 +890,7 @@ export function CommitDetails({
             )}
           </span>
           <span className="flex min-w-0 items-center gap-1 text-[11px] font-normal normal-case tracking-normal">
-            {loading ? 'Loading…' : error ? '' : <ChangeFilter diffs={diffs} value={kindFilter} onChange={setKindFilter} />}
+            {loading ? '加载中…' : error ? '' : <ChangeFilter diffs={diffs} value={kindFilter} onChange={setKindFilter} />}
             {fileTree && !loading && !error && (
               <FileTreeFoldButton state={foldState} onFold={(mode) => setFold((f) => nextFold(f, mode))} />
             )}
@@ -969,7 +969,7 @@ export function CommitDetails({
                 Could not list the files: {treeError}
               </span>
               <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setTreeSeq((n) => n + 1)}>
-                Retry
+                重试
               </Button>
             </div>
           ) : tree === null ? (
@@ -1037,7 +1037,7 @@ export function CommitDetails({
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => useUi.getState().openFileHistory(fileMenu.path)}>
-              <History /> File history
+              <History /> 文件历史
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={fileMenu.deleted}
@@ -1072,7 +1072,7 @@ export function CommitDetails({
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(fileMenu.path);
-                toast.success('Path copied');
+                toast.success('路径已复制');
               }}
             >
               <Copy /> 复制路径

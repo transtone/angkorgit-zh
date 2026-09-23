@@ -21,7 +21,7 @@ export async function fetchRemotes(
 
 export function fetchResultMessage(result: FetchResult): string {
   const total = result.succeeded.length + result.failed.length;
-  if (total === 0) return 'No remotes configured';
+  if (total === 0) return '无远端 configured';
   if (result.failed.length === 0) return total === 1 ? 'Fetched 1 remote' : `Fetched all ${total} remotes`;
   const failures = result.failed.map(({ name, error }) => `${name}: ${error}`).join('; ');
   return `Fetched ${result.succeeded.length} of ${total} remotes. Failed: ${failures}`;

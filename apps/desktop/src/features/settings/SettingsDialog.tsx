@@ -390,7 +390,7 @@ function CliAgentPicker() {
       {!scanning && agents.length === 0 && (
         <SettingEmpty
           icon={<SquareTerminal className="size-4" />}
-          title="No AI CLI found"
+          title="未找到 AI CLI"
           description="Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode or Antigravity CLI, then scan again."
           action={
             <Button variant="secondary" size="sm" onClick={() => void scan()}>
@@ -1325,8 +1325,8 @@ export function SettingsDialog() {
                     title="提供方"
                     description={
                       settings.ai.provider === 'cli'
-                        ? 'Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.'
-                        : 'Used for commit messages, diff explanations, conflict help and reviews. Local models via Ollama or LM Studio need no API key.'
+                        ? 'Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API 密钥 needed.'
+                        : '用于提交消息、diff 解释、冲突帮助与审查。通过 Ollama 或 LM Studio 的本地模型无需 API 密钥。'
                     }
                     action={
                       <Select

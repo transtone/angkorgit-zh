@@ -443,14 +443,14 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
-      <Hint label={remotes.length === 0 ? 'No remotes configured' : remotes.length > 1 ? `Fetch all remotes (${remotes.map((r) => r.name).join(', ')})` : `Fetch ${remote}`}>
+      <Hint label={remotes.length === 0 ? '无远端 configured' : remotes.length > 1 ? `Fetch all remotes (${remotes.map((r) => r.name).join(', ')})` : `获取 ${remote}`}>
         <span className="inline-flex">
           <Button
             variant="ghost"
             size="sm"
             disabled={!!busy || remotes.length === 0}
             onClick={() =>
-              void run('Fetch', async () => {
+              void run('获取', async () => {
                 const result = await fetchRemotes(remotes.map((r) => r.name), (name) => ipc.fetch(repo.path, name, true, true));
                 const message = fetchResultMessage(result);
                 if (useRepo.getState().repo?.path === repo.path) {
@@ -461,8 +461,8 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
               })
             }
           >
-            <RefreshCw className={busy === 'Fetch' ? 'animate-spin' : ''} />
-            Fetch
+            <RefreshCw className={busy === '获取' ? 'animate-spin' : ''} />
+            获取
           </Button>
         </span>
       </Hint>

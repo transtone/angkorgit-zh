@@ -78,7 +78,7 @@ async function applyTransition(
   switch (entry.kind) {
     case 'commit':
     case 'reword': {
-      if (!to.headOid) throw new Error('nothing to reset to');
+      if (!to.headOid) throw new Error('没有可重置的目标');
       await ipc.reset(path, to.headOid, 'soft');
       return;
     }
