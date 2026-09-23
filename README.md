@@ -67,7 +67,7 @@
 - **多工作树并行（Worktrees）**：为紧急热修复或 AI Agent 在同级目录下独立检出同一个仓库的分支，而无需触碰手头未完成的工作。侧边栏清晰罗列工作树，点击在独立标签页中切换，检出已在其他文件夹打开的分支时会自动直接跳转。
 - **日常所需一应俱全**：支持整文件、代码块（Hunk）乃至单行暂存；提交自带摘要与说明分割框，支持追加修改（Amend）、还原（Revert）与重置（Reset）；支持交互式变基、单条或批量拣选（Cherry-pick）、暂存（Stash）、标签管理、子模块；提供内联与并排词级高亮差异对比、缩略小地图、图片对比与文件历史；每个仓库内置原生 PTY 终端；执行任何破坏性操作前均有明确的确认对话框，并提供完善的操作撤销功能。
 - **远端协同与多账户**：复用 Git 原生的凭据链；支持 SSH 密钥与 Personal Access Token，单个主机支持挂载多个账户，身份配置按仓库绑定，不污染全局 gitconfig；直连 GitHub、GitLab 与 Bitbucket 拉取请求（PR/MR）：浏览列表、检出分支、创建请求、挑选审查人；无缝对接已有 Git 提交签名机制（GPG / SSH）。
-- **AI 助手（可选）**：从暂存区代码 diff 自动生成提交信息、通俗解释某次提交或合并冲突、审查即将提交的内容、自动编写拉取请求说明。支持本地已登录的 AI CLI 工具（Claude Code、Codex、Gemini CLI、OpenCode），或通过 API 密钥 / 本机 Ollama 驱动。所有请求从本机直达大模型，每一个生成过程均配备显式中断（Stop）按钮。
+- **AI 助手（可选）**：从暂存区代码 diff 自动生成提交信息、通俗解释某次提交或合并冲突、审查即将提交的内容、自动编写拉取请求说明。支持本地已登录的 AI CLI 工具（Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode、Antigravity），或通过 API 密钥 / 本机 Ollama 驱动。所有请求从本机直达大模型，每一个生成过程均配备显式中断（Stop）按钮。
 - **键盘优先**：`⌘K` / `Ctrl+K` 调出命令面板直达所有功能，菜单项旁清晰标注快捷键，`Esc` 键每次精准关闭最上层浮层。
 
 <table>
@@ -149,7 +149,7 @@
 
 本仓库的 [Releases 发行页面](https://github.com/wuwuzhazha/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
 
-- **Windows**：下载 `AngKorGit_0.15.1_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名。
+- **Windows**：下载 `AngKorGit_0.17.0_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名。
 - **macOS / Linux**：本次未发布这两个平台的中文安装包。可自行编译中文源码，或到[上游发行页面](https://github.com/cheat2001/angkorgit/releases)下载未汉化的原版。不要使用不存在的本仓库 DMG/AppImage 下载地址。
 
 > **提示**：由于未购买商业代码签名证书，Windows SmartScreen 或 macOS Gatekeeper 首次启动时可能会弹出未知开发者提示，在 Windows 下点击“更多信息 → 仍要运行”，在 macOS 下于“系统设置 → 隐私与安全性”中点击“仍然打开”即可。

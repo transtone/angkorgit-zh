@@ -3,6 +3,7 @@ import Commit from './Commit.astro';
 
 const providers = [
   { name: 'Claude Code', kind: '你已登录的 CLI' },
+  { name: 'GitHub Copilot CLI', kind: '你已登录的 CLI' },
   { name: 'Codex', kind: '你已登录的 CLI' },
   { name: 'Gemini CLI', kind: '你已登录的 CLI' },
   { name: 'OpenCode', kind: '你已登录的 CLI' },
@@ -22,7 +23,7 @@ const providers = [
         <h2 class="display mt-3 text-4xl leading-[1.02] sm:text-5xl">使用你<em>已有</em>的 AI。</h2>
         <div class="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">
           <p>
-            AngKorGit 不自带模型或令牌钱包。如果你装了 Claude Code、Codex、Gemini CLI 或 OpenCode，
+            AngKorGit 不自带模型或令牌钱包。如果你装了 Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode 或 Antigravity，
             它会找到对应程序，使用你自己的登录与配额，无需粘贴密钥。
           </p>
           <p>
