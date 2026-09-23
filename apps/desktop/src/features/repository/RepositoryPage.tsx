@@ -4,6 +4,7 @@ import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useRepo } from './store';
+import { fetchRemotes } from './fetchRemotes';
 import { useGraph } from '@/features/graph/store';
 import { sidebarVisible, useUi } from '@/features/ui/store';
 import { RepoTabs } from '@/components/RepoTabs';
@@ -196,21 +197,23 @@ export function RepositoryPage() {
   useEffect(() => {
     if (!repoPath || !autoFetchMinutes || !autoFetchRemotes) return;
     let fetching = false;
-    let lastFetch = 0;
+    let cancelled = false;
+    let lastAttemptAt = 0;
     const tick = async () => {
-      if (fetching || document.hidden) return;
-      if (Date.now() - lastFetch < 30_000) return;
+      if (fetching || cancelled || document.hidden) return;
       const state = useRepo.getState();
       if (state.busy || state.repo?.path !== repoPath) return;
+      if (Date.now() - Math.max(lastAttemptAt, state.lastFetchAt ?? 0) < 30_000) return;
       const remoteNames = state.remotes.map((remote) => remote.name);
       if (remoteNames.length === 0) return;
       fetching = true;
-      lastFetch = Date.now();
+      lastAttemptAt = Date.now();
       try {
-        for (const remote of remoteNames) await ipc.fetch(repoPath, remote, true, false);
-        if (useRepo.getState().repo?.path === repoPath) useRepo.getState().markFetched();
-      } catch {
-        lastFetch = Date.now() + 4 * 60_000;
+        const result = await fetchRemotes(remoteNames, (name) => ipc.fetch(repoPath, name, true, false));
+        if (!cancelled && useRepo.getState().repo?.path === repoPath) {
+          if (result.succeeded.length > 0) useRepo.getState().markFetched();
+          useRepo.getState().setFetchFailures(result.failed.map(({ name }) => name));
+        }
       } finally {
         fetching = false;
       }
@@ -220,6 +223,7 @@ export function RepositoryPage() {
     window.addEventListener('focus', onFocus);
     void tick();
     return () => {
+      cancelled = true;
       window.clearInterval(id);
       window.removeEventListener('focus', onFocus);
     };

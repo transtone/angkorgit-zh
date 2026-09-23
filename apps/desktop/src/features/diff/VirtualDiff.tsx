@@ -32,7 +32,7 @@ export type FlatRow = HeaderRow | LineRow | PairRow;
 export function flattenDiff(diff: FileDiff, split: boolean): FlatRow[] {
   const rows: FlatRow[] = [];
   diff.hunks.forEach((hunk, hunkIndex) => {
-    rows.push({ kind: 'header', hunkIndex, header: hunk.header });
+    if (hunk.header) rows.push({ kind: 'header', hunkIndex, header: hunk.header });
     const pairs = pairHunkLines(hunk);
     if (split) {
       for (const pair of pairs) rows.push({ kind: 'pair', left: pair.left, right: pair.right });

@@ -2,7 +2,7 @@ use git2::Repository;
 
 use crate::error::{AppError, AppResult};
 
-use super::types::OpOutcome;
+use super::types::{OpOutcome, RebaseTodoEntry};
 
 pub(crate) fn default_signature(repo: &Repository) -> AppResult<git2::Signature<'static>> {
     repo.signature()
@@ -139,6 +139,69 @@ pub fn amend(path: &str, message: Option<&str>) -> AppResult<String> {
         &author,
         &committer,
         &message,
+        &tree,
+        &parent_refs,
+    )?;
+    Ok(oid.to_string())
+}
+
+pub fn reword(path: &str, oid: &str, message: &str) -> AppResult<String> {
+    let message = message.trim_end();
+    if message.trim().is_empty() {
+        return Err(AppError::other("提交消息不能为空"));
+    }
+    let repo = super::repo::open(path)?;
+    let target = repo.find_commit(git2::Oid::from_str(oid)?)?;
+    let head = repo
+        .head()
+        .map_err(|_| AppError::other("没有可改写的提交：仓库中还没有提交"))?
+        .peel_to_commit()?;
+    if target.id() == head.id() {
+        return reword_head(&repo, &head, message);
+    }
+    let parent = target
+        .parent(0)
+        .map_err(|_| AppError::other("根提交仅在其为最新提交时才能改写"))?;
+    let parent_oid = parent.id().to_string();
+    let target_oid = target.id().to_string();
+    let range = super::branch::rebase_commits(path, &parent_oid)?;
+    let Some(index) = range.iter().position(|c| c.oid == target_oid) else {
+        return Err(AppError::other("只能改写当前分支上的提交"));
+    };
+    let todo: Vec<RebaseTodoEntry> = range
+        .iter()
+        .rev()
+        .map(|c| {
+            let is_target = c.oid == target_oid;
+            RebaseTodoEntry {
+                oid: c.oid.clone(),
+                action: if is_target { "reword" } else { "pick" }.to_string(),
+                message: is_target.then(|| message.to_string()),
+            }
+        })
+        .collect();
+    let new_head = super::branch::rebase_interactive(path, &parent_oid, &todo)?;
+    let mut commit = repo.find_commit(git2::Oid::from_str(&new_head)?)?;
+    for _ in 0..index {
+        commit = commit.parent(0)?;
+    }
+    Ok(commit.id().to_string())
+}
+
+fn reword_head(repo: &Repository, head: &git2::Commit, message: &str) -> AppResult<String> {
+    if super::sign::signing_config(repo)?.is_none() {
+        let oid = head.amend(Some("HEAD"), None, None, None, Some(message), None)?;
+        return Ok(oid.to_string());
+    }
+    let tree = head.tree()?;
+    let parents: Vec<git2::Commit> = head.parents().collect();
+    let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+    let oid = super::sign::create_commit(
+        repo,
+        Some("HEAD"),
+        &head.author(),
+        &head.committer(),
+        message,
         &tree,
         &parent_refs,
     )?;

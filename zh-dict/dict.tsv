@@ -1133,3 +1133,58 @@ e2e	Toggle terminal	切换终端		whole
 e2e	Settings	设置		whole
 e2e	Clone repository	克隆仓库		whole
 e2e	Destination folder	目标文件夹		whole
+ui	No remotes configured	未配置远端
+ui	Commit message updated	提交消息已更新
+ui	Fetched 1 remote	已获取 1 个远端
+ui,e2e	Fetch incomplete	获取未完成
+ui	Filter files by kind of change	按变更类型筛选文件
+ui	Show every file	显示全部文件
+ui	Edit the commit message	编辑提交消息
+ui	edit commit message	编辑提交消息
+ui	Already pushed to a remote	已推送到远端
+ui	This commit has no files.	此提交没有文件。
+ui	No files match the filter.	没有文件符合过滤条件。
+ui	No tracked files yet.	暂无已跟踪文件。
+ui,e2e	Edit commit message	编辑提交消息		whole
+ui,e2e	Save message	保存消息		whole
+ui	Saving…	保存中…		whole
+ui,e2e	Resize description	调整描述高度		whole
+ui	All files at this commit	所选提交的全部文件		whole
+ui	All files in the working copy	工作副本的全部文件		whole
+ui,e2e	All files	全部文件		whole
+ui	All	全部	^\s*All$
+e2e	All	全部		whole
+ui	unchanged	未更改	>unchanged<
+e2e	unchanged	未更改		whole
+ui	Not installed here, using 	此处未安装，使用
+ui	(not installed)	（未安装）
+ui	Reading installed fonts…	正在读取已安装字体…		whole
+ui	Menus, lists and dialogs	菜单、列表与对话框		whole
+ui	Diffs, hashes and commit details	差异、哈希与提交详情		whole
+ui	Interface	界面		whole
+ui	Code	代码		whole
+ui,e2e	Interface font	界面字体		whole
+ui,e2e	Code font	代码字体		whole
+ui,e2e	Terminal font	终端字体		whole
+ui,e2e	Terminal font size	终端字号		whole
+ui	Monospace	等宽字体		whole
+ui,e2e	Other fonts	其他字体		whole
+ui,e2e	Fonts	字体		whole
+ui,e2e	Reset fonts	重置字体		whole
+ui	"default"	"默认"	defaultLabel=
+ui	"same as Code"	"与代码相同"	defaultLabel=
+ui	Description	提交说明	placeholder="Description"
+ui	Classic token with the repo scope, or a	具有 repo 权限的 Classic token，或
+ui	with Contents and Pull requests set to read and write.	具备 Contents 与拉取请求读写权限的。
+ui	Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.	使用本机已安装的 AI CLI——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode 或 Antigravity——以其自身的登录与配额运行，无需 API 密钥。
+e2e	Add account	添加账户
+rust	{file} is not part of commit {}	{file} 不属于提交 {}
+rust	{file} is not a file in this commit	{file} 不是此次提交中的文件
+rust	{file} is larger than 10 MB	{file} 超过 10 MB
+rust	bare repositories have no working copy	裸仓库没有工作副本
+rust	the commit message cannot be empty	提交消息不能为空
+rust	nothing to reword: repository has no commits	没有可改写的提交：仓库中还没有提交
+rust	the root commit can only be reworded while it is the latest commit	根提交仅在其为最新提交时才能改写
+rust	only commits on the current branch can be reworded	只能改写当前分支上的提交
+ui	Terminal	终端	label="Terminal"
+rust	bare repositories have no working copy to blame	裸仓库没有工作副本，无法查看 blame

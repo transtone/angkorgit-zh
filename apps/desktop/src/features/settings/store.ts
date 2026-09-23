@@ -11,6 +11,12 @@ import {
   type ReviewStyle,
 } from '@angkorgit/core';
 import { ipc, isTauri } from '@/core/ipc';
+import {
+  TERMINAL_FONT_SIZE_DEFAULT,
+  clampTerminalFontSize,
+  interfaceFontStack,
+  monoFontStack,
+} from '@/features/terminal/font';
 
 export type Theme =
   | 'dark'
@@ -82,6 +88,14 @@ export const ACCENTS: Array<{ id: AccentId; label: string; color: string }> = [
 
 const ACCENT_CLASSES = ACCENTS.filter((a) => a.id !== 'gold').map((a) => `accent-${a.id}`);
 
+export function applyFonts(interfaceFamily: string, codeFamily: string): void {
+  const root = document.documentElement.style;
+  if (interfaceFamily.trim()) root.setProperty('--font-sans', interfaceFontStack(interfaceFamily));
+  else root.removeProperty('--font-sans');
+  if (codeFamily.trim()) root.setProperty('--font-mono', monoFontStack(codeFamily));
+  else root.removeProperty('--font-mono');
+}
+
 export function applyReduceMotion(reduceMotion: boolean): void {
   const el = document.documentElement;
   el.classList.toggle('reduce-motion', reduceMotion);
@@ -138,6 +152,10 @@ interface SettingsState {
   sshUseAgent: boolean;
   useCredentialHelper: boolean;
   reduceMotion: boolean;
+  interfaceFontFamily: string;
+  codeFontFamily: string;
+  terminalFontFamily: string;
+  terminalFontSize: number;
   autoFetchMinutes: number;
   showPullRequests: boolean;
   cherryPickRecordOrigin: boolean;
@@ -160,6 +178,11 @@ interface SettingsState {
   setSshUseAgent: (value: boolean) => void;
   setUseCredentialHelper: (value: boolean) => void;
   setReduceMotion: (value: boolean) => void;
+  setInterfaceFontFamily: (family: string) => void;
+  setCodeFontFamily: (family: string) => void;
+  setTerminalFontFamily: (family: string) => void;
+  setTerminalFontSize: (size: number) => void;
+  resetFonts: () => void;
   setAutoFetchMinutes: (minutes: number) => void;
   setShowPullRequests: (value: boolean) => void;
   setCherryPickRecordOrigin: (value: boolean) => void;
@@ -230,6 +253,10 @@ export const useSettings = create<SettingsState>()(
       reduceMotion:
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      interfaceFontFamily: '',
+      codeFontFamily: '',
+      terminalFontFamily: '',
+      terminalFontSize: TERMINAL_FONT_SIZE_DEFAULT,
       profiles: [],
       ai: { provider: 'ollama', apiKey: '', model: 'llama3.1', baseUrl: '' },
       aiProfiles: {},
@@ -261,6 +288,20 @@ export const useSettings = create<SettingsState>()(
       setWorktreeRoot: (worktreeRoot) => set({ worktreeRoot }),
       setCloneRoot: (cloneRoot) => set({ cloneRoot }),
       setEditorId: (editorId) => set({ editorId }),
+      setInterfaceFontFamily: (interfaceFontFamily) => {
+        applyFonts(interfaceFontFamily, get().codeFontFamily);
+        set({ interfaceFontFamily });
+      },
+      setCodeFontFamily: (codeFontFamily) => {
+        applyFonts(get().interfaceFontFamily, codeFontFamily);
+        set({ codeFontFamily });
+      },
+      resetFonts: () => {
+        applyFonts('', '');
+        set({ interfaceFontFamily: '', codeFontFamily: '', terminalFontFamily: '', terminalFontSize: TERMINAL_FONT_SIZE_DEFAULT });
+      },
+      setTerminalFontFamily: (terminalFontFamily) => set({ terminalFontFamily }),
+      setTerminalFontSize: (size) => set({ terminalFontSize: clampTerminalFontSize(size) }),
       setReduceMotion: (reduceMotion) => {
         applyReduceMotion(reduceMotion);
         set({ reduceMotion });
@@ -337,6 +378,7 @@ export const useSettings = create<SettingsState>()(
         if (zoom !== 1) applyZoom(zoom);
         applyAccent(state?.accent ?? 'gold');
         applyReduceMotion(state?.reduceMotion ?? false);
+        applyFonts(state?.interfaceFontFamily ?? '', state?.codeFontFamily ?? '');
         if (state && Object.keys(state.aiProfiles ?? {}).length === 0) {
           const { provider, profile } = splitProvider(state.ai);
           state.aiProfiles = { [provider]: profile };

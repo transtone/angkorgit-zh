@@ -7,10 +7,10 @@ const source = (path: string) => readFileSync(new URL(`../../${path}`, import.me
 describe('Chinese localization of the upstream collaboration update', () => {
   it('keeps smoke navigation selectors aligned with the Chinese interface', () => {
     const smoke = source('tests/e2e/smoke.spec.ts');
-    for (const selector of ["name: 'Toggle terminal'", "name: 'Settings'", "getByText('Clone repository'", "getByPlaceholder('Destination folder'"]) {
+    for (const selector of ["name: 'Toggle terminal'", "name: 'Settings'", "getByText('Clone repository'", "getByPlaceholder('Destination folder'", "name: 'Inspector'", "name: 'Appearance'", "name: 'Add account'", "name: 'Fetch', exact", "name: 'Pull', exact", "name: 'Edit commit message'", "name: 'Save message'", "name: 'Resize description'", "name: 'All files'", "getByText('Token', { exact: true })"]) {
       expect(smoke).not.toContain(selector);
     }
-    for (const selector of ["name: '切换终端'", "name: '设置'", "getByText('克隆仓库'", "getByPlaceholder('目标文件夹'"]) {
+    for (const selector of ["name: '切换终端'", "name: '设置'", "getByText('克隆仓库'", "getByPlaceholder('目标文件夹'", "name: '检查器'", "name: '外观'", "name: '添加账户'", "name: '获取', exact", "name: '拉取', exact", "name: '编辑提交消息'", "name: '保存消息'", "name: '调整描述高度'", "name: '全部文件'", "getByText('令牌', { exact: true })"]) {
       expect(smoke).toContain(selector);
     }
   });
@@ -73,6 +73,64 @@ describe('Chinese localization of the upstream collaboration update', () => {
     expect(config.plugins.updater.endpoints).toEqual([
       'https://github.com/wuwuzhazha/angkorgit-zh/releases/latest/download/latest.json',
     ]);
+  });
+
+  it('localizes the whole-tree fetch results and keeps remote names intact', () => {
+    const fetch = source('apps/desktop/src/features/repository/fetchRemotes.ts');
+    expect(fetch).toContain("return '未配置远端';");
+    expect(fetch).toContain("已获取 1 个远端");
+    expect(fetch).toContain('已获取全部 ${total} 个远端');
+    expect(fetch).toContain('已获取 ${result.succeeded.length}/${total} 个远端，失败：${failures}');
+    expect(fetch).not.toMatch(/No remotes configured|Fetched 1 remote|Fetched all/);
+    const status = source('apps/desktop/src/components/StatusBar.tsx');
+    expect(status).toContain('获取失败：${fetchFailures.join');
+    expect(status).toContain('获取未完成');
+    expect(status).not.toMatch(/Failed to fetch|Fetch incomplete/);
+  });
+
+  it('localizes the inspector all-files view without touching file paths', () => {
+    const inspector = source('apps/desktop/src/features/inspector/Inspector.tsx');
+    expect(inspector).toContain('aria-label="全部文件"');
+    expect(inspector).toContain('所选提交的全部文件');
+    expect(inspector).toContain('工作副本的全部文件');
+    expect(inspector).not.toMatch(/All files/);
+    const details = source('apps/desktop/src/features/inspector/CommitDetails.tsx');
+    expect(details).toContain('编辑提交消息');
+    expect(details).toContain('保存消息');
+    expect(details).toContain('调整描述高度');
+    expect(details).toContain('提交消息已更新');
+    expect(details).toContain('按变更类型筛选文件');
+    expect(details).not.toMatch(/Edit commit message|Save message|Resize description|Commit message updated|Filter files by kind/);
+    const diff = source('apps/desktop/src/features/diff/DiffPanel.tsx');
+    expect(diff).toContain('>未更改<');
+    expect(diff).not.toContain('>unchanged<');
+  });
+
+  it('localizes the fonts card while keeping brand and family names intact', () => {
+    const card = source('apps/desktop/src/features/settings/FontsCard.tsx');
+    for (const label of ['ariaLabel="界面字体"', 'ariaLabel="代码字体"', 'ariaLabel="终端字体"', 'aria-label="终端字号"', '重置字体', '菜单、列表与对话框']) {
+      expect(card).toContain(label);
+    }
+    expect(card).toContain('Nerd Fonts');
+    expect(card).toContain('等宽字体');
+    expect(card).not.toMatch(/Reset fonts|Interface font|Code font|Terminal font|Other fonts|Reading installed fonts/);
+    const settings = source('apps/desktop/src/features/settings/SettingsDialog.tsx');
+    expect(settings).toContain('使用本机已安装的 AI CLI');
+    expect(settings).not.toMatch(/already installed on this machine/);
+    const accounts = source('apps/desktop/src/features/settings/AccountsTab.tsx');
+    expect(accounts).toContain('具备 Contents 与拉取请求读写权限');
+    expect(accounts).not.toMatch(/set to read and write/);
+  });
+
+  it('keeps the inspector focus race fix while adopting the upstream ui store', () => {
+    const store = source('apps/desktop/src/features/ui/store.ts');
+    expect(store).toContain('focusInspector: (target: string | null) => void;');
+    expect(store).toContain('inspectorTarget: null as string | null');
+    expect(store).toContain('editMessageRequest: { seq: number; oid: string } | null;');
+    const commit = source('apps/desktop/src-tauri/src/core/commit.rs');
+    expect(commit).toContain('提交消息不能为空');
+    expect(commit).toContain('只能改写当前分支上的提交');
+    expect(commit).not.toMatch(/cannot be empty|can be reworded/);
   });
 
   it('reports a Chinese GitLab error before posting with an invalid target project', async () => {

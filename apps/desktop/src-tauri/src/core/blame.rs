@@ -169,9 +169,9 @@ fn file_content(repo: &Repository, file: &str, newest: Option<Oid>) -> AppResult
                     "{file} has no committed history yet — commit it first, then blame it"
                 )));
             }
-            let workdir = repo.workdir().ok_or_else(|| {
-                AppError::other("bare repositories have no working copy to blame")
-            })?;
+            let workdir = repo
+                .workdir()
+                .ok_or_else(|| AppError::other("裸仓库没有工作副本，无法查看 blame"))?;
             Ok(std::fs::read(workdir.join(file))?)
         }
     }

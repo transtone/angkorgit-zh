@@ -7,6 +7,7 @@ mod commands;
 mod core;
 mod editors;
 mod error;
+mod fonts;
 mod forge;
 mod http;
 mod proc;
@@ -20,13 +21,15 @@ pub mod test_api {
         can_fast_forward, checkout_branch, cherry_pick, cherry_pick_many, create as branch_create,
         list as branches, merge, rebase, rebase_commits, rebase_interactive, reset,
     };
-    pub use crate::core::commit::{amend, commit, merge_message, revert};
+    pub use crate::core::commit::{amend, commit, merge_message, revert, reword};
     pub use crate::core::conflict::{
         list as conflict_list, read as conflict_read, resolve as conflict_resolve,
     };
     pub use crate::core::diff::{commit_file_diff, commit_files, file_diff};
+    pub use crate::core::files::{file_contents, index_files, tree_files};
     pub use crate::core::history::{
         file_history, list as history, position as history_position, search as history_search,
+        unpushed,
     };
     pub use crate::core::misc::{
         stash_create, stash_files, stash_list, stash_pop, stash_restore_files, tag_create,
@@ -139,6 +142,9 @@ pub fn run() {
             commands::delete_file,
             commands::commit_create,
             commands::commit_amend,
+            commands::commit_reword,
+            commands::history_unpushed,
+            commands::fonts_list,
             commands::merge_message,
             commands::merge_can_ff,
             commands::commit_revert,
@@ -193,6 +199,9 @@ pub fn run() {
             commands::diff_commit,
             commands::diff_commit_files,
             commands::diff_commit_file,
+            commands::tree_files,
+            commands::index_files,
+            commands::file_contents,
             commands::staged_patch,
             commands::conflict_list,
             commands::conflict_read,

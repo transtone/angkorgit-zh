@@ -19,7 +19,7 @@ test('选择提交会打开检查器', async ({ page }) => {
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').first().click();
-  await expect(page.getByRole('complementary', { name: '检查器' }).getByLabel('4 个已修改')).toBeVisible();
+  await expect(page.getByRole('complementary', { name: '检查器' }).getByRole('button', { name: '4 已修改' })).toBeVisible();
 });
 
 test('命令面板可通过键盘快捷键打开', async ({ page }) => {
@@ -666,14 +666,14 @@ test('折叠全部侧边栏分区与分支文件夹', async ({ page }) => {
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: /^feature 1$/ }).click();
   await expect(page.getByText('diff-viewer', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /^远端 \d/ }).click();
-  await expect(page.getByRole('button', { name: /^远端 \d/ })).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('button', { name: '远端', exact: true }).click();
+  await expect(page.getByRole('button', { name: '远端', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await page.getByRole('button', { name: '折叠全部分区' }).click();
-  for (const name of [/^分支 \d/, /^工作树 \d/, /^远端 \d/, /^标签 \d/, /^暂存列表 \d/]) {
-    await expect(page.getByRole('button', { name })).toHaveAttribute('aria-expanded', 'false');
+  for (const name of ['分支', '工作树', '远端', '标签', '暂存列表']) {
+    await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-expanded', 'false');
   }
   await expect(page.getByText('develop', { exact: true })).toBeHidden();
-  await page.getByRole('button', { name: /^分支 \d/ }).click();
+  await page.getByRole('button', { name: '分支', exact: true }).click();
   await expect(page.getByText('develop', { exact: true })).toBeVisible();
   await expect(page.getByText('diff-viewer', { exact: true })).toBeHidden();
 });
@@ -758,7 +758,7 @@ test('dragging the sidebar shut and back open shows its content again', async ({
   await page.mouse.up();
   await expect(filter).toBeVisible();
   expect((await sidebar.boundingBox())?.width ?? 0).toBeGreaterThan(200);
-  await expect(page.getByRole('button', { name: /^分支 \d/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '分支', exact: true })).toBeVisible();
 });
 
 test('提交框将摘要行与较小的描述分隔开', async ({ page }) => {
@@ -876,20 +876,20 @@ test('侧边栏分区呈手风琴行为，折叠的标题保持固定', async ({
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: '折叠全部分区' }).click();
-  await page.getByRole('button', { name: /^分支 \d/ }).click();
+  await page.getByRole('button', { name: '分支', exact: true }).click();
   const aside = page.getByRole('complementary', { name: '分支与引用' });
   const asideBox = await aside.boundingBox();
-  const tagsBox = await page.getByRole('button', { name: /^标签 \d/ }).boundingBox();
-  const stashesBox = await page.getByRole('button', { name: /^暂存列表 \d/ }).boundingBox();
+  const tagsBox = await page.getByRole('button', { name: '标签', exact: true }).boundingBox();
+  const stashesBox = await page.getByRole('button', { name: '暂存列表', exact: true }).boundingBox();
   if (!asideBox || !tagsBox || !stashesBox) throw new Error('缺少侧边栏几何信息');
   expect(stashesBox.y + stashesBox.height).toBeGreaterThan(asideBox.y + asideBox.height - 90);
   expect(tagsBox.y).toBeLessThan(stashesBox.y);
   const developBox = await page.getByText('develop', { exact: true }).boundingBox();
   if (!developBox) throw new Error('缺少分支行');
   expect(developBox.y).toBeLessThan(tagsBox.y);
-  await page.getByRole('button', { name: /^标签 \d/ }).click();
+  await page.getByRole('button', { name: '标签', exact: true }).click();
   await expect(aside.getByText('v0.4.0', { exact: true })).toBeVisible();
-  const tagsAfter = await page.getByRole('button', { name: /^标签 \d/ }).boundingBox();
+  const tagsAfter = await page.getByRole('button', { name: '标签', exact: true }).boundingBox();
   if (!tagsAfter) throw new Error('缺少标签标题');
   expect(tagsAfter.y).toBeLessThan(tagsBox.y);
 });
@@ -1412,6 +1412,113 @@ test('the status bar says when the repository was last fetched', async ({ page }
   await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
 });
 
+test('auto fetch tries all remotes again after a partial failure', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
+  await page.clock.install();
+
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+    ]);
+    const tracker = window as unknown as { __autoFetchCalls: string[] };
+    tracker.__autoFetchCalls = [];
+    ipc.fetch = async (_path, name) => {
+      tracker.__autoFetchCalls.push(name);
+      if (name === 'upstream') throw new Error('unavailable');
+      return { status: 'ok', message: 'Fetched origin' };
+    };
+    useRepo.setState({
+      lastFetchAt: null,
+      remotes: [
+        { name: 'origin', url: 'git@github.com:demo/angkorgit.git' },
+        { name: 'upstream', url: 'git@github.com:demo/upstream.git' },
+      ],
+    });
+  });
+
+  const calls = () => page.evaluate(() => (window as unknown as { __autoFetchCalls: string[] }).__autoFetchCalls);
+  await expect.poll(calls).toEqual(['origin', 'upstream']);
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
+  await expect(page.locator('[data-fetch-status]')).toHaveText(/获取未完成/);
+
+  await page.clock.runFor(61_000);
+  await expect.poll(calls).toEqual(['origin', 'upstream', 'origin', 'upstream']);
+});
+
+test('partial fetches keep the timestamp and name failed remotes without raw errors', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
+
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }, { useSettings }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+      import('/src/features/settings/store.ts'),
+    ]);
+    useSettings.getState().setAutoFetchMinutes(0);
+    ipc.remotes = async () => [
+      { name: 'origin', url: 'git@github.com:demo/angkorgit.git' },
+      { name: 'upstream', url: 'git@github.com:demo/upstream.git' },
+    ];
+    ipc.fetch = async (_path, name) => {
+      if (name === 'upstream') throw new Error('private token expired');
+      return { status: 'ok', message: 'Fetched origin' };
+    };
+    await useRepo.getState().refresh();
+  });
+
+  const fetchButton = page.getByRole('button', { name: '获取', exact: true });
+  await fetchButton.click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
+  const incomplete = page.locator('[data-fetch-status]');
+  await expect(incomplete).toHaveText(/获取未完成/);
+  await expect(incomplete).toHaveClass(/text-faint/);
+  await incomplete.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('获取失败：upstream');
+
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    ipc.fetch = async () => { throw new Error('offline libgit2 detail'); };
+  });
+  await fetchButton.click();
+  await expect(page.locator('[data-last-fetch]')).toBeVisible();
+  await incomplete.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('获取失败：origin, upstream');
+
+  await page.evaluate(async () => {
+    const { useRepo } = await import('/src/features/repository/store.ts');
+    useRepo.setState({ lastFetchAt: Date.now() - 2 * 60 * 60_000 });
+  });
+  await expect(page.locator('[data-last-fetch]')).not.toHaveText(/已获取 · 刚刚/);
+  await page.getByRole('button', { name: '拉取', exact: true }).click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
+  await expect(incomplete).toHaveText(/获取未完成/);
+
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    ipc.fetch = async () => ({ status: 'ok', message: 'Fetched' });
+  });
+  await fetchButton.click();
+  await expect(incomplete).toHaveCount(0);
+
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+    ]);
+    ipc.remotes = async () => [];
+    await useRepo.getState().refresh();
+  });
+  await expect(fetchButton).toBeDisabled();
+  await page.mouse.move(0, 0);
+  await fetchButton.locator('..').hover();
+  await expect(page.getByRole('tooltip')).toHaveText('未配置远端');
+});
+
 test('the diff header opens blame inside file history with authors per hunk', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
@@ -1581,4 +1688,275 @@ test('a diff selection keeps its lines after scrolling away and back', async ({ 
     await expect(rowAt(firstIndex)).toHaveCount(1);
     await expect.poll(selectionText).toBe(before);
   }
+});
+
+test('an unpushed commit message can be edited in place while a pushed one cannot', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
+
+  await page.getByText('refactor(core): extract lane allocator').first().click();
+  await expect(inspector.getByRole('heading', { name: 'refactor(core): extract lane allocator' })).toBeVisible();
+  await expect(inspector.getByRole('button', { name: '编辑提交消息' })).toBeDisabled();
+
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const heading = inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows' });
+  await expect(heading).toBeVisible();
+  await expect(inspector.getByRole('button', { name: '编辑提交消息' })).toBeEnabled();
+
+  await heading.dblclick();
+  const summary = inspector.getByLabel('提交摘要');
+  await expect(summary).toBeFocused();
+  await expect(summary).toHaveValue('feat(graph): virtualize commit rows');
+  await expect(inspector.getByRole('button', { name: '保存消息' })).toBeDisabled();
+  await summary.press('Escape');
+  await expect(inspector.getByLabel('提交摘要')).toHaveCount(0);
+  await expect(heading).toBeVisible();
+
+  await inspector.getByRole('button', { name: '编辑提交消息' }).click();
+  await inspector.getByLabel('提交摘要').fill('feat(graph): virtualize commit rows, faster');
+  const description = inspector.getByLabel('提交说明');
+  const before = (await description.boundingBox())!.height;
+  const handle = inspector.getByRole('separator', { name: '调整描述高度' });
+  const grip = (await handle.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2 + 90, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(async () => (await description.boundingBox())!.height).toBeGreaterThan(before + 60);
+  await handle.dblclick();
+  await expect.poll(async () => (await description.boundingBox())!.height).toBe(before);
+  await description.fill('Rows outside the viewport are never mounted.');
+  await inspector.getByRole('button', { name: '保存消息' }).click();
+
+  await expect(inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows, faster' })).toBeVisible();
+  await expect(inspector.getByText('Rows outside the viewport are never mounted.')).toBeVisible();
+  await expect(page.getByText('feat(graph): virtualize commit rows, faster')).toHaveCount(2);
+});
+
+test('the GitHub account form offers fine-grained and classic token pages', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '设置', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Authentication', exact: true }).click();
+  await dialog.getByRole('button', { name: '添加账户' }).click();
+  await expect(dialog.getByPlaceholder('粘贴令牌')).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Create one on GitHub' })).toHaveAttribute('href', /settings\/tokens\/new/);
+  await expect(dialog.getByRole('link', { name: 'fine-grained token' })).toHaveAttribute(
+    'href',
+    'https://github.com/settings/personal-access-tokens/new',
+  );
+  await expect(dialog.getByText(/Contents 与拉取请求读写权限/)).toBeVisible();
+  await dialog.getByText('令牌', { exact: true }).click();
+  await expect(dialog.getByPlaceholder('粘贴令牌')).toBeFocused();
+});
+
+test('the fonts card changes the interface, code and terminal fonts and remembers them', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '切换终端' }).click();
+  const rows = page.locator('.terminal-host .xterm-rows');
+  await expect(rows).toBeVisible();
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontSize)).toBe('12px');
+  const rootVar = (name: string) =>
+    page.evaluate((v) => getComputedStyle(document.documentElement).getPropertyValue(v), name);
+
+  await page.getByRole('button', { name: '设置', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: '外观', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: '重置字体' })).toHaveCount(0);
+
+  await dialog.getByRole('combobox', { name: '界面字体' }).click();
+  await expect(page.getByText('字体', { exact: true }).last()).toBeVisible();
+  await page.getByRole('option', { name: 'Helvetica Neue' }).click();
+  await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
+
+  await dialog.getByRole('combobox', { name: '代码字体' }).click();
+  await expect(page.getByText('其他字体', { exact: true })).toBeVisible();
+  await page.getByRole('option', { name: 'Fira Code' }).click();
+  await expect.poll(() => rootVar('--font-mono')).toContain('Fira Code');
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Fira Code');
+  await expect(dialog.getByRole('combobox', { name: '终端字体', exact: true })).toContainText('Fira Code');
+
+  await dialog.getByRole('combobox', { name: '终端字体', exact: true }).click();
+  await page.getByRole('option', { name: 'Menlo' }).click();
+  const preview = dialog.locator('[data-terminal-font-preview]');
+  await expect.poll(() => preview.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Menlo');
+  await dialog.getByRole('combobox', { name: '终端字号' }).click();
+  await page.getByRole('option', { name: '16 px' }).click();
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Menlo');
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontSize)).toBe('16px');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
+  await page.getByRole('button', { name: '设置', exact: true }).click();
+  const reopened = page.getByRole('dialog');
+  await reopened.getByRole('button', { name: '外观', exact: true }).click();
+  await expect(reopened.getByRole('combobox', { name: '终端字体', exact: true })).toContainText('Menlo');
+  await reopened.getByRole('button', { name: '重置字体' }).click();
+  await expect.poll(() => rootVar('--font-sans')).not.toContain('Helvetica Neue');
+  await expect(reopened.getByRole('combobox', { name: '界面字体' })).toContainText('Inter');
+  await expect(reopened.getByRole('button', { name: '重置字体' })).toHaveCount(0);
+});
+
+test('sidebar section headers carry a gold icon tile and a count badge, with no dividers or fills', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const sections = page.locator('[data-sidebar-section]');
+  await expect(sections).toHaveCount(7);
+  const borders = await sections.evaluateAll((els) => els.map((el) => getComputedStyle(el).borderTopWidth));
+  expect(borders).toEqual(borders.map(() => '0px'));
+  const transparent = (fill: string) => fill === 'rgba(0, 0, 0, 0)' || fill === 'transparent';
+  const fills = await page
+    .locator('[data-sidebar-section-header], [data-sidebar-section-body]')
+    .evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+  expect(fills.length).toBeGreaterThan(7);
+  expect(fills.every(transparent)).toBe(true);
+  const tiles = page.locator('[data-sidebar-section-icon]');
+  await expect(tiles).toHaveCount(7);
+  const tileFills = await tiles.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+  expect(tileFills.some(transparent)).toBe(false);
+  const branches = page.locator('[data-sidebar-section-header]').first();
+  await expect(branches.getByText('6', { exact: true })).toBeVisible();
+  const badgeFill = await branches.getByText('6', { exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(transparent(badgeFill)).toBe(false);
+});
+
+test('the commit file list filters by kind of change from the summary tokens', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const inspector = page.getByRole('complementary', { name: '检查器' });
+  await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
+  const all = inspector.getByRole('button', { name: '全部', exact: true });
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await inspector.getByRole('button', { name: '1 新增' }).click();
+  await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
+  await expect(inspector.getByText('Architecture.md')).toBeHidden();
+  await expect(inspector.getByText('1 of 5')).toBeVisible();
+  await expect(all).toHaveAttribute('aria-pressed', 'false');
+  await all.click();
+  await expect(inspector.getByText('Architecture.md')).toBeVisible();
+  await expect(inspector.getByText('1 of 5')).toBeHidden();
+});
+
+test('the All files view lists every file at a commit and opens an unchanged one read-only', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const inspector = page.getByRole('complementary', { name: '检查器' });
+  await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
+  await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '全部文件' }).click();
+  await expect(inspector.getByText('5 changed')).toBeVisible();
+  await expect(inspector.getByText('Roadmap.md')).toBeVisible();
+  await expect(inspector.getByText('Architecture.md')).toBeVisible();
+  await expect(inspector.getByText('DiffPanel.tsx')).toBeHidden();
+  await inspector.getByRole('button', { name: /^diff/ }).click();
+  await expect(inspector.getByText('DiffPanel.tsx')).toBeVisible();
+
+  await inspector.getByText('Roadmap.md').click();
+  const diff = page.locator('section[aria-label="文件差异：docs/Roadmap.md"]');
+  await expect(diff).toBeVisible();
+  await expect(diff.getByText('未更改', { exact: true })).toBeVisible();
+  await expect(diff.getByText('import { render }')).toBeVisible();
+  await expect(diff.getByText(/^@@/)).toHaveCount(0);
+
+  await page.getByRole('button', { name: '文件夹树' }).click();
+  await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
+  await expect(inspector.getByText('Architecture.md')).toBeVisible();
+});
+
+test('the All files view shows the whole working tree with changed files still actionable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
+  await expect(inspector.getByText('README.md')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '全部文件' }).click();
+  await expect(inspector.getByText('6 changed')).toBeVisible();
+  await expect(inspector.getByText('README.md')).toBeVisible();
+  await expect(inspector.getByLabel('暂存 src/core/ipc.ts')).toBeVisible();
+  await expect(inspector.getByLabel('取消暂存 src/features/graph/CommitGraph.tsx')).toBeVisible();
+  await expect(inspector.getByText('DiffPanel.tsx')).toBeHidden();
+
+  await inspector.getByText('README.md').click();
+  const diff = page.locator('section[aria-label="文件差异：README.md"]');
+  await expect(diff.getByText('未更改', { exact: true })).toBeVisible();
+  await expect(diff.getByRole('button', { name: 'Stage file' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '扁平文件列表' }).click();
+  await expect(inspector.getByText('README.md')).toHaveCount(0);
+  await expect(inspector.getByText(/^Changes/)).toBeVisible();
+});
+
+test('dragging a diff selection past the bottom edge keeps growing it and copies every line', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await page.getByText('palette-seed.sql').first().click();
+  await expect(page.getByText('temple gold').first()).toBeVisible();
+
+  const scroller = page.locator('section[aria-label^="文件差异："] div.overflow-y-auto');
+  await scroller.evaluate((el) => {
+    el.scrollTop = Math.max(0, el.scrollTop - 1500);
+  });
+  const box = await scroller.boundingBox();
+  if (!box) throw new Error('diff scroller not laid out');
+  const start = await scroller.evaluate((el) => {
+    const bounds = el.getBoundingClientRect();
+    const rows = [...el.querySelectorAll<HTMLElement>('[data-diff-row]')];
+    const row = rows.find((r) => {
+      const rect = r.getBoundingClientRect();
+      return rect.top > bounds.top + 40 && rect.bottom < bounds.bottom - 140;
+    });
+    if (!row) return null;
+    const rect = row.getBoundingClientRect();
+    return { text: row.textContent ?? '', x: rect.left + 30, y: rect.top + rect.height / 2 };
+  });
+  if (!start) throw new Error('no diff row to start from');
+
+  const below = { x: start.x + 200, y: box.y + box.height + 30 };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(below.x, below.y, { steps: 8 });
+  for (let i = 0; i < 6; i += 1) {
+    await page.waitForTimeout(100);
+    await page.mouse.move(below.x + (i % 2), below.y + (i % 2));
+  }
+  await page.mouse.up();
+
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.type)).toBe('Range');
+  await page.evaluate(() => {
+    (window as unknown as { __copied: string | null }).__copied = null;
+    document.addEventListener('copy', (e) => {
+      (window as unknown as { __copied: string | null }).__copied = e.clipboardData?.getData('text/plain') ?? '';
+    });
+  });
+  const copied = () => page.evaluate(() => (window as unknown as { __copied: string | null }).__copied);
+  await page.keyboard.press('ControlOrMeta+c');
+  await expect.poll(copied).not.toBeNull();
+  const selected = (await copied()) as string;
+  const lines = selected.split('\n');
+  expect(lines.length).toBeGreaterThanOrEqual(6);
+  expect(start.text.endsWith(lines[0])).toBe(true);
+
+  await scroller.evaluate((el) => {
+    el.scrollTop = Math.max(0, el.scrollTop - 4000);
+  });
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.type)).toBe('Range');
+  await page.keyboard.press('ControlOrMeta+c');
+  await expect.poll(copied).toBe(selected);
 });

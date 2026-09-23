@@ -23,12 +23,14 @@ interface RepoState {
   submodules: SubmoduleInfo[];
   worktrees: WorktreeInfo[];
   conflicts: string[];
+  unpushed: string[];
   recents: RecentRepository[];
   busy: string | null;
   opening: string | null;
   refreshing: boolean;
   profileId: string | null;
   lastFetchAt: number | null;
+  fetchFailures: string[];
 
   loadRecents: () => Promise<void>;
   open: (path: string) => Promise<RepositoryInfo>;
@@ -38,6 +40,7 @@ interface RepoState {
   setBusy: (label: string | null) => void;
   setProfileId: (profileId: string | null) => void;
   markFetched: () => void;
+  setFetchFailures: (names: string[]) => void;
 }
 
 let openSeq = 0;
@@ -55,12 +58,14 @@ export const useRepo = create<RepoState>((set, get) => ({
   submodules: [],
   worktrees: [],
   conflicts: [],
+  unpushed: [],
   recents: [],
   busy: null,
   opening: null,
   refreshing: false,
   profileId: null,
   lastFetchAt: null,
+  fetchFailures: [],
 
   loadRecents: async () => {
     const recents = await ipc.recentRepositories();
@@ -84,6 +89,7 @@ export const useRepo = create<RepoState>((set, get) => ({
         repo,
         profileId: null,
         lastFetchAt: null,
+        fetchFailures: [],
         opening: null,
         refreshing: true,
         status: null,
@@ -94,9 +100,10 @@ export const useRepo = create<RepoState>((set, get) => ({
         submodules: [],
         worktrees: [],
         conflicts: [],
+        unpushed: [],
       });
     } else {
-      set({ repo, profileId: null, lastFetchAt: null, opening: null, refreshing: true });
+      set({ repo, profileId: null, lastFetchAt: null, fetchFailures: [], opening: null, refreshing: true });
     }
     void ipc
       .configGet(repo.path, 'angkorgit.profile')
@@ -128,10 +135,12 @@ export const useRepo = create<RepoState>((set, get) => ({
       submodules: [],
       worktrees: [],
       conflicts: [],
+      unpushed: [],
       opening: null,
       refreshing: false,
       profileId: null,
       lastFetchAt: null,
+      fetchFailures: [],
     }),
 
   refresh: async () => {
@@ -140,7 +149,7 @@ export const useRepo = create<RepoState>((set, get) => ({
     const path = repo.path;
     const seq = ++fullSeq;
     const statusEpoch = ++statusSeq;
-    const [info, status, branches, tags, stashes, remotes, submodules, conflicts, worktrees] =
+    const [info, status, branches, tags, stashes, remotes, submodules, conflicts, worktrees, unpushed] =
       await Promise.all([
         ipc.repoInfo(path),
         ipc.status(path),
@@ -151,6 +160,7 @@ export const useRepo = create<RepoState>((set, get) => ({
         ipc.submodules(path),
         ipc.conflicts(path),
         ipc.worktrees(path).catch(() => [] as WorktreeInfo[]),
+        ipc.unpushedCommits(path).catch(() => [] as string[]),
       ]);
     if (get().repo?.path !== path || seq !== fullSeq) return;
     if (statusEpoch === statusSeq) {
@@ -164,10 +174,11 @@ export const useRepo = create<RepoState>((set, get) => ({
         submodules,
         worktrees,
         conflicts,
+        unpushed,
         statusVersion: state.statusVersion + 1,
       }));
     } else {
-      set({ repo: info, branches, tags, stashes, remotes, submodules, worktrees });
+      set({ repo: info, branches, tags, stashes, remotes, submodules, worktrees, unpushed });
     }
   },
 
@@ -183,5 +194,6 @@ export const useRepo = create<RepoState>((set, get) => ({
 
   setBusy: (busy) => set({ busy }),
   markFetched: () => set({ lastFetchAt: Date.now() }),
+  setFetchFailures: (fetchFailures) => set({ fetchFailures }),
   setProfileId: (profileId) => set({ profileId }),
 }));

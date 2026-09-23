@@ -26,6 +26,7 @@ function isCurrent(line: DiffLine | null, search?: SearchRanges): true | undefin
 }
 
 function HunkHeader({ hunk, actions }: { hunk: DiffHunk; actions?: React.ReactNode }) {
+  if (!hunk.header) return null;
   return (
     <div className="sticky left-0 flex items-center gap-2 border-y border-border-subtle bg-surface-raised/60 px-3 py-1">
       <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-info">{hunk.header}</span>

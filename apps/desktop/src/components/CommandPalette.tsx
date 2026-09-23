@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
+import { fetchRemotes, fetchResultMessage } from '@/features/repository/fetchRemotes';
 import {
   Archive,
   ArchiveRestore,
@@ -142,7 +143,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
     void (async () => {
       try {
         const result = (await op()) as { status?: string; message?: string } | undefined;
-        if (label === 'Fetch' || label.startsWith('Pull')) useRepo.getState().markFetched();
+        if (label.startsWith('Pull') && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
         toastOutcome(result, `${label} 已完成`);
         await onRefresh();
       } catch (error) {
@@ -332,10 +333,16 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           })()}
           <PaletteItem
             icon={<RefreshCw />}
-            label={remotes.length > 1 ? 'Fetch all remotes (with tags)' : '拉取（含标签）'}
+            label={remotes.length > 1 ? '获取全部远端（含标签）' : '拉取（含标签）'}
             onSelect={() =>
               run('获取', async () => {
-                for (const r of remotes.length > 0 ? remotes : [{ name: remote }]) await ipc.fetch(path, r.name, true, true);
+                const result = await fetchRemotes(remotes.map((r) => r.name), (name) => ipc.fetch(path, name, true, true));
+                const message = fetchResultMessage(result);
+                if (useRepo.getState().repo?.path === path) {
+                  if (result.succeeded.length > 0) useRepo.getState().markFetched();
+                  useRepo.getState().setFetchFailures(result.failed.map(({ name }) => name));
+                }
+                return { status: result.succeeded.length === 0 ? 'failed' : result.failed.length > 0 ? 'partial' : 'ok', message };
               })
             }
           />

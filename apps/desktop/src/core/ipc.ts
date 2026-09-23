@@ -66,6 +66,11 @@ export interface EditorInfo {
   launch: 'binary' | 'app';
 }
 
+export interface FontFamily {
+  family: string;
+  monospaced: boolean;
+}
+
 export type CliRequest =
   | { kind: 'open'; path: string }
   | { kind: 'clone'; url: string; into: string; branch?: string };
@@ -253,6 +258,17 @@ export const ipc = {
   async amend(path: string, message: string | null): Promise<string> {
     if (!isTauri()) return 'demo-amend-oid';
     return invoke('commit_amend', { path, message });
+  },
+  async reword(path: string, oid: string, message: string): Promise<string> {
+    if (!isTauri()) {
+      await delay(120);
+      return demo.demoReword(oid, message);
+    }
+    return invoke('commit_reword', { path, oid, message });
+  },
+  async unpushedCommits(path: string): Promise<string[]> {
+    if (!isTauri()) return demo.demoUnpushed();
+    return invoke('history_unpushed', { path });
   },
   async revert(path: string, oid: string): Promise<OpOutcome> {
     if (!isTauri()) return { status: 'ok', message: 'Reverted (demo)' };
@@ -533,6 +549,18 @@ export const ipc = {
     if (!isTauri()) return demo.demoCommitFiles();
     return invoke('diff_commit_files', { path, oid });
   },
+  async treeFiles(path: string, oid: string): Promise<string[]> {
+    if (!isTauri()) return demo.demoTreeFiles();
+    return invoke('tree_files', { path, oid });
+  },
+  async indexFiles(path: string): Promise<string[]> {
+    if (!isTauri()) return demo.demoIndexFiles();
+    return invoke('index_files', { path });
+  },
+  async fileContents(path: string, file: string, oid: string | null): Promise<FileDiff> {
+    if (!isTauri()) return demo.demoFileContents(file);
+    return invoke('file_contents', { path, file, oid });
+  },
   async commitFileDiff(
     path: string,
     oid: string,
@@ -754,6 +782,13 @@ export const ipc = {
       return;
     }
     return invoke('cli_uninstall');
+  },
+  async fontsList(): Promise<FontFamily[]> {
+    if (!isTauri()) {
+      await delay(80);
+      return demo.demoFonts;
+    }
+    return invoke('fonts_list');
   },
   async editorsDetect(): Promise<EditorInfo[]> {
     if (!isTauri()) {

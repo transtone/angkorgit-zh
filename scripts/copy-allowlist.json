@@ -105,7 +105,11 @@
     "Intel",
     "Apple",
     "Silicon",
-    "Git"
+    "Git",
+    "Contents",
+    "Classic token",
+    "fine-grained token",
+    "Nerd Fonts"
   ],
   "words": [
     "diff",
@@ -232,6 +236,7 @@
     "rpm",
     "gatekeeper",
     "gitkraken",
-    "conventional"
+    "conventional",
+    "repo"
   ]
 }

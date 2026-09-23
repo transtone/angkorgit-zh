@@ -2324,6 +2324,27 @@ fn push_reports_up_to_date_instead_of_pushing_again() {
     let _ = std::fs::remove_dir_all(&origin);
 }
 
+#[test]
+fn push_with_tags_sends_named_tag_refs() {
+    let local = TempRepo::new();
+    local.write("a.txt", "one\n");
+    commit_all(&local, "one");
+    let origin = bare_origin(&local);
+
+    core::tag_create(local.path(), "v1.0.0", None, None).unwrap();
+    let outcome = core::push(local.path(), "origin", None, false, true, true).unwrap();
+    assert_eq!(outcome.status, "ok");
+
+    let listed = Command::new("git")
+        .args(["tag", "-l", "v1.0.0"])
+        .current_dir(&origin)
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&listed.stdout).trim(), "v1.0.0");
+
+    let _ = std::fs::remove_dir_all(&origin);
+}
+
 fn clone_of(origin: &std::path::Path, local: &TempRepo, suffix: &str) -> TempRepo {
     let dir = local.dir.with_file_name(format!(
         "{}-{suffix}",
@@ -2556,4 +2577,204 @@ fn blame_attributes_lines_to_their_commits_and_uncommitted_edits() {
 
     let before = core::blame_file(repo.path(), "a.txt", Some(&format!("{second}^"))).unwrap();
     assert_eq!(before.rev.as_deref(), Some(first.as_str()));
+}
+
+fn history_oid_of(repo: &TempRepo, summary: &str) -> String {
+    core::history(
+        repo.path(),
+        core::HistoryQuery {
+            skip: 0,
+            limit: 20,
+            search: None,
+            author: None,
+            branch: None,
+        },
+    )
+    .unwrap()
+    .commits
+    .into_iter()
+    .find(|c| c.summary == summary)
+    .map(|c| c.oid)
+    .expect("commit with that summary")
+}
+
+fn header_line<'a>(header: &'a str, key: &str) -> &'a str {
+    header
+        .lines()
+        .find(|line| line.starts_with(key))
+        .expect("header line")
+}
+
+#[test]
+fn reword_head_changes_only_the_message_even_with_a_dirty_tree() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "one\n");
+    commit_all(&repo, "feat: first");
+    repo.write("a.txt", "two\n");
+    let before = commit_all(&repo, "feat: typo in mesage");
+    repo.write("a.txt", "three\n");
+    repo.write("b.txt", "staged\n");
+    core::stage_file(repo.path(), "b.txt").unwrap();
+    let old_header = commit_header(&repo, &before);
+
+    let after = core::reword(
+        repo.path(),
+        &before,
+        "feat: typo in message\n\nExplains why.",
+    )
+    .unwrap();
+
+    assert_ne!(after, before);
+    assert_eq!(
+        history_summaries(&repo),
+        vec!["feat: typo in message", "feat: first"]
+    );
+    let new_header = commit_header(&repo, "HEAD");
+    assert!(new_header.contains("Explains why."));
+    assert_eq!(
+        header_line(&new_header, "tree "),
+        header_line(&old_header, "tree ")
+    );
+    assert_eq!(
+        header_line(&new_header, "author "),
+        header_line(&old_header, "author ")
+    );
+    assert_eq!(repo.read("a.txt"), "three\n");
+    assert_eq!(core::status(repo.path()).unwrap().files.len(), 2);
+}
+
+#[test]
+fn reword_an_earlier_commit_rewrites_the_commits_above_it() {
+    let repo = TempRepo::new();
+    repo.write("base.txt", "base\n");
+    commit_all(&repo, "base");
+    repo.write("f1.txt", "1\n");
+    commit_all(&repo, "one");
+    repo.write("f2.txt", "2\n");
+    let two = commit_all(&repo, "two");
+    repo.write("f3.txt", "3\n");
+    commit_all(&repo, "three");
+
+    let reworded = core::reword(repo.path(), &two, "two, reworded").unwrap();
+
+    assert_eq!(
+        history_summaries(&repo),
+        vec!["three", "two, reworded", "one", "base"]
+    );
+    assert_eq!(reworded, history_oid_of(&repo, "two, reworded"));
+    assert_ne!(reworded, two);
+    assert_eq!(repo.read("f2.txt"), "2\n");
+    assert_eq!(repo.read("f3.txt"), "3\n");
+
+    repo.write("f3.txt", "dirty\n");
+    let one = history_oid_of(&repo, "one");
+    let err = core::reword(repo.path(), &one, "one, again").unwrap_err();
+    assert!(err.to_string().contains("未提交的更改"));
+    assert_eq!(history_oid_of(&repo, "one"), one);
+}
+
+#[test]
+fn unpushed_lists_only_commits_missing_from_every_remote_ref() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "1\n");
+    let one = commit_all(&repo, "one");
+    repo.write("a.txt", "2\n");
+    let two = commit_all(&repo, "two");
+    assert_eq!(
+        core::unpushed(repo.path()).unwrap(),
+        vec![two.clone(), one.clone()]
+    );
+
+    let track = |oid: &str| {
+        let status = Command::new("git")
+            .args(["update-ref", "refs/remotes/origin/master", oid])
+            .current_dir(&repo.dir)
+            .status()
+            .expect("git CLI available");
+        assert!(status.success());
+    };
+    track(&one);
+    assert_eq!(core::unpushed(repo.path()).unwrap(), vec![two.clone()]);
+    track(&two);
+    assert!(core::unpushed(repo.path()).unwrap().is_empty());
+}
+
+#[test]
+fn tree_files_lists_every_path_at_a_commit_including_unchanged_ones() {
+    let repo = TempRepo::new();
+    repo.write("README.md", "hi\n");
+    repo.write("src/lib.rs", "fn a() {}\n");
+    repo.write("src/nested/deep.rs", "fn b() {}\n");
+    commit_all(&repo, "base");
+    repo.write("src/lib.rs", "fn a() {}\nfn c() {}\n");
+    repo.write("docs/guide.md", "guide\n");
+    let oid = commit_all(&repo, "touch two");
+
+    let mut files = core::tree_files(repo.path(), &oid).unwrap();
+    files.sort();
+    assert_eq!(
+        files,
+        vec![
+            "README.md",
+            "docs/guide.md",
+            "src/lib.rs",
+            "src/nested/deep.rs"
+        ]
+    );
+    let changed = core::commit_files(repo.path(), &oid).unwrap();
+    assert_eq!(changed.len(), 2);
+}
+
+#[test]
+fn index_files_lists_tracked_paths_but_not_untracked_ones() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "a\n");
+    repo.write("dir/b.txt", "b\n");
+    commit_all(&repo, "base");
+    repo.write("untracked.txt", "u\n");
+    repo.write("dir/staged-new.txt", "s\n");
+    core::stage_file(repo.path(), "dir/staged-new.txt").unwrap();
+
+    let mut files = core::index_files(repo.path()).unwrap();
+    files.sort();
+    assert_eq!(files, vec!["a.txt", "dir/b.txt", "dir/staged-new.txt"]);
+}
+
+#[test]
+fn file_contents_reads_a_file_at_a_commit_and_in_the_working_copy_as_context_lines() {
+    let repo = TempRepo::new();
+    repo.write("notes.txt", "one\ntwo\nthree\n");
+    let oid = commit_all(&repo, "notes");
+    repo.write("notes.txt", "one\ntwo\nthree\nfour");
+
+    let at_commit = core::file_contents(repo.path(), "notes.txt", Some(&oid)).unwrap();
+    assert_eq!(at_commit.status, "unchanged");
+    assert_eq!(at_commit.additions, 0);
+    assert_eq!(at_commit.hunks.len(), 1);
+    let lines: Vec<&str> = at_commit.hunks[0]
+        .lines
+        .iter()
+        .map(|l| l.content.as_str())
+        .collect();
+    assert_eq!(lines, vec!["one", "two", "three"]);
+    assert!(at_commit.hunks[0].lines.iter().all(|l| l.kind == "context"));
+    assert_eq!(at_commit.hunks[0].lines[2].new_line_no, Some(3));
+
+    let on_disk = core::file_contents(repo.path(), "notes.txt", None).unwrap();
+    let lines: Vec<&str> = on_disk.hunks[0]
+        .lines
+        .iter()
+        .map(|l| l.content.as_str())
+        .collect();
+    assert_eq!(lines, vec!["one", "two", "three", "four"]);
+
+    let missing = core::file_contents(repo.path(), "nope.txt", Some(&oid))
+        .err()
+        .expect("a path missing from the commit must error");
+    assert!(missing.to_string().contains("不属于提交"));
+
+    repo.write("blob.bin", "ab\0cd");
+    let binary = core::file_contents(repo.path(), "blob.bin", None).unwrap();
+    assert!(binary.is_binary);
+    assert!(binary.hunks.is_empty());
 }

@@ -4,6 +4,7 @@ import { ipc } from '@/core/ipc';
 
 export type UndoKind =
   | 'commit'
+  | 'reword'
   | 'checkout'
   | 'merge'
   | 'cherryPick'
@@ -32,6 +33,7 @@ export interface UndoEntry {
 const HARD_KINDS: ReadonlySet<UndoKind> = new Set(['merge', 'cherryPick', 'rebase', 'reset', 'revert']);
 const HEAD_KINDS: ReadonlySet<UndoKind> = new Set([
   'commit',
+  'reword',
   'checkout',
   'merge',
   'cherryPick',
@@ -74,7 +76,8 @@ async function applyTransition(
 ): Promise<void> {
   const path = entry.repoPath;
   switch (entry.kind) {
-    case 'commit': {
+    case 'commit':
+    case 'reword': {
       if (!to.headOid) throw new Error('没有可重置的目标');
       await ipc.reset(path, to.headOid, 'soft');
       return;

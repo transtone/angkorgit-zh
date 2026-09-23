@@ -138,12 +138,16 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   useEffect(() => {
     if (!isWorkingCopy || !status) return;
     const entry = status.files.find((f) => f.path === target.path);
+    if (target.unchanged) {
+      if (entry && (entry.unstaged || entry.staged)) openCenterDiff({ path: target.path, staged: !entry.unstaged });
+      return;
+    }
     const stillHasThisSide = target.staged ? !!entry?.staged : !!entry?.unstaged;
     if (stillHasThisSide) return;
     const hasOtherSide = target.staged ? !!entry?.unstaged : !!entry?.staged;
     if (hasOtherSide) openCenterDiff({ path: target.path, staged: !target.staged });
     else closeCenterDiff();
-  }, [status, isWorkingCopy, target.path, target.staged, openCenterDiff, closeCenterDiff]);
+  }, [status, isWorkingCopy, target.path, target.staged, target.unchanged, openCenterDiff, closeCenterDiff]);
 
   const blocks = useMemo(
     () => (diff && !diff.isBinary && !diff.isImage ? changeBlocks(diff, diffView) : []),
@@ -196,10 +200,11 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     if (!path) return;
     let cancelled = false;
     const seq = ++requestSeq.current;
-    const key = `${path}|${target.path}|${target.oid ?? ''}|${target.staged ?? false}|${fullFileDiff}|${reloadToken}`;
+    const key = `${path}|${target.path}|${target.oid ?? ''}|${target.staged ?? false}|${target.unchanged ?? false}|${fullFileDiff}|${reloadToken}`;
     if (loadedKey.current !== key) setLoading(true);
     const context = fullFileDiff ? 10_000_000 : undefined;
     const load = async (): Promise<FileDiff | null> => {
+      if (target.unchanged) return ipc.fileContents(path, target.path, target.oid ?? null);
       if (target.oid) {
         const result = await ipc.commitFileDiff(
           path,
@@ -240,7 +245,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, target.path, target.oid, target.staged, fullFileDiff, reloadToken, statusSignature]);
+  }, [path, target.path, target.oid, target.staged, target.unchanged, fullFileDiff, reloadToken, statusSignature]);
 
   const runStage = async (op: () => Promise<unknown>, label: string) => {
     try {
@@ -272,14 +277,19 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </Button>
         </Hint>
         <span className="min-w-0 flex-1 truncate font-mono text-xs">{target.path}</span>
-        {target.oid ? (
+        {target.oid && (
           <Badge tone="neutral" className="font-mono">
             {target.oid.slice(0, 8)}
           </Badge>
-        ) : (
-          <Badge tone={target.staged ? 'success' : 'info'}>{target.staged ? '已暂存' : '未暂存'}</Badge>
         )}
-        {diff && !diff.isBinary && !diff.isImage && (
+        {target.unchanged ? (
+          <Badge tone="neutral">未更改</Badge>
+        ) : (
+          !target.oid && (
+            <Badge tone={target.staged ? 'success' : 'info'}>{target.staged ? 'staged' : 'unstaged'}</Badge>
+          )
+        )}
+        {diff && !diff.isBinary && !diff.isImage && !target.unchanged && (
           <span className="shrink-0 text-xs">
             <span className="text-success">+{diff.additions}</span>{' '}
             <span className="text-danger">−{diff.deletions}</span>
@@ -451,7 +461,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             </Hint>
           </>
         )}
-        {isWorkingCopy && (
+        {isWorkingCopy && !target.unchanged && (
           <>
             <Separator orientation="vertical" className="mx-1 h-4" />
             {target.staged ? (
@@ -492,6 +502,12 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                 重试
               </Button>
             </div>
+          ) : diff &&
+            target.unchanged &&
+            !diff.isBinary &&
+            !diff.isImage &&
+            diff.hunks.every((h) => h.lines.length === 0) ? (
+            <p className="py-16 text-center text-sm text-faint">This file is empty.</p>
           ) : diff ? (
             <DiffViewer
             diff={diff}
@@ -508,7 +524,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               });
             }}
             hunkActions={
-              isWorkingCopy && !fullFileDiff
+              isWorkingCopy && !fullFileDiff && !target.unchanged
                 ? (hunkIndex) => (
                     <Button
                       variant="ghost"
