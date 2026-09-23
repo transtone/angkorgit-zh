@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { AlertTriangle, Archive, Code, Copy, ExternalLink, FolderOpen, History, UserRoundSearch, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
-import type { FileStatus } from '@angkorgit/core';
-import { aiCapabilities, buildStagedReviewSignature, filterFiles, hasCommittedHistory, hashText, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
+import { AlertTriangle, Archive, Code, Copy, ExternalLink, File as FileIcon, FolderOpen, History, UserRoundSearch, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
+import type { AllFilesEntry, FileStatus } from '@angkorgit/core';
+import { aiCapabilities, allFiles, buildStagedReviewSignature, filterFiles, foldersWithChanges, hasCommittedHistory, hashText, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
 import {
   Badge,
   Button,
@@ -130,6 +130,7 @@ const FileRow = memo(function FileRow({
 });
 
 const fileStatusPath = (file: FileStatus) => file.path;
+const entryPath = (entry: AllFilesEntry<FileStatus>) => entry.path;
 
 export const commitShortcut = { current: null as (() => void) | null };
 const COMMIT_BOX_MIN = 72;
@@ -210,7 +211,10 @@ export function WorkingCopyPanel() {
   const { editors } = useEditors();
   const editor = preferredEditor(editors, editorId);
   const openConflict = useUi((s) => s.openConflict);
-  const fileTree = useUi((s) => s.fileTree);
+  const centerDiff = useUi((s) => s.centerDiff);
+  const fileView = useUi((s) => s.fileView);
+  const fileTree = fileView !== 'list';
+  const allMode = fileView === 'all';
   const path = repo?.path ?? '';
   const message = useCommitDraft((s) => (path ? (s.drafts[path] ?? '') : ''));
   const amend = useCommitDraft((s) => !!path && s.amendFor === path);
@@ -223,6 +227,8 @@ export function WorkingCopyPanel() {
   const [unstagedFoldState, setUnstagedFoldState] = useState<FileTreeFoldState | null>(null);
   const [stagedFold, setStagedFold] = useState<FileTreeFold>(INITIAL_FOLD);
   const [stagedFoldState, setStagedFoldState] = useState<FileTreeFoldState | null>(null);
+  const [allFold, setAllFold] = useState<FileTreeFold>(INITIAL_FOLD);
+  const [allFoldState, setAllFoldState] = useState<FileTreeFoldState | null>(null);
   const commitBoxHeight = useUi((s) => s.commitBoxHeight);
   const [resizing, setResizing] = useState(false);
   const startResize = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -309,6 +315,40 @@ export function WorkingCopyPanel() {
     () => filterFiles(allUnstaged, fileStatusPath, fileQuery),
     [allUnstaged, fileQuery],
   );
+  const statusVersion = useRepo((s) => s.statusVersion);
+  const statusReady = status !== null;
+  const [indexPaths, setIndexPaths] = useState<string[] | null>(null);
+  const [indexError, setIndexError] = useState<string | null>(null);
+  useEffect(() => {
+    setIndexPaths(null);
+    setIndexError(null);
+  }, [path]);
+  useEffect(() => {
+    if (!allMode || !path || !statusReady) return;
+    let cancelled = false;
+    setIndexError(null);
+    void ipc
+      .indexFiles(path)
+      .then((paths) => {
+        if (!cancelled) setIndexPaths(paths);
+      })
+      .catch((error) => {
+        if (!cancelled) setIndexError(String((error as { message?: string }).message ?? error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allMode, path, statusReady, statusVersion]);
+  const changedFiles = useMemo(
+    () => files.filter((f) => (f.staged || f.unstaged) && !conflictedPaths.has(f.path)),
+    [files, conflictedPaths],
+  );
+  const allEntries = useMemo(
+    () => (allMode && indexPaths ? allFiles(indexPaths, changedFiles, fileStatusPath) : []),
+    [allMode, indexPaths, changedFiles],
+  );
+  const changedFolders = useMemo(() => foldersWithChanges(allEntries), [allEntries]);
+  const shownEntries = useMemo(() => filterFiles(allEntries, entryPath, fileQuery), [allEntries, fileQuery]);
   const stagedSignature = useMemo(() => buildStagedReviewSignature(files), [files]);
   const review = useAiWork((s) => (path ? (s.reviews[path] ?? null) : null));
   const reviewBusy = useAiWork((s) => (path ? !!s.reviewBusy[path] : false));
@@ -659,11 +699,16 @@ export function WorkingCopyPanel() {
   const stagedRowHeight = useCallback(() => STAGED_ROW_HEIGHT, []);
 
   const visibleOrder = useMemo(
-    () => [
-      ...unstagedFiles.map((file) => ({ file, staged: false })),
-      ...stagedFiles.map((file) => ({ file, staged: true })),
-    ],
-    [unstagedFiles, stagedFiles],
+    () =>
+      allMode
+        ? shownEntries.flatMap((entry) =>
+            entry.change ? [{ file: entry.change, staged: !entry.change.unstaged }] : [],
+          )
+        : [
+            ...unstagedFiles.map((file) => ({ file, staged: false })),
+            ...stagedFiles.map((file) => ({ file, staged: true })),
+          ],
+    [allMode, shownEntries, unstagedFiles, stagedFiles],
   );
 
   const onRowClick = useCallback(
@@ -822,6 +867,42 @@ export function WorkingCopyPanel() {
     />
   );
 
+  const renderPlain = (file: string, depth?: number) => {
+    const active = centerDiff?.path === file && centerDiff.oid === undefined && !!centerDiff.unchanged;
+    return (
+      <div
+        key={`p-${file}`}
+        role="button"
+        tabIndex={-1}
+        data-unchanged-file
+        title={file}
+        className={cn(
+          'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors',
+          active ? 'bg-primary/10 text-foreground' : 'text-muted hover:bg-surface-raised',
+        )}
+        style={treeIndent(depth) !== undefined ? { paddingLeft: treeIndent(depth) } : undefined}
+        onClick={() => {
+          setMulti(null);
+          selectFile(null);
+          openCenterDiff({ path: file, staged: false, unchanged: true });
+        }}
+      >
+        {changedFiles.length > 0 && <span className="size-4 shrink-0" />}
+        <span className="flex w-7 shrink-0 justify-center">
+          <FileIcon className="size-3.5 text-faint" />
+        </span>
+        <span className="min-w-0 flex-1 truncate">{basename(file)}</span>
+      </div>
+    );
+  };
+
+  const renderEntry = (entry: AllFilesEntry<FileStatus>, depth?: number) =>
+    entry.change
+      ? entry.change.unstaged
+        ? renderUnstaged(entry.change, depth)
+        : renderStaged(entry.change, depth)
+      : renderPlain(entry.path, depth);
+
   const countLabel = (shown: number, total: number) =>
     filtering ? (
       <span className="text-faint">
@@ -890,6 +971,54 @@ export function WorkingCopyPanel() {
             </div>
           </>
         )}
+        {allMode ? (
+          <>
+            <div className="mb-1 flex items-center justify-between px-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                All files{' '}
+                {indexPaths && (
+                  <span className="text-faint">
+                    {filtering ? (
+                      <>
+                        {shownEntries.length}{' '}
+                        <span className="font-normal normal-case tracking-normal">of {allEntries.length}</span>
+                      </>
+                    ) : (
+                      <>
+                        {allEntries.length}{' '}
+                        <span className="font-normal normal-case tracking-normal">· {changedFiles.length} changed</span>
+                      </>
+                    )}
+                  </span>
+                )}
+              </span>
+              <FileTreeFoldButton state={allFoldState} onFold={(mode) => setAllFold((f) => nextFold(f, mode))} />
+            </div>
+            {indexError ? (
+              <p className="px-2 pb-2 text-xs text-danger [overflow-wrap:anywhere]">Could not list the files: {indexError}</p>
+            ) : indexPaths === null ? (
+              <div className="space-y-1 px-1">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-7 animate-pulse rounded-md bg-surface-raised" />
+                ))}
+              </div>
+            ) : shownEntries.length === 0 ? (
+              <p className="px-2 pb-2 text-xs text-faint">
+                {filtering ? 'No files match the filter.' : 'No tracked files yet.'}
+              </p>
+            ) : (
+              <FileTree
+                items={shownEntries}
+                pathOf={entryPath}
+                renderFile={renderEntry}
+                fold={allFold}
+                onFoldState={setAllFoldState}
+                defaultCollapsed={(folder) => !changedFolders.has(folder)}
+              />
+            )}
+          </>
+        ) : (
+          <>
         <div className="mb-1 flex items-center justify-between px-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             Changes {countLabel(unstagedFiles.length, allUnstaged.length)}
@@ -1009,6 +1138,8 @@ export function WorkingCopyPanel() {
             rowHeight={stagedRowHeight}
             renderRow={renderStaged}
           />
+        )}
+          </>
         )}
         </>
         )}

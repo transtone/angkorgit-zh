@@ -2,15 +2,16 @@
 import Commit from './Commit.astro';
 
 const providers = [
-  { name: 'Claude Code', kind: '你已登录的 CLI' },
-  { name: 'Codex', kind: '你已登录的 CLI' },
-  { name: 'Gemini CLI', kind: '你已登录的 CLI' },
-  { name: 'OpenCode', kind: '你已登录的 CLI' },
-  { name: 'Anthropic', kind: 'API 密钥' },
-  { name: 'OpenAI', kind: 'API 密钥' },
-  { name: 'Gemini', kind: 'API 密钥' },
-  { name: 'Ollama', kind: '本地运行，无需密钥' },
-  { name: 'LM Studio', kind: '本地运行，无需密钥' },
+  { name: 'Claude Code', kind: 'CLI you already log into' },
+  { name: 'GitHub Copilot CLI', kind: 'CLI you already log into' },
+  { name: 'Codex', kind: 'CLI you already log into' },
+  { name: 'Gemini CLI', kind: 'CLI you already log into' },
+  { name: 'OpenCode', kind: 'CLI you already log into' },
+  { name: 'Anthropic', kind: 'API key' },
+  { name: 'OpenAI', kind: 'API key' },
+  { name: 'Gemini', kind: 'API key' },
+  { name: 'Ollama', kind: 'local, no key' },
+  { name: 'LM Studio', kind: 'local, no key' },
 ];
 ---
 
@@ -22,8 +23,9 @@ const providers = [
         <h2 class="display mt-3 text-4xl leading-[1.02] sm:text-5xl">使用你<em>已有</em>的 AI。</h2>
         <div class="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">
           <p>
-            AngKorGit 不自带模型或令牌钱包。如果你装了 Claude Code、Codex、Gemini CLI 或 OpenCode，
-            它会找到对应程序，使用你自己的登录与配额，无需粘贴密钥。
+            AngKorGit doesn't ship a model or a token wallet. If you've got Claude Code, GitHub Copilot CLI, Codex,
+            Gemini CLI, OpenCode or Antigravity installed, it finds the binary and uses your own login and quota. No
+            key to paste.
           </p>
           <p>
             或者指向 API 密钥，或指向你自己机器上的 Ollama。无论选哪个，请求都直接从
@@ -49,7 +51,7 @@ const providers = [
             <p class="text-[10px] uppercase tracking-[0.12em] text-faint">在本机检测到</p>
             <ul class="mt-2 grid gap-1.5 sm:grid-cols-2">
               {
-                providers.slice(0, 4).map((p, i) => (
+                providers.slice(0, 5).map((p, i) => (
                   <li class:list={['flex items-center gap-2 rounded-md border px-2.5 py-2', i === 0 ? 'border-primary/50 bg-primary/10' : 'border-border-subtle bg-background']}>
                     <span class="flex h-6 w-6 items-center justify-center rounded-md bg-surface-raised font-mono text-[10px] text-muted">&gt;_</span>
                     <span class="flex min-w-0 flex-col leading-tight">

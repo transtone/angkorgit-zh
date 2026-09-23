@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 
 export type DiffViewMode = 'inline' | 'split';
 
+export type FileView = 'list' | 'tree' | 'all';
+
 export interface GraphColumns {
   refs: boolean;
   author: boolean;
@@ -37,6 +39,7 @@ export interface CenterDiffTarget {
   staged?: boolean;
   oid?: string;
   oldPath?: string | null;
+  unchanged?: boolean;
 }
 
 export interface InteractiveRebasePreset {
@@ -102,11 +105,12 @@ interface UiState {
   conflictFile: string | null;
   repoTabs: string[];
   worktreeTabs: string[];
-  fileTree: boolean;
+  fileView: FileView;
   fileFilterOpen: boolean;
   fileFilterFocusSeq: number;
   inspectorFocusSeq: number;
   graphFocusSeq: number;
+  editMessageRequest: { seq: number; oid: string } | null;
   sidebarSections: Record<string, boolean>;
   sidebarCollapseEpoch: number;
   commitBoxHeight: number | null;
@@ -142,15 +146,16 @@ interface UiState {
   setCommitBoxHeight: (height: number | null) => void;
   setGraphColumn: (column: keyof GraphColumns, on: boolean) => void;
   setGraphTail: (on: boolean) => void;
-  setFileTree: (on: boolean) => void;
+  setFileView: (view: FileView) => void;
   setFileFilterOpen: (on: boolean) => void;
-  focusInspector: (target: string | null) => void;
+  focusInspector: () => void;
+  requestEditMessage: (oid: string) => void;
   focusGraph: () => void;
 }
 
 export const sidebarVisible = (s: UiState) => s.sidebarOpen && !s.sidebarHiddenForDiff;
 
-export const focusRequests = { inspectorConsumed: 0, inspectorTarget: null as string | null };
+export const focusRequests = { inspectorConsumed: 0, editMessageConsumed: 0 };
 
 let dialogReturnFocus: HTMLElement | null = null;
 
@@ -188,11 +193,12 @@ export const useUi = create<UiState>()(
   conflictFile: null,
   repoTabs: [],
   worktreeTabs: [],
-  fileTree: false,
+  fileView: 'list',
   fileFilterOpen: false,
   fileFilterFocusSeq: 0,
   inspectorFocusSeq: 0,
   graphFocusSeq: 0,
+  editMessageRequest: null,
   sidebarSections: {},
   sidebarCollapseEpoch: 0,
   commitBoxHeight: null,
@@ -273,22 +279,23 @@ export const useUi = create<UiState>()(
   setGraphColumn: (column, on) =>
     set((s) => ({ graphColumns: { ...s.graphColumns, [column]: on } })),
   setGraphTail: (graphTail) => set({ graphTail }),
-  setFileTree: (fileTree) => set({ fileTree }),
-  focusInspector: (target) => {
-    focusRequests.inspectorTarget = target;
-    set((s) => ({ inspectorFocusSeq: s.inspectorFocusSeq + 1 }));
-  },
+  setFileView: (fileView) => set({ fileView }),
+  focusInspector: () => set((s) => ({ inspectorFocusSeq: s.inspectorFocusSeq + 1 })),
   focusGraph: () => set((s) => ({ graphFocusSeq: s.graphFocusSeq + 1 })),
+  requestEditMessage: (oid) =>
+    set((s) => ({ editMessageRequest: { seq: (s.editMessageRequest?.seq ?? 0) + 1, oid } })),
   setFileFilterOpen: (fileFilterOpen) =>
     set((s) => ({ fileFilterOpen, fileFilterFocusSeq: fileFilterOpen ? s.fileFilterFocusSeq + 1 : s.fileFilterFocusSeq })),
     }),
     {
       name: 'angkorgit-ui',
       merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<UiState>;
+        const saved = (persisted ?? {}) as Partial<UiState> & { fileTree?: boolean };
+        const { fileTree: legacyFileTree, ...rest } = saved;
         return {
           ...current,
-          ...saved,
+          ...rest,
+          fileView: saved.fileView ?? (legacyFileTree ? 'tree' : current.fileView),
           graphColumns: { ...DEFAULT_GRAPH_COLUMNS, ...(saved.graphColumns ?? {}) },
         };
       },
@@ -300,7 +307,7 @@ export const useUi = create<UiState>()(
         wrapLines: state.wrapLines,
         repoTabs: state.repoTabs,
         worktreeTabs: state.worktreeTabs,
-        fileTree: state.fileTree,
+        fileView: state.fileView,
         sidebarSections: state.sidebarSections,
         commitBoxHeight: state.commitBoxHeight,
         graphColumns: state.graphColumns,

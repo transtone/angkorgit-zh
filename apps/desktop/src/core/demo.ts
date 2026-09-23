@@ -109,6 +109,30 @@ export const demoRecents: RecentRepository[] = [
   { path: '/Users/demo/work/api-gateway', name: 'api-gateway', lastOpenedAt: 1753900000 },
 ];
 
+export const demoFonts = [
+  { family: 'Fira Code', monospaced: true },
+  { family: 'Helvetica Neue', monospaced: false },
+  { family: 'Inter', monospaced: false },
+  { family: 'JetBrains Mono', monospaced: true },
+  { family: 'Menlo', monospaced: true },
+  { family: 'Monaco', monospaced: true },
+  { family: 'SF Mono', monospaced: true },
+];
+
+export function demoUnpushed(): string[] {
+  const remote = ALL_COMMITS.findIndex((c) => c.refs.some((ref) => ref.kind === 'remoteBranch'));
+  return ALL_COMMITS.slice(0, remote === -1 ? 0 : remote).map((c) => c.oid);
+}
+
+export function demoReword(oid: string, message: string): string {
+  const commit = ALL_COMMITS.find((c) => c.oid === oid);
+  if (!commit) throw new Error('commit not found');
+  const newline = message.indexOf('\n');
+  commit.summary = newline === -1 ? message : message.slice(0, newline);
+  commit.body = newline === -1 ? '' : message.slice(newline + 1).replace(/^\n/, '');
+  return oid;
+}
+
 export function demoHistory(query: HistoryQuery): HistoryPage {
   let commits = ALL_COMMITS;
   if (query.search) {
@@ -398,7 +422,7 @@ export function demoCommitFiles(): CommitFileInfo[] {
     ...demoCommitDiff().map((diff) => ({
       path: diff.path,
       oldPath: diff.oldPath,
-      status: diff.status,
+      status: diff.status === 'unchanged' ? 'modified' : diff.status,
       isBinary: diff.isBinary,
       isImage: diff.isImage,
       additions: diff.additions,
@@ -586,4 +610,64 @@ export function demoBlame(file: string, rev: string | null): FileBlame {
     };
   }
   return { path: file, rev, lines, hunks };
+}
+
+const DEMO_TREE_FILES = [
+  'README.md',
+  'LICENSE',
+  'package.json',
+  'pnpm-workspace.yaml',
+  '.github/workflows/ci.yml',
+  'src/main.tsx',
+  'src/app/App.tsx',
+  'src/app/globals.css',
+  'src/core/ipc.ts',
+  'src/core/demo.ts',
+  'src/features/graph/CommitGraph.tsx',
+  'src/features/graph/layout.ts',
+  'src/features/diff/DiffPanel.tsx',
+  'src/features/diff/DiffViewer.tsx',
+  'docs/Roadmap.md',
+  'docs/Architecture.md',
+  'tests/unit/wordDiff.test.ts',
+  'packages/core/src/index.ts',
+];
+
+export function demoTreeFiles(): string[] {
+  const changed = demoCommitFiles()
+    .filter((f) => f.status !== 'deleted')
+    .map((f) => f.path);
+  return [...new Set([...DEMO_TREE_FILES, ...changed])].sort();
+}
+
+export function demoIndexFiles(): string[] {
+  const tracked = demoStatus.files
+    .filter((f) => f.unstaged !== 'untracked' && f.staged !== 'deleted')
+    .map((f) => f.path);
+  return [...new Set([...DEMO_TREE_FILES, ...tracked])].sort();
+}
+
+export function demoFileContents(file: string): FileDiff {
+  const lines = demoConflictContent.split('\n');
+  return {
+    path: file,
+    oldPath: null,
+    status: 'unchanged',
+    hunks: [
+      {
+        header: '',
+        oldStart: 1,
+        oldLines: lines.length,
+        newStart: 1,
+        newLines: lines.length,
+        lines: lines.map((content, i) => ({ kind: 'context', oldLineNo: i + 1, newLineNo: i + 1, content })),
+      },
+    ],
+    isBinary: false,
+    isImage: false,
+    oldImage: null,
+    newImage: null,
+    additions: 0,
+    deletions: 0,
+  };
 }

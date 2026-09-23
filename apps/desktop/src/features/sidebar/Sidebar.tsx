@@ -193,21 +193,42 @@ function Section({
   action?: React.ReactNode;
 }) {
   return (
-    <div className={cn('flex flex-col', open ? 'min-h-[5.5rem] shrink' : 'shrink-0')}>
-      <div className="group flex w-full shrink-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted hover:bg-surface-raised">
+    <div
+      data-sidebar-section
+      className={cn('flex flex-col', open ? 'min-h-[5.5rem] shrink' : 'shrink-0')}
+    >
+      <div
+        data-sidebar-section-header
+        className="group flex w-full shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/80 hover:bg-surface-raised"
+      >
         <button
-          className="flex min-w-0 flex-1 items-center gap-1.5"
+          className="flex min-w-0 flex-1 items-center gap-2"
           aria-expanded={open}
           onClick={onToggle}
         >
           <ChevronRight className={cn('size-3.5 shrink-0 transition-transform duration-150', open && 'rotate-90')} />
-          {icon}
-          <span className="truncate">{title}</span>
-          <span className="text-faint">{count}</span>
+          <span
+            data-sidebar-section-icon
+            className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 text-primary"
+          >
+            {icon}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-left">{title}</span>
         </button>
-        {action && <span className="opacity-0 transition-opacity group-hover:opacity-100">{action}</span>}
+        {action && <span className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">{action}</span>}
+        <Badge
+          tone="neutral"
+          className="h-4 min-w-4 shrink-0 cursor-pointer justify-center border-transparent bg-foreground/[0.08] px-1.5 text-[10px] leading-none tabular-nums"
+          onClick={onToggle}
+        >
+          {count}
+        </Badge>
       </div>
-      {open && <div className="mt-0.5 min-h-0 flex-1 overflow-y-auto pb-1">{children}</div>}
+      {open && (
+        <div data-sidebar-section-body className="mt-0.5 min-h-0 flex-1 overflow-y-auto pb-1">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -888,7 +909,7 @@ export function Sidebar() {
         </Hint>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
         <Section
           {...section('branches')}
           icon={<GitBranch className="size-3.5" />}

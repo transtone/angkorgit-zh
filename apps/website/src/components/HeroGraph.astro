@@ -26,10 +26,11 @@ const rows: Row[] = [
   {
     id: 'install',
     lane: 0,
-    msg: `下载中文版 ${SITE.latestVersion}`,
+    msg: 'Download 0.17.0',
+    hash: 'bbb9a23',
     refs: [
       { label: 'main', kind: 'branch' },
-      { label: `v${SITE.latestVersion}`, kind: 'tag' },
+      { label: 'v0.17.0', kind: 'tag' },
     ],
     through: [],
     up: true,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
-import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Combine, Copy, FastForward, Filter, FolderTree, GitBranchPlus, Settings2, GitMerge, ListOrdered, ListRestart, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Combine, Copy, FastForward, Filter, FolderTree, GitBranchPlus, Settings2, GitMerge, ListOrdered, ListRestart, Pencil, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
 import type { CommitInfo, RefInfo } from '@angkorgit/core';
 import {
   Button,
@@ -52,9 +52,11 @@ export function CommitGraph() {
   const worktrees = useRepo((s) => s.worktrees);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
+  const unpushed = useRepo((s) => s.unpushed);
   const { rows, commits, maxLane, hasMore, loading, error, filters, find, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
     useGraph();
   const openDialog = useUi((s) => s.openDialog);
+  const requestEditMessage = useUi((s) => s.requestEditMessage);
   const graphColumns = useUi((s) => s.graphColumns);
   const graphTail = useUi((s) => s.graphTail);
   const setGraphTail = useUi((s) => s.setGraphTail);
@@ -727,6 +729,15 @@ export function CommitGraph() {
               onClick={() => void act(`检出 ${menu.commit.shortOid}`, () => ipc.checkoutDetached(path, menu.commit.oid), { kind: 'checkout' })}
             >
               检出提交（游离状态）
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!unpushed.includes(menu.commit.oid)}
+              onClick={() => {
+                select(menu.commit.oid);
+                requestEditMessage(menu.commit.oid);
+              }}
+            >
+              <Pencil /> Edit commit message…
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('createBranch', menu.commit.oid)}>
               <GitBranchPlus /> 在此处新建分支…

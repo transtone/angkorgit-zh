@@ -17,15 +17,17 @@ import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { killTerminalSession, sessions, type TerminalSession } from './sessions';
+import { monoFontStack } from './font';
 import { terminalThemeFromTokens } from './theme';
 
 function newSession(): TerminalSession {
   const container = document.createElement('div');
   container.style.width = '100%';
   container.style.height = '100%';
+  const { terminalFontFamily, codeFontFamily, terminalFontSize } = useSettings.getState();
   const terminal = new Terminal({
-    fontFamily: "'JetBrains Mono', monospace",
-    fontSize: 12,
+    fontFamily: monoFontStack(terminalFontFamily || codeFontFamily),
+    fontSize: terminalFontSize,
     cursorBlink: true,
     scrollback: 5000,
     theme: terminalThemeFromTokens(),
@@ -97,6 +99,8 @@ export function TerminalPanel() {
   const toggleTerminal = useUi((s) => s.toggleTerminal);
   const theme = useSettings((s) => s.theme);
   const accent = useSettings((s) => s.accent);
+  const terminalFontFamily = useSettings((s) => s.terminalFontFamily || s.codeFontFamily);
+  const terminalFontSize = useSettings((s) => s.terminalFontSize);
   const hostRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; hasSelection: boolean } | null>(null);
 
@@ -127,6 +131,15 @@ export function TerminalPanel() {
     const next = terminalThemeFromTokens();
     for (const session of sessions.values()) session.terminal.options.theme = next;
   }, [theme, accent]);
+
+  useEffect(() => {
+    const fontFamily = monoFontStack(terminalFontFamily);
+    for (const session of sessions.values()) {
+      session.terminal.options.fontFamily = fontFamily;
+      session.terminal.options.fontSize = terminalFontSize;
+    }
+    current()?.fit.fit();
+  }, [terminalFontFamily, terminalFontSize]);
 
   useEffect(() => {
     const host = hostRef.current;

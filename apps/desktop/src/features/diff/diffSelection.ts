@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import type { DiffLine } from '@angkorgit/core';
 import type { FlatRow } from './VirtualDiff';
 
@@ -26,6 +26,11 @@ interface Signature {
 interface Applied {
   desired: Signature;
   actual: Signature;
+}
+
+interface Point {
+  x: number;
+  y: number;
 }
 
 type Located = { kind: 'row'; endpoint: Endpoint } | { kind: 'layer' } | { kind: 'outside' };
@@ -150,6 +155,43 @@ function sameEndpoint(a: Endpoint, b: Endpoint): boolean {
   return a.layer === b.layer && a.row === b.row && a.offset === b.offset;
 }
 
+function pastEdge(root: HTMLElement, pointer: Point): boolean {
+  const box = root.getBoundingClientRect();
+  return pointer.y <= box.top || pointer.y >= box.bottom;
+}
+
+function edgeEndpoint(layer: HTMLElement, root: HTMLElement, pointer: Point): Endpoint | null {
+  const box = root.getBoundingClientRect();
+  const rowEls = Array.from(layer.querySelectorAll<HTMLElement>(ROW_SELECTOR));
+  if (rowEls.length === 0) return null;
+  const visible = rowEls.filter((el) => {
+    const rect = el.getBoundingClientRect();
+    return rect.bottom > box.top && rect.top < box.bottom;
+  });
+  const pool = visible.length > 0 ? visible : rowEls;
+  let target: HTMLElement;
+  let atEnd: boolean;
+  if (pointer.y >= box.bottom) {
+    target = pool[pool.length - 1];
+    atEnd = true;
+  } else if (pointer.y <= box.top) {
+    target = pool[0];
+    atEnd = false;
+  } else {
+    const hit = pool.find((el) => {
+      const rect = el.getBoundingClientRect();
+      return pointer.y >= rect.top && pointer.y < rect.bottom;
+    });
+    target = hit ?? (pointer.y > box.top + box.height / 2 ? pool[pool.length - 1] : pool[0]);
+    atEnd = pointer.x >= layer.getBoundingClientRect().left;
+  }
+  return {
+    layer,
+    row: Number(target.dataset.diffRow),
+    offset: atEnd ? (target.textContent ?? '').length : 0,
+  };
+}
+
 function lineOf(row: FlatRow | undefined, side: string | undefined): DiffLine | null {
   if (!row) return null;
   if (row.kind === 'line') return row.line;
@@ -188,16 +230,11 @@ export function useStableSelection(
   const logical = useRef<LogicalSelection | null>(null);
   const applied = useRef<Applied | null>(null);
   const dragging = useRef(false);
+  const pointer = useRef<Point | null>(null);
   const rowsRef = useRef(rows);
 
-  useLayoutEffect(() => {
-    if (rowsRef.current !== rows) {
-      rowsRef.current = rows;
-      logical.current = null;
-      applied.current = null;
-      return;
-    }
-    const selection = logical.current;
+  const sync = useCallback(() => {
+    let selection = logical.current;
     const dom = window.getSelection();
     const root = scrollRef.current;
     if (!selection || !dom || !root) return;
@@ -206,11 +243,19 @@ export function useStableSelection(
       applied.current = null;
       return;
     }
+    const clamped = dragging.current && pointer.current !== null && pastEdge(root, pointer.current);
+    if (clamped && pointer.current) {
+      const focus = edgeEndpoint(selection.anchor.layer, root, pointer.current);
+      if (focus && !sameEndpoint(selection.anchor, focus)) {
+        selection = { anchor: selection.anchor, focus };
+        logical.current = selection;
+      }
+    }
     const resolved = resolve(selection);
     if (!resolved) return;
     let { focus } = resolved;
     const { anchor } = resolved;
-    if (dragging.current && dom.focusNode && root.contains(dom.focusNode)) {
+    if (dragging.current && !clamped && dom.focusNode && root.contains(dom.focusNode)) {
       focus = { node: dom.focusNode, offset: dom.focusOffset };
     }
     const desired = { anchor, focus };
@@ -222,6 +267,16 @@ export function useStableSelection(
     }
     dom.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset);
     applied.current = { desired, actual: snapshot(dom) ?? desired };
+  }, [scrollRef]);
+
+  useLayoutEffect(() => {
+    if (rowsRef.current !== rows) {
+      rowsRef.current = rows;
+      logical.current = null;
+      applied.current = null;
+      return;
+    }
+    sync();
   });
 
   useEffect(() => {
@@ -238,13 +293,22 @@ export function useStableSelection(
       }
       const a = locate(dom.anchorNode, dom.anchorOffset, root);
       const f = locate(dom.focusNode, dom.focusOffset, root);
+      const previous = logical.current;
+      if (f.kind === 'outside' && dragging.current && pointer.current) {
+        const anchor = a.kind === 'row' ? a.endpoint : previous?.anchor ?? null;
+        if (!anchor) return;
+        const focus = edgeEndpoint(anchor.layer, root, pointer.current);
+        if (!focus || sameEndpoint(anchor, focus)) return;
+        logical.current = { anchor, focus };
+        sync();
+        return;
+      }
       if (a.kind === 'outside' || f.kind === 'outside') {
         logical.current = null;
         return;
       }
       if (dom.isCollapsed) return;
       if (a.kind === 'layer' && f.kind === 'layer') return;
-      const previous = logical.current;
       const anchor = a.kind === 'row' ? a.endpoint : previous?.anchor ?? null;
       const focus = f.kind === 'row' ? f.endpoint : previous?.focus ?? null;
       if (!anchor || !focus || sameEndpoint(anchor, focus)) return;
@@ -256,13 +320,21 @@ export function useStableSelection(
       const root = scrollRef.current;
       if (!root || !(e.target instanceof Node) || !root.contains(e.target)) return;
       dragging.current = true;
+      pointer.current = { x: e.clientX, y: e.clientY };
       if (e.shiftKey) return;
       logical.current = null;
       applied.current = null;
     };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      pointer.current = { x: e.clientX, y: e.clientY };
+      const root = scrollRef.current;
+      if (root && logical.current && pastEdge(root, pointer.current)) sync();
+    };
     const endDrag = () => {
       if (!dragging.current) return;
       dragging.current = false;
+      pointer.current = null;
       const dom = window.getSelection();
       if (dom && (dom.rangeCount === 0 || dom.isCollapsed)) {
         logical.current = null;
@@ -282,6 +354,7 @@ export function useStableSelection(
     if (root) readers.set(root, read);
     document.addEventListener('selectionchange', onSelectionChange);
     document.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('mousemove', onMouseMove, true);
     window.addEventListener('mouseup', endDrag, true);
     window.addEventListener('blur', endDrag);
     document.addEventListener('copy', onCopy);
@@ -289,9 +362,10 @@ export function useStableSelection(
       if (root && readers.get(root) === read) readers.delete(root);
       document.removeEventListener('selectionchange', onSelectionChange);
       document.removeEventListener('mousedown', onMouseDown, true);
+      document.removeEventListener('mousemove', onMouseMove, true);
       window.removeEventListener('mouseup', endDrag, true);
       window.removeEventListener('blur', endDrag);
       document.removeEventListener('copy', onCopy);
     };
-  }, [scrollRef]);
+  }, [scrollRef, sync]);
 }

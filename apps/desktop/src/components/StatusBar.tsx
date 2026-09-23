@@ -24,6 +24,7 @@ export function StatusBar() {
   const status = useRepo((s) => s.status);
   const remotes = useRepo((s) => s.remotes);
   const lastFetchAt = useRepo((s) => s.lastFetchAt);
+  const fetchFailures = useRepo((s) => s.fetchFailures);
   const autoFetchMinutes = useSettings((s) => s.autoFetchMinutes);
   const [, tickClock] = useState(0);
   useEffect(() => {
@@ -112,6 +113,14 @@ export function StatusBar() {
           <span className="flex items-center gap-1 text-faint" data-last-fetch>
             <RefreshCw className="size-3" />
             已获取 · {timeAgo(lastFetchAt / 1000)}
+          </span>
+        </Hint>
+      )}
+      {fetchFailures.length > 0 && (
+        <Hint label={`Failed to fetch: ${fetchFailures.join(', ')}`}>
+          <span className="flex items-center gap-1 text-faint" data-fetch-status>
+            <RefreshCw className="size-3" />
+            Fetch incomplete
           </span>
         </Hint>
       )}

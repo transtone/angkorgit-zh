@@ -505,11 +505,25 @@ fn pull_rebase_configured(repo: &Repository) -> bool {
         .unwrap_or(false)
 }
 
-pub(crate) fn push_refspecs(branch: &str, force: bool, with_tags: bool) -> Vec<String> {
+fn local_tag_names(repo: &Repository) -> AppResult<Vec<String>> {
+    let mut names = Vec::new();
+    repo.tag_foreach(|_oid, name_bytes| {
+        let full = String::from_utf8_lossy(name_bytes);
+        if let Some(name) = full.strip_prefix("refs/tags/") {
+            if !name.is_empty() && !name.contains(':') && !name.contains('\0') {
+                names.push(name.to_string());
+            }
+        }
+        true
+    })?;
+    Ok(names)
+}
+
+pub(crate) fn push_refspecs(branch: &str, force: bool, tags: &[String]) -> Vec<String> {
     let prefix = if force { "+" } else { "" };
     let mut refspecs = vec![format!("{prefix}refs/heads/{branch}:refs/heads/{branch}")];
-    if with_tags {
-        refspecs.push("refs/tags/*:refs/tags/*".to_string());
+    for tag in tags {
+        refspecs.push(format!("refs/tags/{tag}:refs/tags/{tag}"));
     }
     refspecs
 }
@@ -532,7 +546,12 @@ pub fn push(
             .to_string(),
     };
 
-    let refspecs = push_refspecs(&branch_name, force, with_tags);
+    let tags = if with_tags {
+        local_tag_names(&repo)?
+    } else {
+        Vec::new()
+    };
+    let refspecs = push_refspecs(&branch_name, force, &tags);
 
     let track_upstream = |repo: &Repository| -> AppResult<()> {
         if set_upstream {
@@ -903,10 +922,10 @@ mod tests {
     #[test]
     fn plain_push_refspecs_have_no_force_prefix() {
         assert_eq!(
-            push_refspecs("main", false, true),
+            push_refspecs("main", false, &["v1".into()]),
             vec![
                 "refs/heads/main:refs/heads/main".to_string(),
-                "refs/tags/*:refs/tags/*".to_string(),
+                "refs/tags/v1:refs/tags/v1".to_string(),
             ]
         );
     }
@@ -914,10 +933,10 @@ mod tests {
     #[test]
     fn force_push_forces_only_the_branch_refspec() {
         assert_eq!(
-            push_refspecs("main", true, true),
+            push_refspecs("main", true, &["v1".into()]),
             vec![
                 "+refs/heads/main:refs/heads/main".to_string(),
-                "refs/tags/*:refs/tags/*".to_string(),
+                "refs/tags/v1:refs/tags/v1".to_string(),
             ]
         );
     }
@@ -925,7 +944,7 @@ mod tests {
     #[test]
     fn push_without_tags_sends_only_the_branch() {
         assert_eq!(
-            push_refspecs("feature/x", true, false),
+            push_refspecs("feature/x", true, &[]),
             vec!["+refs/heads/feature/x:refs/heads/feature/x".to_string()]
         );
     }

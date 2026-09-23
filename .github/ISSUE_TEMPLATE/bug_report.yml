@@ -26,8 +26,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: AngKorGit 版本
-      placeholder: '0.15.1（可在设置侧栏查看）'
+      label: AngKorGit version
+      placeholder: '0.17.0 (Settings rail shows it)'
     validations:
       required: true
   - type: dropdown

@@ -70,6 +70,7 @@ import { installCliTool } from './cliTool';
 import { useEditors } from './editors';
 import { AccountsTab, providerIcon } from './AccountsTab';
 import { Field, SettingCard, SettingEmpty, SettingRow } from './SettingCard';
+import { FontsCard } from './FontsCard';
 import { getAiProvider } from '@/features/ai/client';
 import { modKey, shortenHome } from '@/shared/utils';
 
@@ -389,8 +390,8 @@ function CliAgentPicker() {
       {!scanning && agents.length === 0 && (
         <SettingEmpty
           icon={<SquareTerminal className="size-4" />}
-          title="未找到 AI CLI"
-          description="请安装 Claude Code、Codex CLI、Gemini CLI、OpenCode 或 Antigravity CLI，然后重新扫描。"
+          title="No AI CLI found"
+          description="Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode or Antigravity CLI, then scan again."
           action={
             <Button variant="secondary" size="sm" onClick={() => void scan()}>
               <RefreshCw className="size-3.5" /> 重新扫描
@@ -1045,6 +1046,8 @@ export function SettingsDialog() {
                     description="减少整个应用中的动画"
                     action={<Switch checked={settings.reduceMotion} onCheckedChange={settings.setReduceMotion} />}
                   />
+
+                  <FontsCard />
                 </div>
               )}
 
@@ -1322,8 +1325,8 @@ export function SettingsDialog() {
                     title="提供方"
                     description={
                       settings.ai.provider === 'cli'
-                        ? '使用本机已安装的 AI CLI——Claude Code、Codex、Gemini CLI、OpenCode 或 Antigravity——以其自身的登录与配额运行，无需 API 密钥。'
-                        : '用于提交消息、diff 解释、冲突帮助与审查。通过 Ollama 或 LM Studio 的本地模型无需 API 密钥。'
+                        ? 'Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.'
+                        : 'Used for commit messages, diff explanations, conflict help and reviews. Local models via Ollama or LM Studio need no API key.'
                     }
                     action={
                       <Select

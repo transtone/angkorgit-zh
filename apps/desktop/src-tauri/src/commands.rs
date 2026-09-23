@@ -1,7 +1,9 @@
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core::types::*;
-use crate::core::{branch, commit, conflict, diff, history, misc, remote, repo, stage, worktree};
+use crate::core::{
+    branch, commit, conflict, diff, files, history, misc, remote, repo, stage, worktree,
+};
 use crate::error::AppResult;
 use crate::terminal::TerminalState;
 
@@ -279,6 +281,21 @@ pub async fn commit_create(path: String, message: String) -> AppResult<String> {
 #[tauri::command]
 pub async fn commit_amend(path: String, message: Option<String>) -> AppResult<String> {
     blocking(move || commit::amend(&path, message.as_deref())).await
+}
+
+#[tauri::command]
+pub async fn commit_reword(path: String, oid: String, message: String) -> AppResult<String> {
+    blocking(move || commit::reword(&path, &oid, &message)).await
+}
+
+#[tauri::command]
+pub async fn fonts_list() -> AppResult<Vec<crate::fonts::FontFamily>> {
+    blocking(|| Ok(crate::fonts::list())).await
+}
+
+#[tauri::command]
+pub async fn history_unpushed(path: String) -> AppResult<Vec<String>> {
+    blocking(move || history::unpushed(&path)).await
 }
 
 #[tauri::command]
@@ -884,4 +901,19 @@ pub async fn file_blame(
     rev: Option<String>,
 ) -> AppResult<crate::core::blame::FileBlame> {
     blocking(move || crate::core::blame::blame_file(&path, &file, rev.as_deref())).await
+}
+
+#[tauri::command]
+pub async fn tree_files(path: String, oid: String) -> AppResult<Vec<String>> {
+    blocking(move || files::tree_files(&path, &oid)).await
+}
+
+#[tauri::command]
+pub async fn index_files(path: String) -> AppResult<Vec<String>> {
+    blocking(move || files::index_files(&path)).await
+}
+
+#[tauri::command]
+pub async fn file_contents(path: String, file: String, oid: Option<String>) -> AppResult<FileDiff> {
+    blocking(move || files::file_contents(&path, &file, oid.as_deref())).await
 }

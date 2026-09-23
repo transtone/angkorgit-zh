@@ -1,7 +1,7 @@
 [package]
 name = "angkorgit"
-version = "0.15.1"
-description = "AngKorGit —— 一款现代、快速、美观的 Git 客户端"
+version = "0.17.0"
+description = "AngKorGit — a modern, fast, beautiful Git client"
 authors = ["AngKorGit Contributors"]
 license = "MIT"
 edition = "2021"
@@ -33,6 +33,7 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 notify-debouncer-mini = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 which = "7"
+fontdb = { version = "0.24", default-features = false, features = ["std", "fs", "memmap", "fontconfig"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

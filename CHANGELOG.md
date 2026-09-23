@@ -6,26 +6,86 @@
 
 ## [未发布]
 
-## [0.15.1] — 2026-09-17
+## [0.17.0] — 2026-09-22
 
-中文版同步至上游 `b3faaf1`，包含 v0.15.0 与后续 Windows 文件定位修复。
+The whole-tree release. The inspector can show every file at a commit, not only the
+changed ones, a commit's file list filters by kind of change, the sidebar sections wear
+the same gold tiles and count badges as the rest of the app, Push with tags works again,
+and a dead remote no longer stops the others from being fetched.
 
-### 新增
-- 侧边栏添加远端并立即获取分支。
-- 跨 Fork 创建上游 PR/MR，可选择目标仓库。
-- 默认克隆目录与终端右键菜单。
+### Added
+- **All files view.** The Inspector's list and tree toggle has a third mode, All files,
+  which shows every file at the selected commit (or in the working copy) as a folder tree
+  with the changed ones marked. Folders without changes start collapsed, unchanged files
+  open read-only in the centre with an "unchanged" badge, and changed files keep their
+  diff, checkbox and menus.
+- **Filter a commit's files by kind of change.** The M, A, D and R counts in a commit's
+  Files header are buttons now. Click one to see only those files, and All brings the rest
+  back.
 
-### 修复
-- Windows SSH 使用 OpenSSL，支持 ed25519/ECDSA 主机密钥。
-- Windows 文件管理器正确定位文件。
-- 长行差异的滚动性能、滚动后选区保持与完整内容复制。
-- 合入 Linux Wayland 紧凑标题栏改进。
+### Changed
+- **Sidebar sections are easier to tell apart.** Each section header (Branches, Worktrees,
+  Merge requests, Remotes, Tags, Stashes, Submodules) now carries its icon in a small gold
+  tile and its count in a badge, the same devices the rest of the app uses, so two open
+  lists no longer run into each other and nothing needed a divider.
 
-### 中文化与发行
-- 补齐新功能文案、错误消息、无障碍标签和对应测试。
-- 保留中文版更新地址与公钥，更新中文开发说明、路线图和下载入口。
-- 本次仅提供 Windows x64 NSIS/MSI 安装包；Windows 源码构建新增原生 Perl 依赖。
-- 详细说明见 [docs/mcp-release-v0.15.1.md](docs/mcp-release-v0.15.1.md)。
+### Fixed
+- **Selecting past the bottom of a diff.** Dragging a selection below the visible area used
+  to fall apart once the view scrolled: copy returned one line and the highlight moved
+  when you scrolled back. The selection now grows to the last visible line while you hold
+  the mouse below the diff, and copy returns every selected line.
+- **Push with tags failed** with `not a valid reference 'refs/tags/*'`. libgit2 does not
+  expand the glob git uses, so the engine now names each local tag in its own refspec. (#34)
+- **Fetch keeps checking every remote.** A failing remote no longer prevents the others
+  from being fetched on later automatic runs. Partial results name the failed remotes,
+  and the status bar keeps showing when a successful fetch or pull last happened.
+
+## [0.16.0] — 2026-09-20
+
+The quiet release. macOS stops asking for folder access every time you come back to
+the window, a commit message you have not pushed yet can be fixed in place, and the
+interface, the diffs and the terminal can use the fonts you already have. GitHub
+Copilot CLI joins the installed AI providers, the GitHub account form finally
+mentions fine-grained tokens, and "Show in file manager" on Windows opens the right
+folder again. Christian Lauinger shaped this version with the Copilot provider and
+the Windows report.
+
+### Added
+- **Choose your fonts.** Settings → Appearance has a Fonts card with three pickers over
+  the fonts installed on your computer, each name shown in its own face: Interface for the
+  whole app, Code for diffs, hashes and commit details, and Terminal, which follows Code
+  unless you give it its own font and size. The preview line shows the terminal result,
+  everything switches right away, the choice is remembered, and Reset fonts brings the
+  defaults back. A font removed since you picked it says so instead of failing quietly,
+  and the card links to Nerd Fonts for glyphs. (#28)
+- **Fine-grained GitHub tokens, explained.** The GitHub account form keeps its classic
+  token link and now adds the fine-grained token page next to it, with the two permissions
+  it needs spelled out (Contents and Pull requests, read and write). Both kinds have
+  always worked; the form just never mentioned fine-grained tokens, which left
+  organizations that require them guessing. (#31)
+- **Edit a commit message in place.** Select a commit you have not pushed yet and
+  double-click its message in the inspector, or use the pencil button or the graph's
+  right-click menu. The summary and description open as the same two fields as the
+  commit box, the description opens at the height of the message and can be dragged taller,
+  ⌘⏎ saves and Esc cancels. The latest commit is amended without touching
+  your staged or unstaged changes; an older commit is rewritten together with the
+  commits above it, which needs a clean working tree. Commits already on a remote keep
+  the button disabled, and the change is undoable. Suggested by users who kept fixing
+  typos with a manual amend.
+- **GitHub Copilot CLI as an installed AI provider.** AngKorGit detects the
+  `copilot` binary, including WinGet installs on Windows, and runs prompts through
+  the user's existing Copilot login and quota with optional model overrides.
+
+### Fixed
+- **macOS stops asking for Desktop, Documents and Downloads access again and
+  again.** The app bundle shipped without a code signature, so macOS could not hold
+  on to the permission you granted and asked again the next time the app touched a
+  repository in one of those folders, often several times in a row and every time
+  you came back to the window. The bundle is now signed as a whole. macOS asks once
+  per installed version and remembers the answer.
+- **"Show in file manager" on Windows opens the file's folder again.** Explorer was
+  handed a path with forward slashes, quoted as a whole together with its `/select`
+  switch, and fell back to a default folder. Reported by Christian Lauinger. (#26)
 
 ## [0.15.0] — 2026-09-16
 
@@ -1336,7 +1396,9 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/cheat2001/angkorgit/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/cheat2001/angkorgit/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/cheat2001/angkorgit/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/cheat2001/angkorgit/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/cheat2001/angkorgit/compare/v0.12.0...v0.13.0

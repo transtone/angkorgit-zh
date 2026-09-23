@@ -163,16 +163,20 @@ export function FileTree<T>({
   renderFile,
   fold,
   onFoldState,
+  defaultCollapsed,
 }: {
   items: T[];
   pathOf: (item: T) => string;
   renderFile: (item: T, depth: number) => React.ReactNode;
   fold?: FileTreeFold;
   onFoldState?: (state: FileTreeFoldState) => void;
+  defaultCollapsed?: (folderPath: string) => boolean;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const root = useMemo(() => buildFileTree(items, pathOf), [items, pathOf]);
   const paths = useMemo(() => folderPaths(root), [root]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(defaultCollapsed ? paths.filter((p) => defaultCollapsed(p)) : []),
+  );
   useEffect(() => {
     if (!fold || fold.epoch === 0) return;
     setCollapsed(fold.mode === 'collapse' ? new Set(paths) : new Set());

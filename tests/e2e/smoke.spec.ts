@@ -1412,6 +1412,113 @@ test('the status bar says when the repository was last fetched', async ({ page }
   await expect(page.locator('[data-last-fetch]')).toHaveText(/已获取 · 刚刚/);
 });
 
+test('auto fetch tries all remotes again after a partial failure', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await page.clock.install();
+
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+    ]);
+    const tracker = window as unknown as { __autoFetchCalls: string[] };
+    tracker.__autoFetchCalls = [];
+    ipc.fetch = async (_path, name) => {
+      tracker.__autoFetchCalls.push(name);
+      if (name === 'upstream') throw new Error('unavailable');
+      return { status: 'ok', message: 'Fetched origin' };
+    };
+    useRepo.setState({
+      lastFetchAt: null,
+      remotes: [
+        { name: 'origin', url: 'git@github.com:demo/angkorgit.git' },
+        { name: 'upstream', url: 'git@github.com:demo/upstream.git' },
+      ],
+    });
+  });
+
+  const calls = () => page.evaluate(() => (window as unknown as { __autoFetchCalls: string[] }).__autoFetchCalls);
+  await expect.poll(calls).toEqual(['origin', 'upstream']);
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(page.locator('[data-fetch-status]')).toHaveText(/Fetch incomplete/);
+
+  await page.clock.runFor(61_000);
+  await expect.poll(calls).toEqual(['origin', 'upstream', 'origin', 'upstream']);
+});
+
+test('partial fetches keep the timestamp and name failed remotes without raw errors', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }, { useSettings }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+      import('/src/features/settings/store.ts'),
+    ]);
+    useSettings.getState().setAutoFetchMinutes(0);
+    ipc.remotes = async () => [
+      { name: 'origin', url: 'git@github.com:demo/angkorgit.git' },
+      { name: 'upstream', url: 'git@github.com:demo/upstream.git' },
+    ];
+    ipc.fetch = async (_path, name) => {
+      if (name === 'upstream') throw new Error('private token expired');
+      return { status: 'ok', message: 'Fetched origin' };
+    };
+    await useRepo.getState().refresh();
+  });
+
+  const fetchButton = page.getByRole('button', { name: 'Fetch', exact: true });
+  await fetchButton.click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  const incomplete = page.locator('[data-fetch-status]');
+  await expect(incomplete).toHaveText(/Fetch incomplete/);
+  await expect(incomplete).toHaveClass(/text-faint/);
+  await incomplete.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('Failed to fetch: upstream');
+
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    ipc.fetch = async () => { throw new Error('offline libgit2 detail'); };
+  });
+  await fetchButton.click();
+  await expect(page.locator('[data-last-fetch]')).toBeVisible();
+  await incomplete.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('Failed to fetch: origin, upstream');
+
+  await page.evaluate(async () => {
+    const { useRepo } = await import('/src/features/repository/store.ts');
+    useRepo.setState({ lastFetchAt: Date.now() - 2 * 60 * 60_000 });
+  });
+  await expect(page.locator('[data-last-fetch]')).not.toHaveText(/Fetched just now/);
+  await page.getByRole('button', { name: 'Pull', exact: true }).click();
+  await expect(page.locator('[data-last-fetch]')).toHaveText(/Fetched just now/);
+  await expect(incomplete).toHaveText(/Fetch incomplete/);
+
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    ipc.fetch = async () => ({ status: 'ok', message: 'Fetched' });
+  });
+  await fetchButton.click();
+  await expect(incomplete).toHaveCount(0);
+
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+    ]);
+    ipc.remotes = async () => [];
+    await useRepo.getState().refresh();
+  });
+  await expect(fetchButton).toBeDisabled();
+  await page.mouse.move(0, 0);
+  await fetchButton.locator('..').hover();
+  await expect(page.getByRole('tooltip')).toHaveText('No remotes configured');
+});
+
 test('the diff header opens blame inside file history with authors per hunk', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
@@ -1581,4 +1688,275 @@ test('a diff selection keeps its lines after scrolling away and back', async ({ 
     await expect(rowAt(firstIndex)).toHaveCount(1);
     await expect.poll(selectionText).toBe(before);
   }
+});
+
+test('an unpushed commit message can be edited in place while a pushed one cannot', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+
+  await page.getByText('refactor(core): extract lane allocator').first().click();
+  await expect(inspector.getByRole('heading', { name: 'refactor(core): extract lane allocator' })).toBeVisible();
+  await expect(inspector.getByRole('button', { name: 'Edit commit message' })).toBeDisabled();
+
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const heading = inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows' });
+  await expect(heading).toBeVisible();
+  await expect(inspector.getByRole('button', { name: 'Edit commit message' })).toBeEnabled();
+
+  await heading.dblclick();
+  const summary = inspector.getByLabel('Commit summary');
+  await expect(summary).toBeFocused();
+  await expect(summary).toHaveValue('feat(graph): virtualize commit rows');
+  await expect(inspector.getByRole('button', { name: 'Save message' })).toBeDisabled();
+  await summary.press('Escape');
+  await expect(inspector.getByLabel('Commit summary')).toHaveCount(0);
+  await expect(heading).toBeVisible();
+
+  await inspector.getByRole('button', { name: 'Edit commit message' }).click();
+  await inspector.getByLabel('Commit summary').fill('feat(graph): virtualize commit rows, faster');
+  const description = inspector.getByLabel('Commit description');
+  const before = (await description.boundingBox())!.height;
+  const handle = inspector.getByRole('separator', { name: 'Resize description' });
+  const grip = (await handle.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2 + 90, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(async () => (await description.boundingBox())!.height).toBeGreaterThan(before + 60);
+  await handle.dblclick();
+  await expect.poll(async () => (await description.boundingBox())!.height).toBe(before);
+  await description.fill('Rows outside the viewport are never mounted.');
+  await inspector.getByRole('button', { name: 'Save message' }).click();
+
+  await expect(inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows, faster' })).toBeVisible();
+  await expect(inspector.getByText('Rows outside the viewport are never mounted.')).toBeVisible();
+  await expect(page.getByText('feat(graph): virtualize commit rows, faster')).toHaveCount(2);
+});
+
+test('the GitHub account form offers fine-grained and classic token pages', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Authentication', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Add account' }).click();
+  await expect(dialog.getByPlaceholder('Paste the token')).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Create one on GitHub' })).toHaveAttribute('href', /settings\/tokens\/new/);
+  await expect(dialog.getByRole('link', { name: 'fine-grained token' })).toHaveAttribute(
+    'href',
+    'https://github.com/settings/personal-access-tokens/new',
+  );
+  await expect(dialog.getByText(/Contents and Pull requests set to read and write/)).toBeVisible();
+  await dialog.getByText('Token', { exact: true }).click();
+  await expect(dialog.getByPlaceholder('Paste the token')).toBeFocused();
+});
+
+test('the fonts card changes the interface, code and terminal fonts and remembers them', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'Toggle terminal' }).click();
+  const rows = page.locator('.terminal-host .xterm-rows');
+  await expect(rows).toBeVisible();
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontSize)).toBe('12px');
+  const rootVar = (name: string) =>
+    page.evaluate((v) => getComputedStyle(document.documentElement).getPropertyValue(v), name);
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Reset fonts' })).toHaveCount(0);
+
+  await dialog.getByRole('combobox', { name: 'Interface font' }).click();
+  await expect(page.getByText('Fonts', { exact: true }).last()).toBeVisible();
+  await page.getByRole('option', { name: 'Helvetica Neue' }).click();
+  await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
+
+  await dialog.getByRole('combobox', { name: 'Code font' }).click();
+  await expect(page.getByText('Other fonts', { exact: true })).toBeVisible();
+  await page.getByRole('option', { name: 'Fira Code' }).click();
+  await expect.poll(() => rootVar('--font-mono')).toContain('Fira Code');
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Fira Code');
+  await expect(dialog.getByRole('combobox', { name: 'Terminal font', exact: true })).toContainText('Fira Code');
+
+  await dialog.getByRole('combobox', { name: 'Terminal font', exact: true }).click();
+  await page.getByRole('option', { name: 'Menlo' }).click();
+  const preview = dialog.locator('[data-terminal-font-preview]');
+  await expect.poll(() => preview.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Menlo');
+  await dialog.getByRole('combobox', { name: 'Terminal font size' }).click();
+  await page.getByRole('option', { name: '16 px' }).click();
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Menlo');
+  await expect.poll(() => rows.evaluate((el) => getComputedStyle(el).fontSize)).toBe('16px');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => rootVar('--font-sans')).toContain('Helvetica Neue');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const reopened = page.getByRole('dialog');
+  await reopened.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await expect(reopened.getByRole('combobox', { name: 'Terminal font', exact: true })).toContainText('Menlo');
+  await reopened.getByRole('button', { name: 'Reset fonts' }).click();
+  await expect.poll(() => rootVar('--font-sans')).not.toContain('Helvetica Neue');
+  await expect(reopened.getByRole('combobox', { name: 'Interface font' })).toContainText('Inter');
+  await expect(reopened.getByRole('button', { name: 'Reset fonts' })).toHaveCount(0);
+});
+
+test('sidebar section headers carry a gold icon tile and a count badge, with no dividers or fills', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  const sections = page.locator('[data-sidebar-section]');
+  await expect(sections).toHaveCount(7);
+  const borders = await sections.evaluateAll((els) => els.map((el) => getComputedStyle(el).borderTopWidth));
+  expect(borders).toEqual(borders.map(() => '0px'));
+  const transparent = (fill: string) => fill === 'rgba(0, 0, 0, 0)' || fill === 'transparent';
+  const fills = await page
+    .locator('[data-sidebar-section-header], [data-sidebar-section-body]')
+    .evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+  expect(fills.length).toBeGreaterThan(7);
+  expect(fills.every(transparent)).toBe(true);
+  const tiles = page.locator('[data-sidebar-section-icon]');
+  await expect(tiles).toHaveCount(7);
+  const tileFills = await tiles.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+  expect(tileFills.some(transparent)).toBe(false);
+  const branches = page.locator('[data-sidebar-section-header]').first();
+  await expect(branches.getByText('6', { exact: true })).toBeVisible();
+  const badgeFill = await branches.getByText('6', { exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(transparent(badgeFill)).toBe(false);
+});
+
+test('the commit file list filters by kind of change from the summary tokens', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
+  const all = inspector.getByRole('button', { name: 'All', exact: true });
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await inspector.getByRole('button', { name: '1 added' }).click();
+  await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
+  await expect(inspector.getByText('Architecture.md')).toBeHidden();
+  await expect(inspector.getByText('1 of 5')).toBeVisible();
+  await expect(all).toHaveAttribute('aria-pressed', 'false');
+  await all.click();
+  await expect(inspector.getByText('Architecture.md')).toBeVisible();
+  await expect(inspector.getByText('1 of 5')).toBeHidden();
+});
+
+test('the All files view lists every file at a commit and opens an unchanged one read-only', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  await expect(inspector.getByText('graphLayout.test.ts')).toBeVisible();
+  await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'All files' }).click();
+  await expect(inspector.getByText('5 changed')).toBeVisible();
+  await expect(inspector.getByText('Roadmap.md')).toBeVisible();
+  await expect(inspector.getByText('Architecture.md')).toBeVisible();
+  await expect(inspector.getByText('DiffPanel.tsx')).toBeHidden();
+  await inspector.getByRole('button', { name: /^diff/ }).click();
+  await expect(inspector.getByText('DiffPanel.tsx')).toBeVisible();
+
+  await inspector.getByText('Roadmap.md').click();
+  const diff = page.locator('section[aria-label="Diff for docs/Roadmap.md"]');
+  await expect(diff).toBeVisible();
+  await expect(diff.getByText('unchanged', { exact: true })).toBeVisible();
+  await expect(diff.getByText('import { render }')).toBeVisible();
+  await expect(diff.getByText(/^@@/)).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Folder tree' }).click();
+  await expect(inspector.getByText('Roadmap.md')).toHaveCount(0);
+  await expect(inspector.getByText('Architecture.md')).toBeVisible();
+});
+
+test('the All files view shows the whole working tree with changed files still actionable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  await expect(inspector.getByText('README.md')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'All files' }).click();
+  await expect(inspector.getByText('6 changed')).toBeVisible();
+  await expect(inspector.getByText('README.md')).toBeVisible();
+  await expect(inspector.getByLabel('Stage src/core/ipc.ts')).toBeVisible();
+  await expect(inspector.getByLabel('Unstage src/features/graph/CommitGraph.tsx')).toBeVisible();
+  await expect(inspector.getByText('DiffPanel.tsx')).toBeHidden();
+
+  await inspector.getByText('README.md').click();
+  const diff = page.locator('section[aria-label="Diff for README.md"]');
+  await expect(diff.getByText('unchanged', { exact: true })).toBeVisible();
+  await expect(diff.getByRole('button', { name: 'Stage file' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Flat file list' }).click();
+  await expect(inspector.getByText('README.md')).toHaveCount(0);
+  await expect(inspector.getByText(/^Changes/)).toBeVisible();
+});
+
+test('dragging a diff selection past the bottom edge keeps growing it and copies every line', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await page.getByText('palette-seed.sql').first().click();
+  await expect(page.getByText('temple gold').first()).toBeVisible();
+
+  const scroller = page.locator('section[aria-label^="Diff for"] div.overflow-y-auto');
+  await scroller.evaluate((el) => {
+    el.scrollTop = Math.max(0, el.scrollTop - 1500);
+  });
+  const box = await scroller.boundingBox();
+  if (!box) throw new Error('diff scroller not laid out');
+  const start = await scroller.evaluate((el) => {
+    const bounds = el.getBoundingClientRect();
+    const rows = [...el.querySelectorAll<HTMLElement>('[data-diff-row]')];
+    const row = rows.find((r) => {
+      const rect = r.getBoundingClientRect();
+      return rect.top > bounds.top + 40 && rect.bottom < bounds.bottom - 140;
+    });
+    if (!row) return null;
+    const rect = row.getBoundingClientRect();
+    return { text: row.textContent ?? '', x: rect.left + 30, y: rect.top + rect.height / 2 };
+  });
+  if (!start) throw new Error('no diff row to start from');
+
+  const below = { x: start.x + 200, y: box.y + box.height + 30 };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(below.x, below.y, { steps: 8 });
+  for (let i = 0; i < 6; i += 1) {
+    await page.waitForTimeout(100);
+    await page.mouse.move(below.x + (i % 2), below.y + (i % 2));
+  }
+  await page.mouse.up();
+
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.type)).toBe('Range');
+  await page.evaluate(() => {
+    (window as unknown as { __copied: string | null }).__copied = null;
+    document.addEventListener('copy', (e) => {
+      (window as unknown as { __copied: string | null }).__copied = e.clipboardData?.getData('text/plain') ?? '';
+    });
+  });
+  const copied = () => page.evaluate(() => (window as unknown as { __copied: string | null }).__copied);
+  await page.keyboard.press('ControlOrMeta+c');
+  await expect.poll(copied).not.toBeNull();
+  const selected = (await copied()) as string;
+  const lines = selected.split('\n');
+  expect(lines.length).toBeGreaterThanOrEqual(6);
+  expect(start.text.endsWith(lines[0])).toBe(true);
+
+  await scroller.evaluate((el) => {
+    el.scrollTop = Math.max(0, el.scrollTop - 4000);
+  });
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.type)).toBe('Range');
+  await page.keyboard.press('ControlOrMeta+c');
+  await expect.poll(copied).toBe(selected);
 });

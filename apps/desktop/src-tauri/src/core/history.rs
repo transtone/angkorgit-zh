@@ -373,3 +373,21 @@ pub fn single(path: &str, oid: &str) -> AppResult<CommitInfo> {
     let head_oid = repo.head().ok().and_then(|h| h.target());
     Ok(commit_info(&repo, &commit, &decorations, head_oid))
 }
+
+const UNPUSHED_CAP: usize = 1000;
+
+pub fn unpushed(path: &str) -> AppResult<Vec<String>> {
+    let repo = super::repo::open(path)?;
+    if repo.head().is_err() {
+        return Ok(Vec::new());
+    }
+    let mut walk = repo.revwalk()?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+    walk.push_head()?;
+    let _ = walk.hide_glob("refs/remotes/*");
+    Ok(walk
+        .take(UNPUSHED_CAP)
+        .filter_map(Result::ok)
+        .map(|oid| oid.to_string())
+        .collect())
+}

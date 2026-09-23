@@ -46,6 +46,7 @@ import {
 import { ipc, pickDirectory } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';
+import { fetchRemotes, fetchResultMessage } from '@/features/repository/fetchRemotes';
 import { abortMergeFlow } from '@/features/repository/merge';
 import { sidebarVisible, useUi } from '@/features/ui/store';
 import { useUndo } from '@/features/history/undoStore';
@@ -388,7 +389,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
     setBusy(label);
     try {
       const outcome = await op();
-      if (label === 'Fetch' || label.startsWith('Pull')) useRepo.getState().markFetched();
+      if (label.startsWith('Pull') && useRepo.getState().repo?.path === repo.path) useRepo.getState().markFetched();
       if (outcome && 'message' in outcome) {
         toastOutcome(outcome, `${label} 完成`);
       } else {
@@ -442,20 +443,28 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
-      <Hint label={remotes.length > 1 ? `Fetch all remotes (${remotes.map((r) => r.name).join(', ')})` : `获取 ${remote}`}>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!!busy}
-          onClick={() =>
-            void run('获取', async () => {
-              for (const r of remotes.length > 0 ? remotes : [{ name: remote }]) await ipc.fetch(repo.path, r.name, true, true);
-            })
-          }
-        >
-          <RefreshCw className={busy === '获取' ? 'animate-spin' : ''} />
-          获取
-        </Button>
+      <Hint label={remotes.length === 0 ? 'No remotes configured' : remotes.length > 1 ? `Fetch all remotes (${remotes.map((r) => r.name).join(', ')})` : `Fetch ${remote}`}>
+        <span className="inline-flex">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!!busy || remotes.length === 0}
+            onClick={() =>
+              void run('Fetch', async () => {
+                const result = await fetchRemotes(remotes.map((r) => r.name), (name) => ipc.fetch(repo.path, name, true, true));
+                const message = fetchResultMessage(result);
+                if (useRepo.getState().repo?.path === repo.path) {
+                  if (result.succeeded.length > 0) useRepo.getState().markFetched();
+                  useRepo.getState().setFetchFailures(result.failed.map(({ name }) => name));
+                }
+                return { status: result.succeeded.length === 0 ? 'failed' : result.failed.length > 0 ? 'partial' : 'ok', message };
+              })
+            }
+          >
+            <RefreshCw className={busy === 'Fetch' ? 'animate-spin' : ''} />
+            Fetch
+          </Button>
+        </span>
       </Hint>
       <div className="flex items-center">
         <Hint label={`从 ${remote} 拉取${status?.behind ? ` (${status.behind} behind)` : ''} · merge or rebase per pull.rebase`}>

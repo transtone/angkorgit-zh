@@ -46,7 +46,7 @@ AngKorGit 遵循 Clean Architecture，按功能划分文件夹。依赖方向朝
 
 **冲突解决即数据。** 冲突文件被解析为文本/冲突块（`parseConflicts`），解决器修改块的解决方案，`serializeResolution` 写出结果。未解决的块会重新输出其标记，因此半途而废的会话绝不会破坏数据。
 
-**AI 是一个适配器注册表。** 功能通过 `AiProvider` 接口调用能力（`generateCommitMessage`、`explainConflict`、…）。API 提供方（OpenAI、Anthropic、Gemini、Ollama、LM Studio）由配置创建；HTTP 经注入的传输层实现，该传输层由 Rust 代理实现（无 CORS，密钥不进入 webview fetch）。`cli` 提供方不同：它运行机器上已安装的 AI CLI（Claude Code、Codex、Gemini CLI、OpenCode），作为白名单本地子进程经 `ai_cli.rs` 运行——用用户自己的登录与配额，无需 API 密钥。新增 API 提供方只需动一个文件；新增 CLI 代理需要动 `cliAgents.ts` 和 `ai_cli.rs` 白名单。
+**AI is an adapter registry.** Features call capabilities (`generateCommitMessage`, `explainConflict`, …) against the `AiProvider` interface. API providers (OpenAI, Anthropic, Gemini, Ollama, LM Studio) are created from config; HTTP goes through an injected transport implemented by a Rust proxy (no CORS, keys stay out of webview fetch). The `cli` provider is different: it runs an AI CLI already installed on the machine (Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity) as an allowlisted local subprocess via `ai_cli.rs` — the user's own login and quota, no API key. Adding an API provider touches one file; adding a CLI agent touches `cliAgents.ts` plus the `ai_cli.rs` allowlist.
 
 **Credentials are layered, host-scoped, and never global.** App-managed accounts (tokens in the OS keyring under AngKorGit's own service, matched to remotes by host) come first, then SSH agent/keys, then the system `git 凭据` stack — so a GitLab token is never offered to GitHub. The same philosophy applies to committer identity: profiles apply to a repository's local config only, never the shared global gitconfig other tools fight over.
 
