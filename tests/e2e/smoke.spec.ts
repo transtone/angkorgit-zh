@@ -19,7 +19,7 @@ test('选择提交会打开检查器', async ({ page }) => {
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').first().click();
-  await expect(page.getByRole('complementary', { name: '检查器' }).getByLabel('4 个已修改')).toBeVisible();
+  await expect(page.getByRole('complementary', { name: '检查器' }).getByRole('button', { name: '4 已修改' })).toBeVisible();
 });
 
 test('命令面板可通过键盘快捷键打开', async ({ page }) => {
@@ -666,14 +666,14 @@ test('折叠全部侧边栏分区与分支文件夹', async ({ page }) => {
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: /^feature 1$/ }).click();
   await expect(page.getByText('diff-viewer', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /^远端 \d/ }).click();
-  await expect(page.getByRole('button', { name: /^远端 \d/ })).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('button', { name: '远端', exact: true }).click();
+  await expect(page.getByRole('button', { name: '远端', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await page.getByRole('button', { name: '折叠全部分区' }).click();
-  for (const name of [/^分支 \d/, /^工作树 \d/, /^远端 \d/, /^标签 \d/, /^暂存列表 \d/]) {
-    await expect(page.getByRole('button', { name })).toHaveAttribute('aria-expanded', 'false');
+  for (const name of ['分支', '工作树', '远端', '标签', '暂存列表']) {
+    await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-expanded', 'false');
   }
   await expect(page.getByText('develop', { exact: true })).toBeHidden();
-  await page.getByRole('button', { name: /^分支 \d/ }).click();
+  await page.getByRole('button', { name: '分支', exact: true }).click();
   await expect(page.getByText('develop', { exact: true })).toBeVisible();
   await expect(page.getByText('diff-viewer', { exact: true })).toBeHidden();
 });
@@ -758,7 +758,7 @@ test('dragging the sidebar shut and back open shows its content again', async ({
   await page.mouse.up();
   await expect(filter).toBeVisible();
   expect((await sidebar.boundingBox())?.width ?? 0).toBeGreaterThan(200);
-  await expect(page.getByRole('button', { name: /^分支 \d/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '分支', exact: true })).toBeVisible();
 });
 
 test('提交框将摘要行与较小的描述分隔开', async ({ page }) => {
@@ -876,20 +876,20 @@ test('侧边栏分区呈手风琴行为，折叠的标题保持固定', async ({
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: '折叠全部分区' }).click();
-  await page.getByRole('button', { name: /^分支 \d/ }).click();
+  await page.getByRole('button', { name: '分支', exact: true }).click();
   const aside = page.getByRole('complementary', { name: '分支与引用' });
   const asideBox = await aside.boundingBox();
-  const tagsBox = await page.getByRole('button', { name: /^标签 \d/ }).boundingBox();
-  const stashesBox = await page.getByRole('button', { name: /^暂存列表 \d/ }).boundingBox();
+  const tagsBox = await page.getByRole('button', { name: '标签', exact: true }).boundingBox();
+  const stashesBox = await page.getByRole('button', { name: '暂存列表', exact: true }).boundingBox();
   if (!asideBox || !tagsBox || !stashesBox) throw new Error('缺少侧边栏几何信息');
   expect(stashesBox.y + stashesBox.height).toBeGreaterThan(asideBox.y + asideBox.height - 90);
   expect(tagsBox.y).toBeLessThan(stashesBox.y);
   const developBox = await page.getByText('develop', { exact: true }).boundingBox();
   if (!developBox) throw new Error('缺少分支行');
   expect(developBox.y).toBeLessThan(tagsBox.y);
-  await page.getByRole('button', { name: /^标签 \d/ }).click();
+  await page.getByRole('button', { name: '标签', exact: true }).click();
   await expect(aside.getByText('v0.4.0', { exact: true })).toBeVisible();
-  const tagsAfter = await page.getByRole('button', { name: /^标签 \d/ }).boundingBox();
+  const tagsAfter = await page.getByRole('button', { name: '标签', exact: true }).boundingBox();
   if (!tagsAfter) throw new Error('缺少标签标题');
   expect(tagsAfter.y).toBeLessThan(tagsBox.y);
 });
