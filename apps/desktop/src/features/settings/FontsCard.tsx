@@ -125,8 +125,8 @@ export function FontsCard() {
       title="Fonts"
       description={
         <>
-          Pick any font installed on this computer. Interface is the whole app, Code is diffs, hashes and commit
-          details, and the terminal follows Code unless you give it its own. Want glyphs? Install one from{' '}
+          从本机已安装的字体中任选。界面字体作用于整个应用，代码字体用于差异、哈希与提交详情，
+          终端默认跟随代码字体，也可单独指定。缺少字形？可前往{' '}
           <a
             href={NERD_FONTS_URL}
             className="whitespace-nowrap text-primary hover:underline"
@@ -137,7 +137,7 @@ export function FontsCard() {
           >
             Nerd Fonts
           </a>
-          .
+          安装。
         </>
       }
       action={

@@ -117,7 +117,7 @@ export function StatusBar() {
         </Hint>
       )}
       {fetchFailures.length > 0 && (
-        <Hint label={`Failed to fetch: ${fetchFailures.join(', ')}`}>
+        <Hint label={`获取失败：${fetchFailures.join(', ')}`}>
           <span className="flex items-center gap-1 text-faint" data-fetch-status>
             <RefreshCw className="size-3" />
             Fetch incomplete

@@ -443,7 +443,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
-      <Hint label={remotes.length === 0 ? '无远端 configured' : remotes.length > 1 ? `Fetch all remotes (${remotes.map((r) => r.name).join(', ')})` : `获取 ${remote}`}>
+      <Hint label={remotes.length === 0 ? '无远端 configured' : remotes.length > 1 ? `获取全部远端（${remotes.map((r) => r.name).join('、')}）` : `获取 ${remote}`}>
         <span className="inline-flex">
           <Button
             variant="ghost"

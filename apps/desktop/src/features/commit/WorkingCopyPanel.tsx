@@ -975,7 +975,7 @@ export function WorkingCopyPanel() {
           <>
             <div className="mb-1 flex items-center justify-between px-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                All files{' '}
+                全部文件{' '}
                 {indexPaths && (
                   <span className="text-faint">
                     {filtering ? (
@@ -995,7 +995,7 @@ export function WorkingCopyPanel() {
               <FileTreeFoldButton state={allFoldState} onFold={(mode) => setAllFold((f) => nextFold(f, mode))} />
             </div>
             {indexError ? (
-              <p className="px-2 pb-2 text-xs text-danger [overflow-wrap:anywhere]">Could not list the files: {indexError}</p>
+              <p className="px-2 pb-2 text-xs text-danger [overflow-wrap:anywhere]">无法列出文件：{indexError}</p>
             ) : indexPaths === null ? (
               <div className="space-y-1 px-1">
                 {[0, 1, 2].map((i) => (

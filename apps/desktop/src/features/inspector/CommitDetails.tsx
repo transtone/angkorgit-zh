@@ -121,7 +121,7 @@ function ChangeFilter({
           type="button"
           aria-pressed={value === status}
           aria-label={`${count} ${statusMeta[status].label}`}
-          title={value === status ? 'Show every file' : `Show only ${statusMeta[status].label} files`}
+          title={value === status ? '显示全部文件' : `仅显示${statusMeta[status].label}`}
           className={cn(
             token,
             statusMeta[status].className,
@@ -671,7 +671,7 @@ export function CommitDetails({
               className="min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:border-0 focus-visible:ring-0"
             />
             <div className="flex items-center justify-between gap-2 border-t border-border-subtle px-2 py-1.5">
-              <span className="text-[11px] text-faint">{isMac ? '⌘⏎' : 'Ctrl+⏎'} to save · Esc to cancel</span>
+              <span className="text-[11px] text-faint">{isMac ? '⌘⏎' : 'Ctrl+⏎'} 保存 · Esc 取消</span>
               <span className="flex items-center gap-1.5">
                 <Button variant="ghost" size="sm" onClick={cancelEditing} disabled={saving}>
                   取消

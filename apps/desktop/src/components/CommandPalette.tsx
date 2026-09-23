@@ -333,7 +333,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           })()}
           <PaletteItem
             icon={<RefreshCw />}
-            label={remotes.length > 1 ? 'Fetch all remotes (with tags)' : '拉取（含标签）'}
+            label={remotes.length > 1 ? '获取全部远端（含标签）' : '拉取（含标签）'}
             onSelect={() =>
               run('获取', async () => {
                 const result = await fetchRemotes(remotes.map((r) => r.name), (name) => ipc.fetch(path, name, true, true));
