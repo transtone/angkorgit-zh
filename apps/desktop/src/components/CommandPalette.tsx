@@ -393,7 +393,8 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           )}
           <PaletteItem
             icon={<RefreshCw />}
-            label="刷新"
+            label="Refresh"
+            shortcut="R"
             onSelect={() => {
               close();
               void onRefresh();
@@ -592,6 +593,17 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         </>
         )}
       </Command.List>
+      <div className="flex items-center gap-4 border-t border-border-subtle px-3 py-1.5 text-[10px] text-faint">
+        <span className="flex items-center gap-1">
+          <Kbd>↑↓</Kbd> move
+        </span>
+        <span className="flex items-center gap-1">
+          <Kbd>⏎</Kbd> run
+        </span>
+        <span className="flex items-center gap-1">
+          <Kbd>esc</Kbd> {mode === 'commands' ? 'close' : 'back'}
+        </span>
+      </div>
     </Command.Dialog>
   );
 }

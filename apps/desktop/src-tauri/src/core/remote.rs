@@ -570,10 +570,28 @@ pub fn push(
 
     prime_account_bindings(Some(&repo));
     let mut remote = repo.find_remote(remote_name)?;
+    let rejected: std::sync::Arc<Mutex<Vec<(String, String)>>> = Default::default();
+    let mut callbacks = make_callbacks();
+    {
+        let rejected = std::sync::Arc::clone(&rejected);
+        callbacks.push_update_reference(move |refname, status| {
+            if let Some(reason) = status {
+                rejected
+                    .lock()
+                    .unwrap()
+                    .push((refname.to_string(), reason.to_string()));
+            }
+            Ok(())
+        });
+    }
     let mut opts = PushOptions::new();
-    opts.remote_callbacks(make_callbacks());
+    opts.remote_callbacks(callbacks);
     let specs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
     remote.push(&specs, Some(&mut opts))?;
+    let rejected = std::mem::take(&mut *rejected.lock().unwrap());
+    if !rejected.is_empty() {
+        return Err(AppError::other(rejection_message(remote_name, &rejected)));
+    }
     track_upstream(&repo)?;
 
     Ok(OpOutcome {
@@ -583,6 +601,24 @@ pub fn push(
             if force { "（强制）" } else { "" }
         ),
     })
+}
+
+pub(crate) fn rejection_message(remote_name: &str, rejected: &[(String, String)]) -> String {
+    let describe = |(refname, reason): &(String, String)| {
+        let (kind, name) = if let Some(tag) = refname.strip_prefix("refs/tags/") {
+            ("tag", tag)
+        } else if let Some(branch) = refname.strip_prefix("refs/heads/") {
+            ("branch", branch)
+        } else {
+            ("ref", refname.as_str())
+        };
+        format!("{kind} {name} ({reason})")
+    };
+    let list = rejected.iter().map(describe).collect::<Vec<_>>().join(", ");
+    format!(
+        "{remote_name} rejected {list}. Nothing else from this push was rolled back; fix the \
+         rejected ref and push again."
+    )
 }
 
 fn tracking_ref_matches(repo: &Repository, remote_name: &str, branch_name: &str) -> bool {
@@ -801,6 +837,27 @@ pub fn checkout_head_force(repo: &Repository) -> AppResult<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn rejection_message_names_each_ref_like_git_does() {
+        let message = super::rejection_message(
+            "origin",
+            &[
+                ("refs/tags/v1.0".to_string(), "already exists".to_string()),
+                (
+                    "refs/heads/main".to_string(),
+                    "non-fast-forward".to_string(),
+                ),
+            ],
+        );
+        assert!(
+            message.starts_with(
+                "origin rejected tag v1.0 (already exists), branch main (non-fast-forward)"
+            ),
+            "{message}"
+        );
+        assert!(!message.contains("refs/"));
+    }
+
     use super::*;
 
     fn home() -> PathBuf {

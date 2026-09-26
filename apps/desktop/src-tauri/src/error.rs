@@ -34,7 +34,17 @@ impl AppError {
         digits.parse().ok()
     }
 
+    fn is_non_fast_forward(&self) -> bool {
+        matches!(self, AppError::Git(error) if error.code() == git2::ErrorCode::NotFastForward)
+    }
+
     fn message(&self) -> String {
+        if self.is_non_fast_forward() {
+            return "The remote has commits this branch does not have yet. Pull with rebase to \
+                    bring them in first, or force push if you rewrote commits that were already \
+                    pushed (amend or rebase)."
+                .to_string();
+        }
         match self.http_status() {
             Some(401) => "HTTP 401——主机拒绝了凭据。 如果此远端使用 \
                           关联账户，其令牌可能已过期或被吊销—— \
@@ -119,6 +129,19 @@ mod tests {
             git_error("unexpected http status code: 403; class=Http (34)").http_status(),
             Some(403)
         );
+    }
+
+    #[test]
+    fn non_fast_forward_pushes_get_a_next_step_instead_of_the_libgit2_text() {
+        let error = AppError::Git(git2::Error::new(
+            git2::ErrorCode::NotFastForward,
+            git2::ErrorClass::Reference,
+            "cannot push non-fastforwardable reference",
+        ));
+        assert_eq!(error.code(), "non_fast_forward");
+        assert!(error.message().contains("Pull with rebase"));
+        assert!(error.message().contains("force push"));
+        assert!(!error.message().contains("non-fastforwardable"));
     }
 
     #[test]

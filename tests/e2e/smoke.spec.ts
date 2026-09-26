@@ -566,14 +566,16 @@ test('侧边栏列出演示拉取请求并打开创建对话框', async ({ page 
   await expect(page.getByText(/side-by-side word diff polish/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('草稿', { exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: '创建拉取请求', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /创建拉取请求/ })).toBeVisible();
-  await expect(page.getByPlaceholder('标题')).toBeVisible();
-  await page.getByRole('button', { name: '取消' }).click();
-  await expect(page.getByRole('heading', { name: /创建拉取请求/ })).toBeHidden();
+  await page.getByText('Pull requests').hover();
+  await page.getByRole('button', { name: 'Create pull request', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Create pull request' })).toBeVisible();
+  await expect(page.getByPlaceholder('Title')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Create pull request' })).toBeHidden();
 
-  await page.getByRole('button', { name: '创建拉取请求', exact: true }).click();
-  await page.getByRole('button', { name: '添加审查人' }).click();
+  await page.getByText('Pull requests').hover();
+  await page.getByRole('button', { name: 'Create pull request', exact: true }).click();
+  await page.getByRole('button', { name: 'Add reviewers' }).click();
   await expect(page.getByRole('menuitemcheckbox', { name: /Dara Kim/ })).toBeVisible();
 });
 
@@ -631,8 +633,9 @@ test('侧边栏列出演示工作树并打开新建工作树对话框', async ({
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('工作树', { exact: true })).toBeVisible();
   await expect(page.getByText('angkorgit-feature-diff-viewer')).toBeVisible();
-  await expect(page.getByText('文件夹缺失')).toBeVisible();
-  await page.getByRole('button', { name: '新建工作树' }).click();
+  await expect(page.getByText('folder missing')).toBeVisible();
+  await page.getByText('Worktrees', { exact: true }).hover();
+  await page.getByRole('button', { name: 'New worktree' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('新建工作树')).toBeVisible();
   await expect(dialog.getByPlaceholder('/path/to/new-folder')).toHaveValue(
@@ -1959,4 +1962,86 @@ test('dragging a diff selection past the bottom edge keeps growing it and copies
   await expect.poll(() => page.evaluate(() => window.getSelection()?.type)).toBe('Range');
   await page.keyboard.press('ControlOrMeta+c');
   await expect.poll(copied).toBe(selected);
+});
+
+test('the diff header reviews and explains a single file with AI', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  const chip = page.locator('[data-ai-status]');
+  await chip.click();
+  const settings = page.getByRole('dialog');
+  await settings.getByRole('combobox').first().click();
+  await page.getByRole('option', { name: /Installed AI CLI/ }).click();
+  await settings.getByRole('button', { name: /Claude Code/ }).click();
+  await expect(chip).toHaveText('Claude Code');
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+
+  await page.getByText('ipc.ts', { exact: true }).first().click();
+  const diff = page.locator('section[aria-label="Diff for src/core/ipc.ts"]');
+  await expect(diff).toBeVisible();
+  const aiButton = diff.getByRole('button', { name: 'AI actions' });
+  await expect(aiButton).toBeEnabled();
+  await aiButton.click();
+  await page.getByRole('menuitem', { name: 'Review changes' }).click();
+  const panel = diff.locator('[data-ai-result-panel]');
+  await expect(panel).toHaveAttribute('data-ai-result-panel', 'busy');
+  await expect(panel).toContainText('AI review');
+  await expect(aiButton).toBeDisabled();
+  await expect(panel).toHaveAttribute('data-ai-result-panel', 'done', { timeout: 10_000 });
+  await expect(panel).toContainText('demo response');
+  await expect(aiButton).toBeEnabled();
+
+  await expect(diff.getByRole('button', { name: 'Copy AI review' })).toBeVisible();
+  await diff.getByRole('button', { name: 'Fold the AI review' }).click();
+  await expect(panel).toHaveAttribute('data-ai-folded', 'true');
+  await expect(panel.locator('[data-ai-body]')).toHaveCount(0);
+  await diff.getByRole('button', { name: 'Show the AI review' }).click();
+  await expect(panel.locator('[data-ai-body]')).toContainText('demo response');
+  await diff.getByRole('button', { name: 'Open AI review in full view' }).click();
+  const fullView = page.getByRole('dialog');
+  await expect(fullView).toContainText('demo response');
+  await fullView.getByRole('button', { name: 'Done' }).click();
+  await expect(fullView).toBeHidden();
+
+  await page.keyboard.press('Escape');
+  await expect(diff).toBeHidden();
+  await page.getByText('ipc.ts', { exact: true }).first().click();
+  await expect(diff).toBeVisible();
+  await expect(diff.locator('[data-ai-result-panel]')).toHaveCount(0);
+
+  await aiButton.click();
+  await page.getByRole('menuitem', { name: 'Explain changes' }).click();
+  await expect(diff.locator('[data-ai-result-panel]')).toContainText('AI explanation');
+  await expect(diff.locator('[data-ai-result-panel]')).toHaveAttribute('data-ai-result-panel', 'done', { timeout: 10_000 });
+  await diff.getByRole('button', { name: 'Dismiss AI explanation' }).click();
+  await expect(diff.locator('[data-ai-result-panel]')).toHaveCount(0);
+});
+
+test('a commit can be reviewed with AI from the inspector', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  const chip = page.locator('[data-ai-status]');
+  await chip.click();
+  const settings = page.getByRole('dialog');
+  await settings.getByRole('combobox').first().click();
+  await page.getByRole('option', { name: /Installed AI CLI/ }).click();
+  await settings.getByRole('button', { name: /Claude Code/ }).click();
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  const inspector = page.locator('[aria-label="Commit files"]').locator('..');
+  await expect(page.getByRole('button', { name: 'Review with AI' })).toBeVisible();
+  await page.getByRole('button', { name: 'Review with AI' }).click();
+  await expect(page.getByRole('button', { name: 'Stop reviewing' })).toBeVisible();
+  const panel = inspector.locator('[data-ai-result-panel]');
+  await expect(panel).toContainText('AI review');
+  await expect(panel).toHaveAttribute('data-ai-result-panel', 'done', { timeout: 10_000 });
+  await expect(panel).toContainText('demo response');
+  await expect(page.getByRole('button', { name: 'Review with AI' })).toBeVisible();
+  await page.getByRole('button', { name: 'Dismiss AI review' }).click();
+  await expect(panel).toHaveCount(0);
 });

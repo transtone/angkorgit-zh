@@ -1,13 +1,13 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { AlertTriangle, Archive, Code, Copy, ExternalLink, File as FileIcon, FolderOpen, History, UserRoundSearch, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
+import { AlertTriangle, Archive, Check, Code, Copy, ExternalLink, File as FileIcon, FolderOpen, History, UserRoundSearch, Minus, Pencil, Plus, SearchCheck, Sparkles, SquareCheck, Trash2, Undo2 } from 'lucide-react';
 import type { AllFilesEntry, FileStatus } from '@angkorgit/core';
 import { aiCapabilities, allFiles, buildStagedReviewSignature, filterFiles, foldersWithChanges, hasCommittedHistory, hashText, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
 import {
-  Badge,
   Button,
   Checkbox,
+  Kbd,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,8 +25,8 @@ import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
 import { focusRequests, useUi } from '@/features/ui/store';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
-import { AiText } from '@/features/ai/AiText';
-import { AiResultDialog } from '@/features/ai/AiResultDialog';
+import { AiResultPanel } from '@/features/ai/AiResultPanel';
+import { REVIEW_WAIT_MESSAGES } from '@/features/ai/waitMessages';
 import { useAiWork } from '@/features/ai/workStore';
 import { useSettings } from '@/features/settings/store';
 import { ensureRepoProfile } from '@/features/settings/profiles';
@@ -36,22 +36,25 @@ import { abortMergeFlow } from '@/features/repository/merge';
 import { useCommitDraft } from './draftStore';
 import { confirmDialog } from '@/components/confirm';
 import { FileFilterInput } from '@/components/FileFilterInput';
+import { ChangeMark } from '@/components/ChangeMark';
+import { DirName } from '@/components/DirName';
+import { EmptyCard } from '@/components/EmptyCard';
 import { FileTree, treeIndent as sharedTreeIndent, FileTreeFoldButton, INITIAL_FOLD, nextFold, type FileTreeFold, type FileTreeFoldState } from '@/components/FileTree';
-import { basename, dirname, isMac } from '@/shared/utils';
+import { basename, isMac, modKey } from '@/shared/utils';
 
 function statusBadge(kind: string | null) {
   switch (kind) {
     case 'new':
     case 'untracked':
-      return <Badge tone="success">A</Badge>;
+      return <ChangeMark tone="success" title="Added">A</ChangeMark>;
     case 'modified':
-      return <Badge tone="info">M</Badge>;
+      return <ChangeMark tone="info" title="Modified">M</ChangeMark>;
     case 'deleted':
-      return <Badge tone="danger">D</Badge>;
+      return <ChangeMark tone="danger" title="Deleted">D</ChangeMark>;
     case 'renamed':
-      return <Badge tone="primary">R</Badge>;
+      return <ChangeMark tone="primary" title="Renamed">R</ChangeMark>;
     case 'conflicted':
-      return <Badge tone="danger">!</Badge>;
+      return <ChangeMark tone="danger" title="Conflicted">!</ChangeMark>;
     default:
       return null;
   }
@@ -101,9 +104,7 @@ const FileRow = memo(function FileRow({
         {statusBadge(conflicted && !staged ? 'conflicted' : kind)}
         <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
           <span className="max-w-full shrink-0 truncate text-foreground">{basename(file.path)}</span>
-          {!treeMode && dirname(file.path) && (
-            <span className="min-w-0 flex-1 truncate text-faint">{dirname(file.path)}</span>
-          )}
+          {!treeMode && <DirName path={file.path} />}
         </span>
         {onDiscard && (
           <Button
@@ -137,17 +138,7 @@ const COMMIT_BOX_MIN = 72;
 const COMMIT_BOX_AUTO_MAX = 260;
 const COMMIT_BOX_MAX = 600;
 
-const REVIEW_WAIT_MESSAGES = [
-  '正在读取暂存更改…',
-  '正在思考边界情况…',
-  '正在查找缺陷…',
-  '正在检查你的约定…',
-  '正在查找缺失的测试…',
-  '正在润色反馈…',
-];
-
-const UNSTAGED_ROW_HEIGHT = 36;
-const STAGED_ROW_HEIGHT = 30;
+const FILE_ROW_HEIGHT = 32;
 
 function VirtualFileList({
   files,
@@ -254,8 +245,6 @@ export function WorkingCopyPanel() {
   const [committing, setCommitting] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const aiRunRef = useRef(0);
-  const [reviewExpanded, setReviewExpanded] = useState(false);
-  const [waitIndex, setWaitIndex] = useState(0);
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; staged: boolean } | null>(null);
   const [multi, setMulti] = useState<{ staged: boolean; paths: string[] } | null>(null);
   const messageRef = useRef<HTMLTextAreaElement | null>(null);
@@ -359,17 +348,6 @@ export function WorkingCopyPanel() {
       useAiWork.getState().setReview(path, null);
     }
   }, [review, path, stagedSignature]);
-
-  useEffect(() => {
-    if (!reviewCurrent) setReviewExpanded(false);
-  }, [reviewCurrent]);
-
-  useEffect(() => {
-    if (!reviewBusy) return;
-    setWaitIndex(Math.floor(Math.random() * REVIEW_WAIT_MESSAGES.length));
-    const timer = setInterval(() => setWaitIndex((i) => i + 1), 6000);
-    return () => clearInterval(timer);
-  }, [reviewBusy]);
 
   useEffect(() => {
     if (!reviewCurrent || !review) return;
@@ -649,6 +627,8 @@ export function WorkingCopyPanel() {
     }
   };
 
+  const cleanTree = status !== null && files.length === 0 && conflicts.length === 0 && !filtering;
+
   const stopReview = () => {
     if (path) useAiWork.getState().stopReview(path);
   };
@@ -695,8 +675,7 @@ export function WorkingCopyPanel() {
     };
   });
 
-  const unstagedRowHeight = useCallback(() => UNSTAGED_ROW_HEIGHT, []);
-  const stagedRowHeight = useCallback(() => STAGED_ROW_HEIGHT, []);
+  const fileRowHeight = useCallback(() => FILE_ROW_HEIGHT, []);
 
   const visibleOrder = useMemo(
     () =>
@@ -888,7 +867,7 @@ export function WorkingCopyPanel() {
         }}
       >
         {changedFiles.length > 0 && <span className="size-4 shrink-0" />}
-        <span className="flex w-7 shrink-0 justify-center">
+        <span className="flex w-4 shrink-0 justify-center">
           <FileIcon className="size-3.5 text-faint" />
         </span>
         <span className="min-w-0 flex-1 truncate">{basename(file)}</span>
@@ -938,6 +917,23 @@ export function WorkingCopyPanel() {
           </div>
         ) : (
         <>
+        {cleanTree ? (
+          <EmptyCard
+            tone="success"
+            icon={<Check />}
+            title="Working tree clean"
+            description="Nothing to commit. Edits you make show up here."
+            className="mt-1"
+            action={
+              !amend && repo?.state !== 'merge' ? (
+                <Button variant="ghost" size="sm" className="-mb-1 self-start text-muted" onClick={() => setAmend(true)}>
+                  <Undo2 className="size-3" /> Amend last commit…
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+        <>
         {conflicts.length > 0 && (
           <>
             <div className="mb-1 flex items-center justify-between px-2">
@@ -960,10 +956,10 @@ export function WorkingCopyPanel() {
                   className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-danger/10"
                   onClick={() => openConflict(file)}
                 >
-                  <Badge tone="danger" className="w-5 shrink-0 justify-center px-0 font-mono">!</Badge>
+                  <ChangeMark tone="danger" title="Conflicted">!</ChangeMark>
                   <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
                     <span className="max-w-full shrink-0 truncate font-medium text-foreground">{basename(file)}</span>
-                    {dirname(file) && <span className="min-w-0 flex-1 truncate text-[11px] text-faint">{dirname(file)}</span>}
+                    <DirName path={file} className="text-[11px]" />
                   </span>
                   <span className="shrink-0 text-[11px] text-danger opacity-0 transition-opacity group-hover:opacity-100">解决</span>
                 </button>
@@ -1075,11 +1071,14 @@ export function WorkingCopyPanel() {
           <VirtualFileList
             files={unstagedFiles}
             scrollRef={listScrollRef}
-            rowHeight={unstagedRowHeight}
+            rowHeight={fileRowHeight}
             renderRow={renderUnstaged}
           />
         )}
-        <div className="mb-1 mt-3 flex items-center justify-between px-2">
+        <div
+          data-staged-header
+          className="mb-1 mt-3 flex items-center justify-between border-t border-border-subtle px-2 pt-3"
+        >
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             Staged {countLabel(stagedFiles.length, allStaged.length)}
           </span>
@@ -1118,11 +1117,16 @@ export function WorkingCopyPanel() {
             </span>
           )}
         </div>
-        {stagedFiles.length === 0 && (
-          <p className="px-2 pb-2 text-xs text-faint">
-            {filtering && allStaged.length > 0 ? '没有匹配过滤条件的已暂存文件。' : '尚未暂存任何内容。'}
-          </p>
-        )}
+        {stagedFiles.length === 0 &&
+          (filtering && allStaged.length > 0 ? (
+            <p className="px-2 pb-2 text-xs text-faint">No staged files match the filter.</p>
+          ) : (
+            <EmptyCard
+              icon={<SquareCheck />}
+              title="Nothing staged"
+              description="Tick a file above, or Stage all, to put it in the next commit."
+            />
+          ))}
         {fileTree ? (
           <FileTree
             items={stagedFiles}
@@ -1135,11 +1139,13 @@ export function WorkingCopyPanel() {
           <VirtualFileList
             files={stagedFiles}
             scrollRef={listScrollRef}
-            rowHeight={stagedRowHeight}
+            rowHeight={fileRowHeight}
             renderRow={renderStaged}
           />
         )}
           </>
+        )}
+        </>
         )}
         </>
         )}
@@ -1178,9 +1184,6 @@ export function WorkingCopyPanel() {
                 >
                   <Minus /> 取消暂存文件
                 </DropdownMenuItem>
-                <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file, true)}>
-                  <Trash2 /> Discard changes…
-                </DropdownMenuItem>
               </>
             ) : (
               <>
@@ -1188,9 +1191,6 @@ export function WorkingCopyPanel() {
                   onClick={() => void run(() => ipc.stageFile(path, fileMenu.file.path), '暂存失败')}
                 >
                   <Plus /> 暂存文件
-                </DropdownMenuItem>
-                <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file)}>
-                  <Trash2 /> Discard changes…
                 </DropdownMenuItem>
               </>
             )}
@@ -1260,6 +1260,9 @@ export function WorkingCopyPanel() {
               <Copy /> Copy absolute path
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file, fileMenu.staged)}>
+              <Trash2 /> Discard changes…
+            </DropdownMenuItem>
             <DropdownMenuItem
               destructive
               onClick={() => {
@@ -1286,13 +1289,7 @@ export function WorkingCopyPanel() {
         </DropdownMenu>
       )}
 
-      {status === null ? null : files.length === 0 && !amend && repo?.state !== 'merge' ? (
-        <div className="shrink-0 border-t border-border-subtle px-3 py-2">
-          <Button variant="ghost" size="sm" className="text-muted" onClick={() => setAmend(true)}>
-            <Undo2 className="size-3" /> 修订上一次提交…
-          </Button>
-        </div>
-      ) : (
+      {status === null ? null : files.length === 0 && !amend && repo?.state !== 'merge' ? null : (
         <div className="relative shrink-0 border-t border-border-subtle p-3">
           <div
             role="separator"
@@ -1312,65 +1309,17 @@ export function WorkingCopyPanel() {
               )}
             />
           </div>
-          {reviewBusy && (
-            <div className="mb-2 rounded-md border border-primary/30 bg-primary/5 text-xs leading-relaxed">
-              <div className="flex items-center justify-between pl-3 pr-1.5 pt-1.5">
-                <span className="flex items-center gap-1.5 font-medium text-primary">
-                  <SearchCheck className="size-3.5" /> AI 审查
-                </span>
-                <Hint label="停止审查">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="停止 AI 审查"
-                    onClick={stopReview}
-                  >
-                    <X className="size-3" />
-                  </Button>
-                </Hint>
-              </div>
-              <div className="flex items-center gap-2.5 px-3 pb-2.5 pt-1.5 text-muted">
-                <Logo size={18} animated="loop" className="logo-draw-loop shrink-0" />
-                <span key={waitIndex} className="animate-fade-in">
-                  {REVIEW_WAIT_MESSAGES[waitIndex % REVIEW_WAIT_MESSAGES.length]}
-                </span>
-              </div>
-            </div>
-          )}
-          {!reviewBusy && review && reviewCurrent && (
-            <div className="mb-2 rounded-md border border-primary/30 bg-primary/5 text-xs leading-relaxed">
-              <div className="flex items-center justify-between pl-3 pr-1.5 pt-1.5">
-                <span className="flex items-center gap-1.5 font-medium text-primary">
-                  <SearchCheck className="size-3.5" /> AI 审查
-                </span>
-                <span className="flex items-center">
-                  <Hint label="在完整视图中打开审查">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="在完整视图中打开 AI 审查"
-                      onClick={() => setReviewExpanded(true)}
-                    >
-                      <Maximize2 className="size-3" />
-                    </Button>
-                  </Hint>
-                  <Hint label="关闭审查">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="关闭 AI 审查"
-                      onClick={() => useAiWork.getState().setReview(path, null)}
-                    >
-                      <X className="size-3" />
-                    </Button>
-                  </Hint>
-                </span>
-              </div>
-              <div className="max-h-56 overflow-y-auto px-3 pb-2.5 pt-1">
-                <AiText text={review.text} />
-              </div>
-            </div>
-          )}
+          <AiResultPanel
+            title="AI review"
+            icon={<SearchCheck className="size-3.5" />}
+            busy={reviewBusy}
+            waitMessages={REVIEW_WAIT_MESSAGES}
+            text={review && reviewCurrent ? review.text : null}
+            onStop={stopReview}
+            onDismiss={() => useAiWork.getState().setReview(path, null)}
+            className="mb-2"
+            bodyClassName="max-h-56"
+          />
           <div
             className={cn(
               'rounded-md border border-border bg-surface shadow-sm transition-colors',
@@ -1436,8 +1385,8 @@ export function WorkingCopyPanel() {
                   summaryRef.current?.focus();
                 }
               }}
-              placeholder="说明——改了什么以及为什么  ·  ⌘⏎ 提交"
-              aria-label="提交说明"
+              placeholder="What changed and why"
+              aria-label="Commit description"
               className={cn(
                 'min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:ring-0 focus-visible:border-0',
                 commitBoxHeight === null ? 'max-h-[260px]' : 'max-h-[600px] overflow-y-auto',
@@ -1449,11 +1398,18 @@ export function WorkingCopyPanel() {
               <Checkbox checked={amend} onCheckedChange={(v) => setAmend(v === true)} />
               <Undo2 className="size-3" /> 修订
             </label>
-            <Hint label="提交前用 AI 审查暂存更改">
+            <Hint
+              label={
+                stagedFiles.length === 0
+                  ? 'Stage some changes to review them with AI'
+                  : 'Review staged changes with AI before committing'
+              }
+            >
+              <span className="inline-flex">
               <Button
                 variant="outline"
                 size="sm"
-                disabled={reviewBusy || committing || aiBusy}
+                disabled={reviewBusy || committing || aiBusy || stagedFiles.length === 0}
                 onClick={() => void reviewStaged()}
               >
                 {reviewBusy ? (
@@ -1463,6 +1419,7 @@ export function WorkingCopyPanel() {
                 )}
                 审查
               </Button>
+              </span>
             </Hint>
             {repo?.state === 'merge' && (
               <Hint label="将工作副本重置为合并开始前的状态">
@@ -1476,29 +1433,35 @@ export function WorkingCopyPanel() {
                 </Button>
               </Hint>
             )}
-            <Button
-              size="sm"
-              disabled={
-                committing ||
-                (!summary.trim() && !amend) ||
-                (stagedFiles.length === 0 && !amend && repo?.state !== 'merge')
+            <Hint
+              label={
+                <span className="flex items-center gap-1">
+                  {stagedFiles.length === 0 && !amend && repo?.state !== 'merge'
+                    ? 'Stage a file to commit'
+                    : 'Commit'}{' '}
+                  <Kbd>{modKey()}</Kbd>
+                  <Kbd>⏎</Kbd>
+                </span>
               }
-              onClick={() => void commit()}
             >
-              {committing && <Spinner className="text-primary-foreground" />}
-              {amend ? '修订提交' : `提交${stagedFiles.length > 0 ? ` ${stagedFiles.length} 个文件` : ''}`}
-            </Button>
+              <span className="inline-flex">
+              <Button
+                size="sm"
+                disabled={
+                  committing ||
+                  (!summary.trim() && !amend) ||
+                  (stagedFiles.length === 0 && !amend && repo?.state !== 'merge')
+                }
+                onClick={() => void commit()}
+              >
+                {committing && <Spinner className="text-primary-foreground" />}
+                {amend ? 'Amend commit' : `Commit${stagedFiles.length > 0 ? ` ${stagedFiles.length} file${stagedFiles.length === 1 ? '' : 's'}` : ''}`}
+              </Button>
+              </span>
+            </Hint>
           </div>
         </div>
       )}
-
-      <AiResultDialog
-        open={reviewExpanded && !!review && reviewCurrent}
-        onOpenChange={(open) => !open && setReviewExpanded(false)}
-        title="AI 审查"
-        icon={<SearchCheck className="size-4 text-primary" />}
-        text={review?.text ?? ''}
-      />
     </div>
   );
 }

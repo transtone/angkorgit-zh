@@ -29,6 +29,45 @@ function findMatches(diff: FileDiff, query: string, caseSensitive: boolean): Dif
   return matches;
 }
 
+export function scrollDiffToLine(
+  el: HTMLDivElement,
+  diff: FileDiff,
+  target: DiffLine,
+  split: boolean,
+  wrap: boolean,
+): void {
+  if (wrap) {
+    requestAnimationFrame(() => {
+      el.querySelector('[data-search-current="true"]')?.scrollIntoView({ block: 'center' });
+    });
+    return;
+  }
+  const rows = flattenDiff(diff, split);
+  let offset = 0;
+  for (const row of rows) {
+    const hit =
+      row.kind === 'line'
+        ? row.line === target
+        : row.kind === 'pair' && (row.left === target || row.right === target);
+    if (hit) break;
+    offset += row.kind === 'header' ? HEADER_H : LINE_H;
+  }
+  el.scrollTo({ top: Math.max(0, offset - el.clientHeight * 0.35) });
+  const revealHorizontally = () => {
+    const mark = el.querySelector('[data-search-mark="current"]');
+    const pane = mark?.closest('[data-diff-pane]');
+    if (!mark || !pane) return;
+    const panBy = panControllers.get(pane as HTMLElement);
+    if (!panBy) return;
+    const paneRect = pane.getBoundingClientRect();
+    const markRect = mark.getBoundingClientRect();
+    if (markRect.left < paneRect.left + 24 || markRect.right > paneRect.right - 24) {
+      panBy(markRect.left - paneRect.left - paneRect.width * 0.3);
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(revealHorizontally));
+}
+
 export function useDiffFind(diff: FileDiff | null, scrollRef: React.RefObject<HTMLDivElement>) {
   const diffView = useUi((s) => s.diffView);
   const wrapLines = useUi((s) => s.wrapLines);
@@ -63,37 +102,7 @@ export function useDiffFind(diff: FileDiff | null, scrollRef: React.RefObject<HT
     if (!open || matches.length === 0 || !diff) return;
     const el = scrollRef.current;
     if (!el) return;
-    if (wrapLines) {
-      requestAnimationFrame(() => {
-        el.querySelector('[data-search-current="true"]')?.scrollIntoView({ block: 'center' });
-      });
-      return;
-    }
-    const target = matches[bounded];
-    const rows = flattenDiff(diff, diffView === 'split');
-    let offset = 0;
-    for (const row of rows) {
-      const hit =
-        row.kind === 'line'
-          ? row.line === target.line
-          : row.kind === 'pair' && (row.left === target.line || row.right === target.line);
-      if (hit) break;
-      offset += row.kind === 'header' ? HEADER_H : LINE_H;
-    }
-    el.scrollTo({ top: Math.max(0, offset - el.clientHeight * 0.35) });
-    const revealHorizontally = () => {
-      const mark = el.querySelector('[data-search-mark="current"]');
-      const pane = mark?.closest('[data-diff-pane]');
-      if (!mark || !pane) return;
-      const panBy = panControllers.get(pane as HTMLElement);
-      if (!panBy) return;
-      const paneRect = pane.getBoundingClientRect();
-      const markRect = mark.getBoundingClientRect();
-      if (markRect.left < paneRect.left + 24 || markRect.right > paneRect.right - 24) {
-        panBy(markRect.left - paneRect.left - paneRect.width * 0.3);
-      }
-    };
-    requestAnimationFrame(() => requestAnimationFrame(revealHorizontally));
+    scrollDiffToLine(el, diff, matches[bounded].line, diffView === 'split', wrapLines);
   }, [open, matches, bounded, diff, diffView, wrapLines, scrollRef]);
 
   useEffect(() => {

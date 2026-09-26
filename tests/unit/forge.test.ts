@@ -802,3 +802,40 @@ describe('pull requests from a fork into upstream', () => {
     expect(defaultForgeTarget([], 'origin')).toBe('origin');
   });
 });
+
+describe('declared forge hosts (issue #32)', () => {
+  it('falls back to the connected account kind for a host the substring rules miss', async () => {
+    const core = await import('@angkorgit/core');
+    core.registerForgeHosts([]);
+    expect(core.parseForgeRemote('ssh://git@code.example.com:2222/group/project.git')).toBeNull();
+    core.registerForgeHosts([{ host: 'code.example.com', kind: 'gitlab' }]);
+    const remote = core.parseForgeRemote('ssh://git@code.example.com:2222/group/project.git');
+    expect(remote).toMatchObject({ kind: 'gitlab', owner: 'group', repo: 'project', host: 'code.example.com' });
+    expect(core.parseForgeRemote('https://code.example.com/group/sub/project.git')).toMatchObject({
+      kind: 'gitlab',
+      owner: 'group/sub',
+      repo: 'project',
+    });
+    core.registerForgeHosts([{ host: 'git.corp.example', kind: 'github' }]);
+    expect(core.parseForgeRemote('git@git.corp.example:acme/tool.git')).toMatchObject({ kind: 'github', owner: 'acme', repo: 'tool' });
+    expect(core.parseForgeRemote('ssh://git@code.example.com:2222/group/project.git')).toBeNull();
+    core.registerForgeHosts([]);
+  });
+
+  it('maps account providers to forge kinds and ignores unknown ones', async () => {
+    const { forgeKindForProvider } = await import('@angkorgit/core');
+    expect(forgeKindForProvider('github')).toBe('github');
+    expect(forgeKindForProvider('gitlab')).toBe('gitlab');
+    expect(forgeKindForProvider('gitlab-self')).toBe('gitlab');
+    expect(forgeKindForProvider('bitbucket')).toBe('bitbucket');
+    expect(forgeKindForProvider('bitbucket-server')).toBe('bitbucket-server');
+    expect(forgeKindForProvider('other')).toBeNull();
+  });
+
+  it('keeps the built-in hostname rules ahead of declarations', async () => {
+    const core = await import('@angkorgit/core');
+    core.registerForgeHosts([{ host: 'github.com', kind: 'gitlab' }]);
+    expect(core.parseForgeRemote('git@github.com:acme/tool.git')?.kind).toBe('github');
+    core.registerForgeHosts([]);
+  });
+});

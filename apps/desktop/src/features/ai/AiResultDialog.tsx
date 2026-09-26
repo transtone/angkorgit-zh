@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@angkorgit/design-system';
-import { AiText } from './AiText';
+import { AiReport, type AiReportLocate } from './AiReport';
 
 export function AiResultDialog({
   open,
@@ -16,12 +16,14 @@ export function AiResultDialog({
   title,
   icon,
   text,
+  locate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   icon?: ReactNode;
   text: string;
+  locate?: AiReportLocate;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -35,7 +37,7 @@ export function AiResultDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <AiText text={text} className="text-sm leading-relaxed text-foreground/90" />
+          <AiReport text={text} className="text-sm leading-relaxed text-foreground/90" locate={locate} />
         </div>
         <div className="mt-4 flex shrink-0 items-center justify-end gap-2">
           <Button

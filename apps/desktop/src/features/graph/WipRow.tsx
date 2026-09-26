@@ -32,7 +32,7 @@ export function WipRow({
   if (counts.total === 0) return null;
 
   const focusWorkingCopy = () => {
-    select(null); // inspector falls back to the working-copy panel
+    select(null);
     closeCenterDiff();
   };
 
@@ -66,7 +66,9 @@ export function WipRow({
         />
       </svg>
       <Pencil className="size-3.5 shrink-0 text-primary" />
-      <span className="font-mono text-xs text-primary">// 未提交</span>
+      <span className="rounded border border-dashed border-primary/50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">
+        WIP
+      </span>
       <span className="min-w-0 truncate text-muted">
         {counts.total}个未提交的更改
       </span>

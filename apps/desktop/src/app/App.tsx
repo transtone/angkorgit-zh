@@ -17,6 +17,7 @@ import { applyTheme, themeBase, useSettings } from '@/features/settings/store';
 import { useUi, type ClonePreset } from '@/features/ui/store';
 import { useShortcuts } from '@/shared/useShortcuts';
 import { ipc, listen, type CliRequest } from '@/core/ipc';
+import { seedForgeHostsFromAccounts } from '@/features/forge/hosts';
 
 function Shell() {
   const [splash, setSplash] = useState(true);
@@ -157,6 +158,10 @@ export function App() {
   useEffect(() => {
     void ipc.setCredentialPrefs(sshKeyPath.trim() || null, sshUseAgent, useCredentialHelper);
   }, [sshKeyPath, sshUseAgent, useCredentialHelper]);
+
+  useEffect(() => {
+    void seedForgeHostsFromAccounts();
+  }, []);
 
   useEffect(() => {
     const onContextMenu = (e: MouseEvent) => {

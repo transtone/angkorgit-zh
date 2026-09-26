@@ -7,6 +7,7 @@ import { CodeLine, lineBg, pairHunkLines, type SearchRanges } from './diffShared
 import { useStableSelection } from './diffSelection';
 
 export const LINE_H = 20;
+const BLANK_ANCHOR = '\u200b';
 export const HEADER_H = 28;
 const CHAR_W = 7.3;
 
@@ -530,7 +531,20 @@ function SplitHalf({
           {items.map((item) => {
             const row = rows[item.index];
             const line = row.kind === 'pair' ? (side === 'old' ? row.left : row.right) : null;
-            if (!line) return null;
+            if (!line) {
+              return (
+                <div
+                  key={item.key}
+                  data-diff-row={item.index}
+                  data-diff-blank
+                  aria-hidden
+                  className="absolute left-0 text-transparent"
+                  style={{ top: 0, height: item.size, transform: `translateY(${item.start}px)`, ...ROW_W }}
+                >
+                  {BLANK_ANCHOR}
+                </div>
+              );
+            }
             return (
               <div
                 key={item.key}

@@ -28,17 +28,23 @@ export function Hint({
   label,
   children,
   side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
 }: {
   label: React.ReactNode;
   children: React.ReactNode;
   side?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
+  sideOffset?: number;
+  alignOffset?: number;
   className?: string;
 }) {
   return (
     <Tooltip delayDuration={400}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side={side} className={className}>
+      <TooltipContent side={side} align={align} sideOffset={sideOffset} alignOffset={alignOffset} className={className}>
         {label}
       </TooltipContent>
     </Tooltip>

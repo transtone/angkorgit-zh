@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import {
   ArchiveRestore,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Cloud,
   Code,
@@ -13,20 +12,22 @@ import {
   File as FileIcon,
   FolderOpen,
   History,
-  Maximize2,
   Monitor,
   Pencil,
+  SearchCheck,
   Sparkles,
   Tag as TagIcon,
   UserRoundSearch,
 } from 'lucide-react';
-import type { AllFilesEntry, CommitFileInfo, CommitInfo, FileDiff } from '@angkorgit/core';
+import type { AllFilesEntry, CommitFileInfo, CommitInfo } from '@angkorgit/core';
 import {
   aiCapabilities,
   allFiles,
   filterFiles,
   foldersWithChanges,
   joinCommitMessage,
+  patchTextOfAll,
+  PROJECT_REVIEW_FILE,
   splitCommitMessage,
 } from '@angkorgit/core';
 import {
@@ -53,9 +54,11 @@ import { focusRequests, useUi } from '@/features/ui/store';
 import { useSettings } from '@/features/settings/store';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
-import { AiText } from '@/features/ai/AiText';
-import { AiResultDialog } from '@/features/ai/AiResultDialog';
-import { explainKeyFor, useAiWork } from '@/features/ai/workStore';
+import { AiResultPanel } from '@/features/ai/AiResultPanel';
+import { ChangeMark } from '@/components/ChangeMark';
+import { DirName } from '@/components/DirName';
+import { EXPLAIN_WAIT_MESSAGES, REVIEW_WAIT_MESSAGES } from '@/features/ai/waitMessages';
+import { commitReviewKeyFor, explainKeyFor, useAiWork } from '@/features/ai/workStore';
 import { Avatar } from '@/components/Avatar';
 import {
   FileTree,
@@ -66,7 +69,7 @@ import {
   type FileTreeFold,
   type FileTreeFoldState,
 } from '@/components/FileTree';
-import { basename, dirname, formatDate, isMac, timeAgo } from '@/shared/utils';
+import { basename, formatDate, isMac, timeAgo } from '@/shared/utils';
 
 const DESCRIPTION_MIN = 72;
 const DESCRIPTION_MAX = 360;
@@ -138,18 +141,6 @@ function ChangeFilter({
   );
 }
 
-function diffToText(diffs: FileDiff[]): string {
-  return diffs
-    .map(
-      (d) =>
-        `--- ${d.oldPath ?? d.path}\n+++ ${d.path}\n` +
-        d.hunks
-          .map((h) => `${h.header}\n${h.lines.map((l) => `${l.kind === 'addition' ? '+' : l.kind === 'deletion' ? '-' : ' '}${l.content}`).join('\n')}`)
-          .join('\n'),
-    )
-    .join('\n\n');
-}
-
 function VirtualFileRows({
   diffs,
   scrollRef,
@@ -219,9 +210,11 @@ export function CommitDetails({
   const stash = useRepo((s) => s.stashes.find((entry) => entry.oid === commit.oid) ?? null);
   const refreshStatus = useRepo((s) => s.refreshStatus);
   const explainKey = explainKeyFor(repoPath, commit.oid);
+  const reviewKey = commitReviewKeyFor(repoPath, commit.oid);
   const aiText = useAiWork((s) => s.explains[explainKey] ?? null);
   const aiBusy = useAiWork((s) => !!s.explainBusy[explainKey]);
-  const [aiExpanded, setAiExpanded] = useState(false);
+  const reviewText = useAiWork((s) => s.explains[reviewKey] ?? null);
+  const reviewBusy = useAiWork((s) => !!s.explainBusy[reviewKey]);
   const [bodyExpanded, setBodyExpanded] = useState(false);
   const [fold, setFold] = useState<FileTreeFold>(INITIAL_FOLD);
   const [foldState, setFoldState] = useState<FileTreeFoldState | null>(null);
@@ -490,7 +483,7 @@ export function CommitDetails({
         <div
           data-active-file={active || undefined}
           className={cn(
-            'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+            'group flex w-full items-center gap-2 rounded-md py-1.5 pl-2 pr-3 text-left text-xs transition-colors',
             active ? 'bg-primary/10 text-foreground' : 'hover:bg-surface-raised',
             stash && picked.has(diff.path) && !active && 'bg-primary/5',
           )}
@@ -532,18 +525,15 @@ export function CommitDetails({
             else openCenterDiff({ path: diff.path, oid: diffOid, oldPath: diff.oldPath });
           }}
         >
-          <Badge tone={meta?.tone ?? 'neutral'} className="w-5 shrink-0 justify-center px-0 font-mono">
+          <ChangeMark tone={meta?.tone ?? 'neutral'} title={meta?.label}>
             {meta?.mark ?? '?'}
-          </Badge>
+          </ChangeMark>
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
             <span className="max-w-full shrink-0 truncate">{basename(diff.path)}</span>
-            {!fileTree && dirname(diff.path) && (
-              <span className="min-w-0 flex-1 truncate text-[11px] text-faint">{dirname(diff.path)}</span>
-            )}
+            {!fileTree && <DirName path={diff.path} className="text-[11px]" />}
           </span>
           {diff.additions > 0 && <span className="shrink-0 font-mono text-[11px] text-success">+{diff.additions}</span>}
           {diff.deletions > 0 && <span className="shrink-0 font-mono text-[11px] text-danger">−{diff.deletions}</span>}
-          <ChevronRight className={cn('size-3.5 shrink-0 text-faint transition-transform', active && 'rotate-90')} />
         </button>
         {stash && (
           <Button
@@ -569,7 +559,7 @@ export function CommitDetails({
           data-active-file={active || undefined}
           data-unchanged-file
           className={cn(
-            'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+            'group flex w-full items-center gap-2 rounded-md py-1.5 pl-2 pr-3 text-left text-xs transition-colors',
             active ? 'bg-primary/10 text-foreground' : 'text-muted hover:bg-surface-raised',
           )}
           style={fileTree && depth !== undefined ? { paddingLeft: treeIndent(depth) } : undefined}
@@ -586,11 +576,10 @@ export function CommitDetails({
               else openCenterDiff({ path: file, oid: commit.oid, unchanged: true });
             }}
           >
-            <span className="flex w-5 shrink-0 justify-center">
+            <span className="flex w-4 shrink-0 justify-center">
               <FileIcon className="size-3.5 text-faint" />
             </span>
             <span className="min-w-0 flex-1 truncate">{basename(file)}</span>
-            <ChevronRight className={cn('size-3.5 shrink-0 text-faint transition-transform', active && 'rotate-90')} />
           </button>
         </div>
       </Hint>
@@ -600,9 +589,9 @@ export function CommitDetails({
   const renderEntry = (entry: AllFilesEntry<CommitFileInfo>, depth?: number) =>
     entry.change ? renderDiffRow(entry.change, depth) : renderPlainRow(entry.path, depth);
 
-  const explain = async () => {
-    const key = explainKey;
-    if (aiBusy) {
+  const runCommitAi = async (kind: 'explain' | 'review') => {
+    const key = kind === 'review' ? reviewKey : explainKey;
+    if (kind === 'review' ? reviewBusy : aiBusy) {
       useAiWork.getState().stopExplain(key);
       return;
     }
@@ -615,8 +604,34 @@ export function CommitDetails({
     try {
       const fullDiffs = await ipc.diffCommit(repoPath, commit.oid);
       if (!stillRunning()) return;
-      const text = await aiCapabilities.explainDiff(getAiProvider(), diffToText(fullDiffs));
-      if (stillRunning()) useAiWork.getState().setExplain(key, text);
+      const patch = patchTextOfAll(fullDiffs);
+      if (!patch.trim()) {
+        toast.info('This commit has no text changes to send');
+        return;
+      }
+      const context = { oid: commit.oid, summary: commit.summary, files: fullDiffs.map((d) => d.path) };
+      let text: string;
+      if (kind === 'review') {
+        const projectInstructions = await ipc.readFile(repoPath, PROJECT_REVIEW_FILE).catch((error) => {
+          if (stillRunning() && (error as { code?: string } | null)?.code !== 'not_found') {
+            toast.warning(`Could not read ${PROJECT_REVIEW_FILE} — reviewing without project conventions`);
+          }
+          return '';
+        });
+        text = await aiCapabilities.reviewCommitChanges(getAiProvider(), patch, {
+          ...context,
+          instructions: useSettings.getState().aiStyle.review.instructions,
+          projectInstructions,
+        });
+      } else {
+        text = await aiCapabilities.explainCommitChanges(getAiProvider(), patch, context);
+      }
+      if (!stillRunning()) return;
+      if (!text) {
+        toast.error('The AI provider returned an empty answer — try again or check the model in Settings');
+        return;
+      }
+      useAiWork.getState().setExplain(key, text);
     } catch (error) {
       if (stillRunning()) {
         toast.error(`AI 请求失败：${(error as { message?: string } | null)?.message ?? String(error)}`);
@@ -699,16 +714,34 @@ export function CommitDetails({
             </div>
           </div>
         ) : (
-          <h2
-            className={cn(
-              'text-sm font-semibold leading-snug text-foreground [overflow-wrap:anywhere]',
-              canReword && 'cursor-text',
+          <div className="flex items-start gap-2">
+            <h2
+              className={cn(
+                'min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground [overflow-wrap:anywhere]',
+                canReword && 'cursor-text',
+              )}
+              title={canReword ? 'Double-click to edit the message' : undefined}
+              onDoubleClick={startEditing}
+            >
+              {commit.summary}
+            </h2>
+            {!stash && (
+              <Hint label={canReword ? 'Edit the commit message' : 'Already pushed to a remote'}>
+                <span className="-mt-1 inline-flex shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted"
+                    aria-label="Edit commit message"
+                    disabled={!canReword}
+                    onClick={startEditing}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                </span>
+              </Hint>
             )}
-            title={canReword ? 'Double-click to edit the message' : undefined}
-            onDoubleClick={startEditing}
-          >
-            {commit.summary}
-          </h2>
+          </div>
         )}
         {commit.body && !editing && (
           <div className="mt-2">
@@ -792,67 +825,69 @@ export function CommitDetails({
           )}
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-2">
-          {stash ? (
-            <span />
-          ) : (
-            <Hint label={canReword ? '编辑提交消息' : '已推送到远端'}>
-              <span className="inline-flex">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted"
-                  aria-label="编辑提交消息"
-                  disabled={!canReword || editing}
-                  onClick={startEditing}
-                >
-                  <Pencil /> Edit message
-                </Button>
-              </span>
-            </Hint>
-          )}
-          <Button variant="ghost" size="sm" className="text-muted" onClick={() => void explain()} disabled={loading}>
-            {aiBusy ? (
-              <>
-                <Logo size={14} animated="loop" className="logo-draw-loop" />
-                停止解释
-              </>
-            ) : (
-              <>
-                <Sparkles className="text-primary" />
-                用 AI 解释
-              </>
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted"
+              onClick={() => void runCommitAi('explain')}
+              disabled={loading}
+            >
+              {aiBusy ? (
+                <>
+                  <Logo size={14} animated="loop" className="logo-draw-loop" />
+                  Stop explaining
+                </>
+              ) : (
+                <>
+                  <Sparkles className="text-primary" />
+                  Explain with AI
+                </>
+              )}
+            </Button>
+            {!stash && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted"
+                onClick={() => void runCommitAi('review')}
+                disabled={loading}
+              >
+                {reviewBusy ? (
+                  <>
+                    <Logo size={14} animated="loop" className="logo-draw-loop" />
+                    Stop reviewing
+                  </>
+                ) : (
+                  <>
+                    <SearchCheck className="text-primary" />
+                    Review with AI
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
         </div>
-        {aiText && (
-          <div className="mt-1 rounded-md border border-primary/30 bg-primary/5 text-xs leading-relaxed">
-            <div className="flex items-center justify-between pl-3 pr-1.5 pt-1.5">
-              <span className="flex items-center gap-1.5 font-medium text-primary">
-                <Sparkles className="size-3.5" /> AI 解释
-              </span>
-              <Hint label="在完整视图中打开解释">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="在完整视图中打开 AI 解释"
-                  onClick={() => setAiExpanded(true)}
-                >
-                  <Maximize2 className="size-3" />
-                </Button>
-              </Hint>
-            </div>
-            <div className="px-3 pb-2.5 pt-1">
-              <AiText text={aiText} />
-            </div>
-          </div>
-        )}
-        <AiResultDialog
-          open={aiExpanded && !!aiText}
-          onOpenChange={(open) => !open && setAiExpanded(false)}
-          title="AI 解释"
-          icon={<Sparkles className="size-4 text-primary" />}
-          text={aiText ?? ''}
+        <AiResultPanel
+          title="AI explanation"
+          icon={<Sparkles className="size-3.5" />}
+          busy={aiBusy}
+          waitMessages={EXPLAIN_WAIT_MESSAGES}
+          text={aiText}
+          onStop={() => useAiWork.getState().stopExplain(explainKey)}
+          onDismiss={() => useAiWork.getState().setExplain(explainKey, null)}
+          className="mt-1"
+          bodyClassName="max-h-72"
+        />
+        <AiResultPanel
+          title="AI review"
+          icon={<SearchCheck className="size-3.5" />}
+          busy={reviewBusy}
+          waitMessages={REVIEW_WAIT_MESSAGES}
+          text={reviewText}
+          onStop={() => useAiWork.getState().stopExplain(reviewKey)}
+          onDismiss={() => useAiWork.getState().setExplain(reviewKey, null)}
+          className="mt-1"
+          bodyClassName="max-h-72"
         />
       </div>
 
@@ -863,7 +898,7 @@ export function CommitDetails({
         onKeyDown={onFilesKeyDown}
         className="rounded-md p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
       >
-        <p className="flex items-center justify-between gap-2 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+        <p className="mb-1 flex items-center justify-between gap-2 border-b border-border-subtle px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted">
           <span className="shrink-0">
             Files
             {!loading && !error && (

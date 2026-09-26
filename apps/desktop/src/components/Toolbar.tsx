@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
+import { PushRejectedDialog } from './PushRejectedDialog';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -361,6 +362,11 @@ function UndoRedoButtons({ onRefresh }: { onRefresh: () => Promise<void> }) {
   );
 }
 
+function isNonFastForward(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === 'non_fast_forward' || /non-fast-?forward/i.test(e?.message ?? '');
+}
+
 export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const repo = useRepo((s) => s.repo);
   const status = useRepo((s) => s.status);
@@ -384,6 +390,8 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const { editors } = useEditors();
   const editor = preferredEditor(editors, editorId);
 
+  const [pushRejected, setPushRejected] = useState(false);
+
   const run = async (label: string, op: () => Promise<{ status: string; message: string } | void>) => {
     if (busy) return;
     setBusy(label);
@@ -397,7 +405,11 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       }
       await onRefresh();
     } catch (error) {
-      toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
+      if (label === 'Push' && isNonFastForward(error)) {
+        setPushRejected(true);
+        return;
+      }
+      toast.error(`${label} failed: ${(error as { message?: string }).message ?? error}`);
     } finally {
       setBusy(null);
     }
@@ -440,6 +452,21 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       <StateActions onRefresh={onRefresh} />
 
       <UndoRedoButtons onRefresh={onRefresh} />
+
+      <PushRejectedDialog
+        open={pushRejected}
+        remote={remote}
+        branch={repo.headBranch ?? null}
+        onClose={() => setPushRejected(false)}
+        onPullRebase={() => {
+          setPushRejected(false);
+          void run('Pull (rebase)', () => ipc.pull(repo.path, remote, 'rebase'));
+        }}
+        onForcePush={() => {
+          setPushRejected(false);
+          runPush('Push (force)', () => ipc.push(repo.path, remote, true, false, true));
+        }}
+      />
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
