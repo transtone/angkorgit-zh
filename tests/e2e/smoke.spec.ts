@@ -573,7 +573,7 @@ test('侧边栏列出演示拉取请求并打开创建对话框', async ({ page 
   await page.getByRole('button', { name: '取消' }).click();
   await expect(page.getByRole('heading', { name: '创建拉取请求' })).toBeHidden();
 
-  await page.getByText('拉取请求').hover();
+  await page.getByText('拉取请求', { exact: true }).hover();
   await page.getByRole('button', { name: '创建拉取请求', exact: true }).click();
   await page.getByRole('button', { name: '添加审查人' }).click();
   await expect(page.getByRole('menuitemcheckbox', { name: /Dara Kim/ })).toBeVisible();
