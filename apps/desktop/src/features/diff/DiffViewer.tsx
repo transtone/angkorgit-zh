@@ -108,7 +108,7 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
               {pair.left ? gutter(pair.left.oldLineNo) : ''}
             </span>
             <div className="min-w-0 flex-1 px-1.5">
-              {pair.left && (
+              {pair.left ? (
                 <CodeLine
                   line={pair.left}
                   pair={pair.left.kind !== 'context' ? pair.right : null}
@@ -117,6 +117,10 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
                   side="old"
                   wrap
                 />
+              ) : (
+                <span data-diff-blank aria-hidden className="text-transparent">
+                  {'\u200b'}
+                </span>
               )}
             </div>
           </div>
@@ -132,7 +136,7 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
               {pair.right ? gutter(pair.right.newLineNo) : ''}
             </span>
             <div className="min-w-0 flex-1 px-1.5">
-              {pair.right && (
+              {pair.right ? (
                 <CodeLine
                   line={pair.right}
                   pair={pair.right.kind !== 'context' ? pair.left : null}
@@ -141,6 +145,10 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
                   side="new"
                   wrap
                 />
+              ) : (
+                <span data-diff-blank aria-hidden className="text-transparent">
+                  {'\u200b'}
+                </span>
               )}
             </div>
           </div>

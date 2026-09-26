@@ -175,7 +175,7 @@ export function BlameView({
                 toast.success('Hash copied');
               }}
             >
-              <Copy /> Copy hash
+              <Copy /> 复制 hash
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

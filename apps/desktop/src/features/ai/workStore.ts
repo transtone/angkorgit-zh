@@ -6,6 +6,20 @@ export interface ReviewResult {
   text: string;
 }
 
+export type FileAiKind = 'explain' | 'review';
+
+export interface FileAiResult {
+  kind: FileAiKind;
+  patchHash: string;
+  text: string;
+}
+
+export interface FileAiTarget {
+  path: string;
+  oid?: string;
+  staged?: boolean;
+}
+
 interface AiWorkState {
   reviews: Record<string, ReviewResult>;
   reviewRuns: Record<string, number>;
@@ -13,6 +27,9 @@ interface AiWorkState {
   explains: Record<string, string>;
   explainRuns: Record<string, number>;
   explainBusy: Record<string, boolean>;
+  fileAi: Record<string, FileAiResult>;
+  fileAiRuns: Record<string, number>;
+  fileAiBusy: Record<string, FileAiKind>;
   startReview: (repoPath: string) => number;
   isReviewRun: (repoPath: string, run: number) => boolean;
   endReview: (repoPath: string, run: number) => void;
@@ -23,9 +40,19 @@ interface AiWorkState {
   isExplainRun: (key: string, run: number) => boolean;
   endExplain: (key: string, run: number) => void;
   stopExplain: (key: string) => void;
+  setFileAi: (key: string, result: FileAiResult | null) => void;
+  startFileAi: (key: string, kind: FileAiKind) => number;
+  isFileAiRun: (key: string, run: number) => boolean;
+  endFileAi: (key: string, run: number) => void;
+  stopFileAi: (key: string) => void;
 }
 
 export const explainKeyFor = (repoPath: string, oid: string) => `${repoPath}\n${oid}`;
+
+export const commitReviewKeyFor = (repoPath: string, oid: string) => `${repoPath}\n${oid}\nreview`;
+
+export const fileAiKeyFor = (repoPath: string, target: FileAiTarget) =>
+  `${repoPath}\n${target.oid ?? (target.staged ? 'staged' : 'unstaged')}\n${target.path}`;
 
 export const useAiWork = create<AiWorkState>((set, get) => ({
   reviews: {},
@@ -34,6 +61,9 @@ export const useAiWork = create<AiWorkState>((set, get) => ({
   explains: {},
   explainRuns: {},
   explainBusy: {},
+  fileAi: {},
+  fileAiRuns: {},
+  fileAiBusy: {},
   startReview: (repoPath) => {
     const run = (get().reviewRuns[repoPath] ?? 0) + 1;
     set((s) => ({
@@ -84,4 +114,34 @@ export const useAiWork = create<AiWorkState>((set, get) => ({
       explainRuns: { ...s.explainRuns, [key]: (s.explainRuns[key] ?? 0) + 1 },
       explainBusy: { ...s.explainBusy, [key]: false },
     })),
+  setFileAi: (key, result) =>
+    set((s) => {
+      const fileAi = { ...s.fileAi };
+      if (result) fileAi[key] = result;
+      else delete fileAi[key];
+      return { fileAi };
+    }),
+  startFileAi: (key, kind) => {
+    const run = (get().fileAiRuns[key] ?? 0) + 1;
+    set((s) => ({
+      fileAiRuns: { ...s.fileAiRuns, [key]: run },
+      fileAiBusy: { ...s.fileAiBusy, [key]: kind },
+    }));
+    return run;
+  },
+  isFileAiRun: (key, run) => get().fileAiRuns[key] === run,
+  endFileAi: (key, run) => {
+    if (get().fileAiRuns[key] !== run) return;
+    set((s) => {
+      const fileAiBusy = { ...s.fileAiBusy };
+      delete fileAiBusy[key];
+      return { fileAiBusy };
+    });
+  },
+  stopFileAi: (key) =>
+    set((s) => {
+      const fileAiBusy = { ...s.fileAiBusy };
+      delete fileAiBusy[key];
+      return { fileAiRuns: { ...s.fileAiRuns, [key]: (s.fileAiRuns[key] ?? 0) + 1 }, fileAiBusy };
+    }),
 }));

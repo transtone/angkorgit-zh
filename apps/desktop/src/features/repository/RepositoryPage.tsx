@@ -31,6 +31,7 @@ import { CloneDialog } from './CloneDialog';
 import { CreatePrDialog } from '@/features/forge/CreatePrDialog';
 import { CreateWorktreeDialog } from '@/features/worktrees/CreateWorktreeDialog';
 import { useForge } from '@/features/forge/store';
+import { seedForgeHostsFromAccounts } from '@/features/forge/hosts';
 import { useShortcuts } from '@/shared/useShortcuts';
 import { useUndo } from '@/features/history/undoStore';
 import { useSettings } from '@/features/settings/store';
@@ -187,8 +188,8 @@ export function RepositoryPage() {
     }
     if (!settingsWasOpen.current) return;
     settingsWasOpen.current = false;
-    if (repoPath && forgeKey && showPullRequests && !useForge.getState().hasAccount) {
-      void useForge.getState().load(true);
+    if (repoPath && showPullRequests && (!forgeKey || !useForge.getState().hasAccount)) {
+      void seedForgeHostsFromAccounts().then(() => useForge.getState().load(true));
     }
   }, [settingsOpen, repoPath, forgeKey, showPullRequests]);
 

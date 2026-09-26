@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Columns2, Copy, FileText, GitCommitHorizontal, History, Pencil, Rows3, TextSelect, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
+import { Columns2, Copy, FileCheck, FileText, GitCommitHorizontal, History, MousePointerClick, Pencil, Rows3, TextSelect, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
 import type { CommitInfo, FileDiff } from '@angkorgit/core';
 import {
   Badge,
@@ -17,6 +17,8 @@ import {
   cn,
 } from '@angkorgit/design-system';
 import { Avatar } from '@/components/Avatar';
+import { SettingEmpty } from '@/features/settings/SettingCard';
+import { basename } from '@/shared/utils';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
@@ -474,13 +476,29 @@ export function FileHistoryPanel({ file }: { file: string }) {
                 }}
               />
             ) : (
-              <p className="py-16 text-center text-sm text-faint">
-                {selected === WORKING_COPY
-                  ? '此文件没有未提交的更改。'
-                  : selected
-                    ? '此文件在该提交中没有更改（可能已被重命名）。'
-                    : '选择一个提交以查看其更改。'}
-              </p>
+              <div className="flex h-full items-center justify-center p-8">
+                <div className="w-full max-w-sm">
+                  {selected === WORKING_COPY ? (
+                    <SettingEmpty
+                      icon={<FileCheck className="size-4" />}
+                      title="无未提交更改"
+                      description={`${basename(file)} 在磁盘上的内容与最后一次提交一致。`}
+                    />
+                  ) : selected ? (
+                    <SettingEmpty
+                      icon={<FileText className="size-4" />}
+                      title="此次提交没有任何更改"
+                      description={`此次提交未改动 ${basename(file)}。它可能在此处被重命名，或改动位于另一个文件中。`}
+                    />
+                  ) : (
+                    <SettingEmpty
+                      icon={<MousePointerClick className="size-4" />}
+                      title="选择一个提交"
+                      description="在左侧选择一个提交，查看它对此文件的更改。"
+                    />
+                  )}
+                </div>
+              </div>
             )}
           </div>
           {diff && !diffLoading && (
@@ -522,7 +540,7 @@ export function FileHistoryPanel({ file }: { file: string }) {
               <DropdownMenuItem
                 onClick={() => {
                   void navigator.clipboard.writeText(lineMenu.selection);
-                  toast.success('Copied');
+                  toast.success('已复制');
                 }}
               >
                 <Copy /> 复制

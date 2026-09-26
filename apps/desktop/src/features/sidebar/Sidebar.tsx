@@ -59,6 +59,7 @@ import {
 } from '@angkorgit/design-system';
 import { ipc, openExternal } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
+import { EmptyCard } from '@/components/EmptyCard';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
 import { useUi } from '@/features/ui/store';
@@ -138,32 +139,6 @@ const outcomeOk = (result: unknown) => {
 
 const FLAT_FILTER_CAP = 300;
 
-function SidebarEmpty({
-  icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="mx-1 mb-1 mt-0.5 flex flex-col gap-2 rounded-lg border border-dashed border-border-subtle bg-surface-raised/40 p-3">
-      <div className="flex items-start gap-2.5">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary [&_svg]:size-3.5">
-          {icon}
-        </span>
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-xs font-medium text-foreground">{title}</span>
-          <span className="text-[11px] leading-relaxed text-muted">{description}</span>
-        </span>
-      </div>
-      {action}
-    </div>
-  );
-}
 
 export const SIDEBAR_SECTIONS = [
   'branches',
@@ -215,7 +190,11 @@ function Section({
           </span>
           <span className="min-w-0 flex-1 truncate text-left">{title}</span>
         </button>
-        {action && <span className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">{action}</span>}
+        {action && (
+          <span className="flex w-0 items-center overflow-hidden group-hover:w-auto group-focus-within:w-auto">
+            {action}
+          </span>
+        )}
         <Badge
           tone="neutral"
           className="h-4 min-w-4 shrink-0 cursor-pointer justify-center border-transparent bg-foreground/[0.08] px-1.5 text-[10px] leading-none tabular-nums"
@@ -975,7 +954,7 @@ export function Sidebar() {
             </div>
           )}
           {!repoRefreshing && worktrees.length <= 1 && (
-            <SidebarEmpty
+            <EmptyCard
               icon={<FolderTree />}
               title="两个分支，两个文件夹"
               description="在现有工作之外修缺陷或运行代理，无需暂存。"
@@ -1109,7 +1088,7 @@ export function Sidebar() {
           }
         >
           {remotes.length === 0 && !hasRemoteBranches && !repoRefreshing && (
-            <SidebarEmpty
+            <EmptyCard
               icon={<Cloud />}
               title="无远端"
               description="此仓库只存在于本机。添加远端即可推送、拉取并打开拉取请求。"
@@ -1147,7 +1126,7 @@ export function Sidebar() {
           }
         >
           {tags.length === 0 && !repoRefreshing && (
-            <SidebarEmpty
+            <EmptyCard
               icon={<TagIcon />}
               title="还没有标签"
               description="标记发布与里程碑，让它们在提交图中脱颖而出。"
@@ -1206,7 +1185,7 @@ export function Sidebar() {
           }
         >
           {stashes.length === 0 && !repoRefreshing && (
-            <SidebarEmpty
+            <EmptyCard
               icon={<Archive />}
               title="没有暂存内容"
               description="将更改暂放一边而不提交，稍后再取回。"

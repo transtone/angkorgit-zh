@@ -15,7 +15,7 @@ import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { capCount, currentPullRequestUrl, timeAgo } from '@/shared/utils';
-import { AI_PROVIDER_PRESETS, CLI_AGENTS, forgeNoun, pickForgeRemote } from '@angkorgit/core';
+import { AI_PROVIDER_PRESETS, CLI_AGENTS, forgeNoun, parseForgeRemote, parseRemote, pickForgeRemote } from '@angkorgit/core';
 
 const ZOOM_LEVELS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
 
@@ -67,7 +67,10 @@ export function StatusBar() {
   const changes = status?.files.length ?? 0;
   const branch = repo?.isDetached ? `游离于 ${repo.headOid?.slice(0, 8) ?? '?'}` : repo?.headBranch;
   const headUpstream = branches.find((b) => !b.isRemote && b.isHead)?.upstream ?? null;
-  const prUrl = currentPullRequestUrl(repo, pickForgeRemote(remotes, headUpstream)?.url);
+  const pickedRemoteUrl = pickForgeRemote(remotes, headUpstream)?.url ?? null;
+  const prUrl = currentPullRequestUrl(repo, pickedRemoteUrl ?? undefined);
+  const unknownForgeHost =
+    pickedRemoteUrl && !parseForgeRemote(pickedRemoteUrl) ? parseRemote(pickedRemoteUrl)?.host ?? null : null;
   const forgeRepoPath = useForge((s) => s.repoPath);
   const forgeRemote = useForge((s) => s.remote);
   const forgeAccount = useForge((s) => s.hasAccount);
@@ -128,6 +131,21 @@ export function StatusBar() {
         {changes > 0 ? <Pencil className="size-3" /> : <Check className="size-3 text-success" />}
         {changes > 0 ? `${changes} 个更改` : '干净'}
       </span>
+      {!prUrl && unknownForgeHost && (
+        <Hint
+          label={`AngKorGit 无法识别 ${unknownForgeHost}。请在设置中为其连接账户，拉取请求便会显示在这里。`}
+        >
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded px-1 text-faint hover:bg-surface-raised hover:text-foreground"
+            data-unknown-forge-host
+            onClick={() => openDialog('settings', { section: 'accounts' })}
+          >
+            <GitPullRequest className="size-3" />
+            连接 {unknownForgeHost}
+          </button>
+        </Hint>
+      )}
       {prUrl && (
         <Hint
           label={

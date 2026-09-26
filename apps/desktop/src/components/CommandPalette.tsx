@@ -143,7 +143,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
     void (async () => {
       try {
         const result = (await op()) as { status?: string; message?: string } | undefined;
-        if (label.startsWith('Pull') && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
+        if ((label.startsWith('Pull') || label.startsWith('拉取')) && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
         toastOutcome(result, `${label} 已完成`);
         await onRefresh();
       } catch (error) {
@@ -294,8 +294,8 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           <PaletteItem icon={<ArrowDownToLine />} label="拉取" onSelect={() => run('拉取', () => ipc.pull(path, remote))} />
           <PaletteItem
             icon={<ArrowDownToLine />}
-            label="Pull with rebase"
-            onSelect={() => run('Pull (rebase)', () => ipc.pull(path, remote, 'rebase'))}
+            label="拉取（变基）"
+            onSelect={() => run('拉取（变基）', () => ipc.pull(path, remote, 'rebase'))}
           />
           <PaletteItem icon={<ArrowUpFromLine />} label="推送" onSelect={() => run('推送', () => ipc.push(path, remote, false, false, true))} />
           {(() => {
@@ -394,6 +394,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           <PaletteItem
             icon={<RefreshCw />}
             label="刷新"
+            shortcut="R"
             onSelect={() => {
               close();
               void onRefresh();
@@ -592,6 +593,17 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         </>
         )}
       </Command.List>
+      <div className="flex items-center gap-4 border-t border-border-subtle px-3 py-1.5 text-[10px] text-faint">
+        <span className="flex items-center gap-1">
+          <Kbd>↑↓</Kbd> 移动
+        </span>
+        <span className="flex items-center gap-1">
+          <Kbd>⏎</Kbd> 运行
+        </span>
+        <span className="flex items-center gap-1">
+          <Kbd>esc</Kbd> {mode === 'commands' ? '关闭' : '返回'}
+        </span>
+      </div>
     </Command.Dialog>
   );
 }

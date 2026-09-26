@@ -1188,3 +1188,78 @@ rust	the root commit can only be reworded while it is the latest commit	根提�
 rust	only commits on the current branch can be reworded	只能改写当前分支上的提交
 ui	Terminal	终端	label="Terminal"
 rust	bare repositories have no working copy to blame	裸仓库没有工作副本，无法查看 blame
+ui	The remote has moved on	远端已超前
+ui	has commits that are not in your branch, so	包含你的分支中没有的提交，因此
+ui	the push was refused. Pick how to bring the two together.	推送被拒绝，请选择一种合流方式。
+ui	Pull with rebase	拉取（变基）
+ui	Pull with merge	拉取（合并）
+ui	Pull (merge)	拉取（合并）
+ui	Pull (rebase)	拉取（变基）
+ui	Pull options	拉取选项
+ui	Bring the remote commits in and replay yours on top. Right when someone else pushed to	取回远端提交并将你的提交重放其上。适用于他人已推送到
+ui	this branch. Nothing is lost.	同一分支的情形，不会丢失任何内容。
+ui	Replace the remote branch with yours. Right when you amended or rebased commits you had	用你的分支替换远端分支。适用于你已修订或变基已推送提交的情形
+ui	already pushed. Commits that exist only on the remote are lost.	。仅存在于远端的提交将会丢失。
+ui	Working tree clean	工作区干净		whole
+ui	Nothing to commit. Edits you make show up here.	没有可提交的内容，你的修改会显示在这里。
+ui	No staged files match the filter.	没有暂存文件符合过滤条件。
+ui	Nothing staged	尚未暂存内容		whole
+ui	Tick a file above, or Stage all, to put it in the next commit.	勾选上方文件，或全部暂存，以放入下一次提交。
+ui	What changed and why	说明改了什么、为什么
+ui	Stage some changes to review them with AI	暂存一些更改后即可用 AI 审查
+ui	Stage a file to commit	暂存文件后即可提交
+ui	Added	新增		whole
+ui	Modified	已修改		whole
+ui	Deleted	已删除		whole
+ui	Renamed	重命名		whole
+ui	Conflicted	冲突		whole
+ui	This file has no text changes to send	此文件没有可发送的文本更改
+ui	Could not read ${PROJECT_REVIEW_FILE} — reviewing without project conventions	无法读取 ${PROJECT_REVIEW_FILE}——不按项目约定审查
+ui	The AI provider returned an empty answer — try again or check the model in Settings	AI 提供方返回了空回答——请重试或检查设置中的模型
+ui	changed while the AI was working — run it again	在 AI 工作期间发生了变化——请重新运行
+ui	That line is not part of this diff	该行不属于此差异
+ui	View options	视图选项
+ui	Word diff	词级 diff
+ui	Wrapping stays off for large files so scrolling keeps up.	大文件下保持关闭换行以保证滚动流畅。
+ui	Reviewing with AI…	正在用 AI 审查…
+ui	Explaining with AI…	正在用 AI 解释…
+ui	Explain or review with AI	用 AI 解释或审查
+ui	No text changes to explain or review	没有可解释或审查的文本更改
+ui	AI actions	AI 操作
+ui	Explain changes	解释更改
+ui	Review changes	审查更改
+ui	Unstage file	取消暂存文件
+ui	Stage file	暂存文件
+ui	This commit has no text changes to send	此次提交没有可发送的文本更改
+ui	Stop reviewing	停止审查
+ui	Review with AI	用 AI 审查
+ui	AngKorGit does not know which forge runs	AngKorGit 无法识别
+ui	. Connect an account for it in Settings and pull requests light up here.	。请在设置中为其连接账户，拉取请求便会显示在这里。
+ui	Connect	连接	Connect \{
+ui	Stop the ${title}	停止 ${title}
+ui	Open ${title} in full view	在完整视图中打开 ${title}
+ui	Dismiss ${title}	关闭 ${title}
+ui	Copy ${title}	复制 ${title}
+ui	Show the ${title}	显示 ${title}
+ui	Fold the ${title}	折叠 ${title}
+ui	Show this line in the diff	在差异中显示此行
+ui	Copy as text	复制为文本
+ui	Copied	已复制		whole
+ui	Click a quoted line to show it in the diff.	点击引用的行可跳转到差异中的对应位置。
+ui	Reading the changes…	正在读取更改…
+ui	Following the logic…	正在梳理逻辑…
+ui	Working out what moved and why…	正在辨别移动的代码…
+ui	Putting it in plain words…	正在组织成通俗的文字…
+ui	No uncommitted changes	无未提交更改
+ui	on disk matches the last commit.	在磁盘上的内容与最后一次提交一致。
+ui	Nothing changed in this commit	此次提交没有任何更改
+ui	This commit did not touch	此次提交未改动
+ui	. It may have been renamed here, or the change lives in another file.	。它可能在此处被重命名，或改动位于另一个文件中。
+ui	Pick a commit	选择一个提交
+ui	Select a commit on the left to see what it changed in this file.	在左侧选择一个提交，查看它对此文件的更改。
+ui	Search repositories	搜索仓库
+ui	/> Copy	/> 复制
+ui	Done	完成	^\s*Done\s*$
+ui	Copy absolute path	复制绝对路径
+ui	Absolute path copied	已复制绝对路径
+ui	Discard changes…	丢弃更改…

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
+import { PushRejectedDialog } from './PushRejectedDialog';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -361,6 +362,11 @@ function UndoRedoButtons({ onRefresh }: { onRefresh: () => Promise<void> }) {
   );
 }
 
+function isNonFastForward(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === 'non_fast_forward' || /non-fast-?forward/i.test(e?.message ?? '');
+}
+
 export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const repo = useRepo((s) => s.repo);
   const status = useRepo((s) => s.status);
@@ -384,6 +390,8 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const { editors } = useEditors();
   const editor = preferredEditor(editors, editorId);
 
+  const [pushRejected, setPushRejected] = useState(false);
+
   const run = async (label: string, op: () => Promise<{ status: string; message: string } | void>) => {
     if (busy) return;
     setBusy(label);
@@ -397,6 +405,10 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       }
       await onRefresh();
     } catch (error) {
+      if (label === '推送' && isNonFastForward(error)) {
+        setPushRejected(true);
+        return;
+      }
       toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
     } finally {
       setBusy(null);
@@ -441,6 +453,21 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <UndoRedoButtons onRefresh={onRefresh} />
 
+      <PushRejectedDialog
+        open={pushRejected}
+        remote={remote}
+        branch={repo.headBranch ?? null}
+        onClose={() => setPushRejected(false)}
+        onPullRebase={() => {
+          setPushRejected(false);
+          void run('拉取（变基）', () => ipc.pull(repo.path, remote, 'rebase'));
+        }}
+        onForcePush={() => {
+          setPushRejected(false);
+          runPush('推送（强制）', () => ipc.push(repo.path, remote, true, false, true));
+        }}
+      />
+
       <Separator orientation="vertical" className="mx-2 h-6" />
 
       <Hint label={remotes.length === 0 ? '未配置远端' : remotes.length > 1 ? `获取全部远端（${remotes.map((r) => r.name).join('、')}）` : `获取 ${remote}`}>
@@ -482,16 +509,16 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         </Hint>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Pull options" disabled={!!busy}>
+            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="拉取选项" disabled={!!busy}>
               <ChevronDown className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => void run('Pull (merge)', () => ipc.pull(repo.path, remote, 'merge'))}>
-              Pull with merge
+            <DropdownMenuItem onClick={() => void run('拉取（合并）', () => ipc.pull(repo.path, remote, 'merge'))}>
+              拉取（合并）
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void run('Pull (rebase)', () => ipc.pull(repo.path, remote, 'rebase'))}>
-              Pull with rebase
+            <DropdownMenuItem onClick={() => void run('拉取（变基）', () => ipc.pull(repo.path, remote, 'rebase'))}>
+              拉取（变基）
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

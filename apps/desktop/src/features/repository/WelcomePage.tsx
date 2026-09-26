@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
   Hint,
   Input,
+  Kbd,
   Logo,
   Spinner,
   TemplePattern,
@@ -187,18 +188,23 @@ export function WelcomePage() {
             <span className="text-sm font-medium">最近仓库</span>
             {recents.length > 0 && <span className="text-xs text-faint">{recents.length}</span>}
             {recents.length > 0 && (
-              <div className="relative ml-auto w-56">
+              <>
+              <span className="ml-auto hidden items-center gap-1.5 text-[10px] text-faint sm:flex">
+                <Kbd>↑↓</Kbd> 选择 <Kbd>⏎</Kbd> 打开
+              </span>
+              <div className="relative w-52">
                 <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
                 <Input
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onSearchKey}
-                  placeholder="搜索，↑↓ 选择，⏎ 打开"
+                  placeholder="搜索仓库"
                   aria-label="搜索最近仓库"
                   className="h-7 pl-8 text-xs"
                 />
               </div>
+              </>
             )}
           </div>
           <div className="max-h-72 overflow-y-auto p-2">

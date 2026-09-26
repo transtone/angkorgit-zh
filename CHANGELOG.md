@@ -6,6 +6,89 @@
 
 ## [未发布]
 
+## [0.18.0] — 2026-09-24
+
+The review release. AI can now review one file from its diff or a whole commit from the
+inspector, with findings by severity, a verdict and quoted lines that jump to the code; the
+answers no longer stop mid-sentence. Around it, a pass over the working copy and the commit
+file list, push failures that explain themselves, self-hosted forges on custom domains, and
+an embedded terminal that finally sees your login-shell PATH.
+
+### Added
+- **AI review and explanation for one file.** The diff header has a sparkle button with
+  two actions, Explain changes and Review changes, for the file on screen: a working copy
+  change (staged or unstaged) or a file inside a commit. The answer opens in a strip under
+  the diff header, so the code keeps its full width; fold it to one line with the verdict, or
+  open it in a full view. Every line the AI quotes is a link: click it and the diff scrolls
+  to that line and highlights it. The strip can be stopped while it runs and is dismissed
+  when you leave the file. The AI is told where the file sits and which other files changed with it, so code
+  that moved to another file is not reported as missing. Reviews follow the same conventions
+  as the staged review, including `.angkorgit/review.md`.
+
+- **Review a whole commit with AI.** Commit details has Review with AI next to Explain
+  with AI. The review covers the commit's full diff, knows the commit message and its file
+  list, follows the same conventions as the other reviews, and lands in the same card with
+  findings by severity and a verdict. Explain with AI gets the same context.
+
+### Changed
+- **Diff header fits narrow windows.** Word diff, line wrapping and whole-file view moved
+  into one View options menu, the change and file counters no longer wrap onto a second
+  line, and below about 960 px the header drops its labels and keeps the icons.
+- **Sidebar headers keep their names.** Section actions only take room while you hover or
+  focus the header, so a narrow sidebar no longer shortens "Worktrees" to "W…".
+- **A calmer working copy.** File rows carry a small square change mark (M, A, D, R) instead of
+  a round pill, in the working copy and in a commit's file list alike. The full-path tooltip
+  opens under its row rather than over the graph. A divider separates Staged from Changes,
+  an empty Staged section shows a small card saying how to fill it, Review is disabled with
+  the same reason as Commit, and the Commit button shows its shortcut on hover.
+- **A clean working tree is one card.** Instead of two empty sections and a stray Amend
+  link, a clean repository shows a single "Working tree clean" card with Amend last commit
+  inside it.
+- **File rows show the folder that matters.** In the working copy and a commit's file list the
+  dimmed directory now truncates from the front, so a long path ends with its nearest folder
+  instead of a shared prefix. The open-diff chevron in a commit's file list appears only on
+  the hovered or open row.
+- **Working copy file menu.** Discard changes sits next to Delete file at the end of the
+  menu, under one separator, so the two destructive actions are together.
+- **Smaller things.** The uncommitted row wears a plain WIP chip instead of `// WIP`; the
+  welcome page's search box says "Search repositories" and shows its keyboard hints beside
+  it instead of inside a cut-off placeholder; file history shows a proper empty state when
+  a commit did not touch the file; the pull request dialog's notes are hint rows with an
+  icon and a tone, and a trunk branch such as main no longer pre-fills the title; the
+  command palette shows ↑↓ ⏎ esc hints in a footer and ⌘R on Refresh; the lane colour band
+  behind the graph is visible on light themes.
+- **AI answers are written for reviewers.** Explanations come as What it does, Changes and
+  Worth checking; reviews as Summary, Findings (Bug, Risk or Nit, quoting the exact line,
+  what is wrong, how to fix it) and a Verdict. Both apply to the staged review and the commit
+  explanation too. The answers render as real sections with Bug, Risk and Nit badges and a
+  coloured verdict, in the strip, the staged review card and the full-view dialog alike.
+
+### Fixed
+- **Push no longer reports success when the server refused a ref.** libgit2 returns Ok even
+  when the server rejects one ref, so a tag that already existed elsewhere still toasted
+  "Pushed". The engine now collects the per-ref status and fails with the rejected refs
+  named, git style. (#41)
+- **A non-fast-forward push explains itself.** Instead of the raw libgit2 text, Push now
+  opens a small dialog offering Pull with rebase (someone else pushed) or Force push (you
+  rewrote pushed commits), each with a one-line explanation. Other callers get a plain
+  sentence with the same two options. (#40)
+- **Side-by-side blank bands no longer catch the caret.** The empty side of a paired row now
+  carries an invisible anchor, so dragging a selection through it keeps going downward
+  instead of jumping back up. Copy is unaffected. (#42)
+- **Self-hosted forges on custom domains.** A remote host the substring rules do not
+  recognise takes its forge kind from the account connected for that host, so a GitLab on
+  code.example.com gets its merge request button, links and account. Hosts nothing knows
+  show a "Connect code.example.com" hint in the status bar instead of nothing. (#32)
+- **The embedded terminal gets the login-shell PATH and a UTF-8 locale.** The first
+  terminal probes `$SHELL -ilc env` once (5 s cap) and applies that environment to every
+  session, so Homebrew and friends resolve; LANG keeps an existing UTF-8 value and upgrades
+  anything else (zh_CN to zh_CN.UTF-8, C to en_US.UTF-8), so CJK typed at the prompt echoes
+  correctly. (#37)
+- **AI answers stopped mid-sentence.** Every provider was capped at 1024 output tokens, and
+  models that reason before answering (Gemini 2.5 among them) spent most of that budget
+  before writing. Explanations, reviews, PR descriptions and summaries now get a 4096-token
+  budget; commit messages keep the short one.
+
 ## [0.17.0] — 2026-09-22
 
 The whole-tree release. The inspector can show every file at a commit, not only the
@@ -1417,7 +1500,8 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/cheat2001/angkorgit/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cheat2001/angkorgit/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/cheat2001/angkorgit/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/cheat2001/angkorgit/compare/v0.14.0...v0.15.0
