@@ -1115,10 +1115,10 @@ export function CommitDetails({
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(`${repoPath}/${fileMenu.path}`);
-                toast.success('Absolute path copied');
+                toast.success('已复制绝对路径');
               }}
             >
-              <Copy /> 复制 absolute path
+              <Copy /> 复制绝对路径
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

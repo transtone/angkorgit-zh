@@ -606,19 +606,16 @@ pub fn push(
 pub(crate) fn rejection_message(remote_name: &str, rejected: &[(String, String)]) -> String {
     let describe = |(refname, reason): &(String, String)| {
         let (kind, name) = if let Some(tag) = refname.strip_prefix("refs/tags/") {
-            ("tag", tag)
+            ("标签", tag)
         } else if let Some(branch) = refname.strip_prefix("refs/heads/") {
-            ("branch", branch)
+            ("分支", branch)
         } else {
-            ("ref", refname.as_str())
+            ("引用", refname.as_str())
         };
         format!("{kind} {name} ({reason})")
     };
     let list = rejected.iter().map(describe).collect::<Vec<_>>().join(", ");
-    format!(
-        "{remote_name} rejected {list}. Nothing else from this push was rolled back; fix the \
-         rejected ref and push again."
-    )
+    format!("{remote_name} 拒绝了 {list}。此次推送的其他内容均未回滚；请修复被拒的引用后重新推送。")
 }
 
 fn tracking_ref_matches(repo: &Repository, remote_name: &str, branch_name: &str) -> bool {
@@ -851,7 +848,7 @@ mod tests {
         );
         assert!(
             message.starts_with(
-                "origin rejected tag v1.0 (already exists), branch main (non-fast-forward)"
+                "origin 拒绝了 标签 v1.0 (already exists), 分支 main (non-fast-forward)"
             ),
             "{message}"
         );

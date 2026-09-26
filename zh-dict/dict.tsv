@@ -1237,11 +1237,11 @@ ui	AngKorGit does not know which forge runs	AngKorGit 无法识别
 ui	. Connect an account for it in Settings and pull requests light up here.	。请在设置中为其连接账户，拉取请求便会显示在这里。
 ui	Connect	连接	Connect \{
 ui	Stop the ${title}	停止 ${title}
-ui	Open ${title} in full view	在完整视图中打开${title}
-ui	Dismiss ${title}	关闭${title}
-ui	Copy ${title}	复制${title}
-ui	Show the ${title}	显示${title}
-ui	Fold the ${title}	折叠${title}
+ui	Open ${title} in full view	在完整视图中打开 ${title}
+ui	Dismiss ${title}	关闭 ${title}
+ui	Copy ${title}	复制 ${title}
+ui	Show the ${title}	显示 ${title}
+ui	Fold the ${title}	折叠 ${title}
 ui	Show this line in the diff	在差异中显示此行
 ui	Copy as text	复制为文本
 ui	Copied	已复制		whole
@@ -1260,3 +1260,6 @@ ui	Select a commit on the left to see what it changed in this file.	在左侧选
 ui	Search repositories	搜索仓库
 ui	/> Copy	/> 复制
 ui	Done	完成	^\s*Done\s*$
+ui	Copy absolute path	复制绝对路径
+ui	Absolute path copied	已复制绝对路径
+ui	Discard changes…	丢弃更改…

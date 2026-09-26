@@ -190,7 +190,7 @@ export function WelcomePage() {
             {recents.length > 0 && (
               <>
               <span className="ml-auto hidden items-center gap-1.5 text-[10px] text-faint sm:flex">
-                <Kbd>↑↓</Kbd> choose <Kbd>⏎</Kbd> open
+                <Kbd>↑↓</Kbd> 选择 <Kbd>⏎</Kbd> 打开
               </span>
               <div className="relative w-52">
                 <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />

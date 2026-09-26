@@ -143,7 +143,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
     void (async () => {
       try {
         const result = (await op()) as { status?: string; message?: string } | undefined;
-        if (label.startsWith('Pull') && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
+        if ((label.startsWith('Pull') || label.startsWith('拉取')) && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
         toastOutcome(result, `${label} 已完成`);
         await onRefresh();
       } catch (error) {
@@ -595,13 +595,13 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
       </Command.List>
       <div className="flex items-center gap-4 border-t border-border-subtle px-3 py-1.5 text-[10px] text-faint">
         <span className="flex items-center gap-1">
-          <Kbd>↑↓</Kbd> move
+          <Kbd>↑↓</Kbd> 移动
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>⏎</Kbd> run
+          <Kbd>⏎</Kbd> 运行
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>esc</Kbd> {mode === 'commands' ? 'close' : 'back'}
+          <Kbd>esc</Kbd> {mode === 'commands' ? '关闭' : '返回'}
         </span>
       </div>
     </Command.Dialog>

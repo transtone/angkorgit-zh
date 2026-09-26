@@ -1124,7 +1124,7 @@ export function WorkingCopyPanel() {
             <EmptyCard
               icon={<SquareCheck />}
               title="尚未暂存内容"
-              description="Tick a file above, or 全部暂存, to put it in the next commit."
+              description="勾选上方文件，或全部暂存，以放入下一次提交。"
             />
           ))}
         {fileTree ? (
@@ -1254,14 +1254,14 @@ export function WorkingCopyPanel() {
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(`${path}/${fileMenu.file.path}`);
-                toast.success('Absolute path copied');
+                toast.success('已复制绝对路径');
               }}
             >
-              <Copy /> 复制 absolute path
+              <Copy /> 复制绝对路径
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file, fileMenu.staged)}>
-              <Trash2 /> Discard changes…
+              <Trash2 /> 丢弃更改…
             </DropdownMenuItem>
             <DropdownMenuItem
               destructive
@@ -1274,7 +1274,7 @@ export function WorkingCopyPanel() {
                       ? '该文件未被跟踪——删除后无法撤销。'
                       : '该文件将从工作区移除，可通过“丢弃”恢复（删除会显示为一次更改）。',
                   path: file.path,
-                  confirmLabel: 'Delete',
+                  confirmLabel: '删除',
                   destructive: true,
                 }).then((ok) => {
                   if (ok) void run(() => ipc.deleteFile(path, file.path), '删除失败');

@@ -405,7 +405,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       }
       await onRefresh();
     } catch (error) {
-      if (label === 'Push' && isNonFastForward(error)) {
+      if (label === '推送' && isNonFastForward(error)) {
         setPushRejected(true);
         return;
       }

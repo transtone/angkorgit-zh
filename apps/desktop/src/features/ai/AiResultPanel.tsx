@@ -52,19 +52,19 @@ export function AiResultPanel({
           </Hint>
         ) : (
           <span className="flex items-center">
-            <Hint label={`在完整视图中打开${title}`}>
+            <Hint label={`在完整视图中打开 ${title}`}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`在完整视图中打开${title}`}
+                aria-label={`在完整视图中打开 ${title}`}
                 onClick={() => setExpanded(true)}
               >
                 <Maximize2 className="size-3" />
               </Button>
             </Hint>
             {onDismiss && (
-              <Hint label={`关闭${title}`}>
-                <Button variant="ghost" size="icon-sm" aria-label={`关闭${title}`} onClick={onDismiss}>
+              <Hint label={`关闭 ${title}`}>
+                <Button variant="ghost" size="icon-sm" aria-label={`关闭 ${title}`} onClick={onDismiss}>
                   <X className="size-3" />
                 </Button>
               </Hint>

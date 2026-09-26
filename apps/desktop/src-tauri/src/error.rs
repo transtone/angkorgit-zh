@@ -40,10 +40,7 @@ impl AppError {
 
     fn message(&self) -> String {
         if self.is_non_fast_forward() {
-            return "The remote has commits this branch does not have yet. Pull with rebase to \
-                    bring them in first, or force push if you rewrote commits that were already \
-                    pushed (amend or rebase)."
-                .to_string();
+            return "远端已有本分支没有的提交。请先用变基拉取将其取回；若你改写过已推送的提交（修订或变基），则改用强制推送。".to_string();
         }
         match self.http_status() {
             Some(401) => "HTTP 401——主机拒绝了凭据。 如果此远端使用 \
@@ -139,8 +136,8 @@ mod tests {
             "cannot push non-fastforwardable reference",
         ));
         assert_eq!(error.code(), "non_fast_forward");
-        assert!(error.message().contains("Pull with rebase"));
-        assert!(error.message().contains("force push"));
+        assert!(error.message().contains("变基拉取"));
+        assert!(error.message().contains("强制推送"));
         assert!(!error.message().contains("non-fastforwardable"));
     }
 

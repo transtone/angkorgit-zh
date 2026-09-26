@@ -101,7 +101,7 @@ export function DiffAiStrip({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`复制${title}`}
+                aria-label={`复制 ${title}`}
                 onClick={() => {
                   navigator.clipboard
                     .writeText(text ?? '')
@@ -112,29 +112,29 @@ export function DiffAiStrip({
                 <Copy className="size-3.5" />
               </Button>
             </Hint>
-            <Hint label={`在完整视图中打开${title}`}>
+            <Hint label={`在完整视图中打开 ${title}`}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`在完整视图中打开${title}`}
+                aria-label={`在完整视图中打开 ${title}`}
                 onClick={() => setExpanded(true)}
               >
                 <Maximize2 className="size-3.5" />
               </Button>
             </Hint>
-            <Hint label={folded ? `显示${title}` : `折叠${title}`}>
+            <Hint label={folded ? `显示 ${title}` : `折叠 ${title}`}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={folded ? `显示${title}` : `折叠${title}`}
+                aria-label={folded ? `显示 ${title}` : `折叠 ${title}`}
                 aria-expanded={!folded}
                 onClick={() => setFolded((f) => !f)}
               >
                 {folded ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
               </Button>
             </Hint>
-            <Hint label={`关闭${title}`}>
-              <Button variant="ghost" size="icon-sm" aria-label={`关闭${title}`} onClick={onDismiss}>
+            <Hint label={`关闭 ${title}`}>
+              <Button variant="ghost" size="icon-sm" aria-label={`关闭 ${title}`} onClick={onDismiss}>
                 <X className="size-3.5" />
               </Button>
             </Hint>
