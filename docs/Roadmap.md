@@ -1,42 +1,40 @@
 # 路线图
 
-Updated for v0.18.0 (September 2026). [CHANGELOG.md](../CHANGELOG.md) is the
-authoritative record of what shipped in each release; this file tracks
-direction.
+更新至中文版 v0.17.0（2026 年 9 月），包含上游 v0.16.0、v0.17.0（上游 `f9f8f30`）。各版本的已发布变更见 [CHANGELOG.md](../CHANGELOG.md)；此处记录功能方向。
 
-## Shipped (0.1.0 → 0.18.0)
+## 已实现（0.1.0 → 0.17.0）
 
-- [x] Repository: open, clone (with progress), recents, search, repository tabs (drag to reorder)
-- [x] Commit: stage files, hunks, and individual lines; unstage, commit, amend; per-repo commit drafts; multi-select in the working copy with bulk stage/unstage/stash/discard; discard for staged files; path filter over changed files and commit files
-- [x] History: virtualized animated graph, find in graph by message, hash or author with an n of m stepper (the lanes never collapse), branch filter, refs/tags/HEAD/merges, file history with a one-click jump to the whole commit
-- [x] Branch: create, delete, rename, checkout (incl. remote), merge, rebase (+continue/abort), interactive rebase (reorder/reword/squash/fixup/drop), cherry-pick (single or multi-commit, optional "(cherry picked from commit …)" reference), reset (soft/mixed/hard) — explicit merges always record a merge commit; abort merge from the commit box
-- [x] Remote: fetch, pull, push, force push, push a branch straight from its tip commit's menu, push/fetch tags, background auto fetch
-- [x] Conflicts: visual resolver — aligned A/B panes with line numbers, one take-all checkbox per side (mixed while partly picked) plus hover-to-pick lines that land in file order, a Result pane with in-place editing and its own line numbers behind a draggable split, keyboard control (↑/↓, A/B, ⌘⏎), conflict and file navigation that opens the next conflicted file after each save, guards against losing picks and hand edits, AI explanations
-- [x] Worktrees: sidebar section with branch/dirty/missing state, open any worktree as its own tab, create from a branch or commit into a sibling folder, safe remove and prune, branches held elsewhere marked in the sidebar and graph
-- [x] Stash: create (whole tree or chosen files), apply, pop (one click from the toolbar), drop; stashes as rows in the graph with their own node and menu; apply single files from a stash · Tags: create (annotated/lightweight), delete, checkout · Submodules: list & update
-- [x] Built-in PTY terminal at repo root; built-in file editor
-- [x] Diff: inline & side-by-side, syntax highlight, word diff, image diff, find in diff (⌘F), minimap, previous/next change and file navigation (N/P, [/]), opens directly at the first change (no scroll animation), reloads live as the file changes on disk, file history one click from the header; → / ↑ ↓ / ← walk from the graph into a commit's files and back
-- [x] Settings: sixteen themes (Angkor Dusk default) with accents & zoom, identity profiles (repo-local) with linked accounts, SSH key management & generation, hosting accounts with verified tokens (Secret Service on Linux, missing tokens flagged), AI providers & commit style, keyboard reference
-- [x] Sidebar: accordion sections with pinned headers and collapse-all, row menus on hover and right-click everywhere, empty-state cards; graph display options and column headers; welcome page with keyboard navigation and missing-folder detection
-- [x] AI: provider-agnostic (OpenAI, Anthropic, Gemini, Ollama, LM Studio) plus installed AI CLIs (Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity) — commit messages, diff/conflict explanations, PR descriptions, review of the staged changes, of one file from its diff, or of a whole commit, with team conventions (global + per-repo `.angkorgit/review.md`), structured answers (findings by severity, verdict, quoted lines that jump to the code), background execution with stop, full-size reading views
-- [x] Undo/redo for recent operations; drag-and-drop merge/rebase
-- [x] Auto-update: pull-based from GitHub releases, signature-verified
-- [x] Commit signing: SSH and GPG, driven by existing git config (commit.gpgSign, gpg.format, user.signingKey) — covers commit, amend, merge
-- [x] Pull requests: sidebar list, checkout and in-app create with reviewer selection for GitHub, GitLab (incl. self-hosted) and Bitbucket Cloud, through the connected account; browser fallback without one
-- [x] Graph search: message text, a hash or prefix, and author all find matches in the full graph, centered and highlighted, with an n of m control; ⌘F focuses the search
-- [x] Command line: `angkorgit` / `akg` installed from Settings — open the current folder, a path, or clone by URL or owner/repo into the app
-- [x] Blame: a pane of file history with a Working copy row, per-hunk authors, jump to the commit, blame at or before any commit
-- [x] External editor: detected editors (VS Code, Cursor, Zed, Sublime, JetBrains, Xcode, GNOME Builder…) from the toolbar, palette and file menus
-- [x] Pull with rebase following `pull.rebase`, a merge/rebase choice per pull, and a status bar note of the last fetch
-- [x] Fork workflow: "Fast-forward current to this" in the branch menus (enabled only when the branch is strictly behind), every remote fetched on each tab switch, "Open in browser" on a remote and from the palette
-- [x] Provider avatars from the connected account when Gravatar has none; the AI provider and its last connection test in the status bar
-- [x] Upstream workflow: add a remote from the sidebar, pull requests from a fork into its upstream (GitHub, GitLab, Bitbucket Cloud), a remembered clone folder, a right-click menu in the terminal
-- [x] Windows: SSH remotes with ed25519 and ECDSA host keys (libssh2 built on OpenSSL)
-- [x] Fonts: interface, code and terminal fonts picked from what is installed, each shown in its own face, terminal size, one-click reset
-- [x] Edit an unpushed commit message in place from the inspector or the graph menu (HEAD amended message-only, older commits rewritten in memory), undoable
-- [x] macOS: the app bundle is signed as a whole so Desktop, Documents and Downloads permissions are remembered; GitHub account form points at fine-grained tokens too
-- [x] Performance: fast startup (splash waits for the app, not a timer; heavy views load on first use), a quiet file watcher, on-demand commit diffs, loading overlay on slow repository switches
-- [x] Inspector: an All files view of the whole tree at a commit or in the working copy with the changed files marked, a change-kind filter on a commit's files; sidebar section headers with icon tiles and count badges; Push with tags names every tag; auto fetch tries every remote and names the ones that failed
+- [x] 仓库：打开、带进度的克隆、最近使用、搜索、可拖动排序的仓库标签页。
+- [x] 提交：按文件、代码块或单行暂存与取消暂存；提交、修订、按仓库保存草稿；多选批量操作与路径过滤。
+- [x] 历史：虚拟化提交图，按消息、哈希或作者查找，保留图形布局并逐个跳转；分支过滤、引用、标签、文件历史与完整提交跳转。
+- [x] 分支：创建、删除、重命名、检出、合并、变基、交互式变基、单个或批量拣选、软/混合/硬重置；显式合并保留合并提交。
+- [x] 远端：获取、拉取、推送、强制推送、从分支提交菜单推送、标签推送与获取、后台自动获取。
+- [x] 冲突：带行号的双栏解析器、整侧或逐行采纳、可编辑结果、可拖动分隔线、键盘操作、冲突与文件导航、未保存内容保护、AI 解释。
+- [x] 工作树：状态展示、独立标签页、从分支或提交创建、安全移除与清理、标记已在其他工作树检出的分支。
+- [x] 贮藏：整棵工作树或所选文件的创建、应用、弹出、丢弃与单文件恢复；标签管理；子模块列表与更新。
+- [x] 仓库根目录的内置 PTY 终端与文件编辑器。
+- [x] 文件差异：内联与并排、语法与词级高亮、图片比较、查找、缩略图、改动导航、实时刷新、文件历史与键盘导航。
+- [x] 设置：16 款主题、强调色与缩放、仓库身份配置、SSH 密钥、托管账户、AI 提供方、提交风格与快捷键参考。
+- [x] 侧边栏：可折叠分区、固定标题、右键菜单、空状态、提交图选项；欢迎页键盘导航与缺失目录提示。
+- [x] AI：多种 API 提供方与本机 CLI，支持提交消息、差异/冲突解释、PR 描述、按团队约定审查暂存更改、后台执行与停止。
+- [x] 操作撤销与重做；拖放合并或变基。
+- [x] 从本仓库 GitHub Releases 检查自动更新，并校验更新签名。
+- [x] 根据 Git 配置进行 SSH/GPG 提交签名，覆盖提交、修订与合并。
+- [x] GitHub、GitLab（含自建实例）和 Bitbucket Cloud 的拉取请求列表、检出、创建与审查人选择；未连接账户时回退至浏览器。
+- [x] 提交图完整搜索、居中高亮与匹配项计数；快捷键聚焦搜索框。
+- [x] 命令行工具 `angkorgit` / `akg`：打开当前目录、指定路径或进入克隆流程。
+- [x] 文件追溯：工作副本与历史版本、逐块作者、跳转提交、追溯到指定提交或其之前。
+- [x] 外部编辑器检测，以及工具栏、命令面板和文件菜单入口。
+- [x] 遵循 `pull.rebase` 的拉取，单次选择合并或变基，以及上次获取时间。
+- [x] Fork 协作：分支菜单快进、切换标签页时获取全部远端、在浏览器中打开远端仓库。
+- [x] 托管平台头像；状态栏展示 AI 提供方与最近连接测试结果。
+- [x] 上游协作：从侧边栏添加远端，向上游仓库创建跨 Fork PR/MR，记住默认克隆目录，终端右键复制、粘贴、全选与清空。
+- [x] Windows SSH：通过 OpenSSL 版 libssh2 支持 ed25519 与 ECDSA 主机密钥；在文件管理器中正确定位文件。
+- [x] 性能与交互：快速启动、按需加载、安静的文件监测、按需获取差异；长行截断显示但保留完整复制内容；滚动后保持文本选区；精简 Wayland 标题栏。
+- [x] 字体：从已安装字体中选用界面、代码与终端字体，各以自身字形预览，终端字号可调，一键重置。
+- [x] 原地改提交消息：未推送的提交可在检查器或提交图菜单中直接改（HEAD 仅改消息不碰暂存，更早提交连带重写其上提交），可撤销。
+- [x] macOS：整个应用包签名，桌面/文稿/下载授权只需允许一次；GitHub 账户表单同时给出细粒度令牌入口。
+- [x] 检查器：全部文件视图（查看某次提交或工作副本的整棵树，已更改文件可操作），按变更类型过滤提交文件；侧边栏分区标题配图标与计数徽章；推送含标签时逐个具名；自动获取遍历全部远端并具名失败项。
 
 ## 下一步
 

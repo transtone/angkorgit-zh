@@ -136,46 +136,27 @@
 3. 在 PR 里补齐新增英文串，CI（typecheck / 单元测试 / Playwright / Rust）全绿后合并。
 4. **发布中文版**（`release-zh.yml`，手动触发）：先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名与 `latest.json`）。
 
-Grab the file for your platform from the [releases page](https://github.com/cheat2001/angkorgit/releases), or use the terminal. The commands below are pinned to the current release, so bump the version if a newer one is out.
+上游新引入的英文串会进入 `zh-dict/pending.tsv`（构建产物，不入库），翻译后补进 `dict.tsv` 即可。
+详见 [docs/Localization.md](docs/Localization.md)。
 
-```bash
-# macOS with Homebrew (also clears the Gatekeeper flag for you)
-brew install --cask cheat2001/tap/angkorgit
+## 🚫 故意不做的事情
 
-# macOS, direct download
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.18.0/AngKorGit_0.18.0_universal.dmg -o ~/Downloads/AngKorGit.dmg && xattr -cr ~/Downloads/AngKorGit.dmg && open ~/Downloads/AngKorGit.dmg
+- **应用内代码评审（PR Review）**：代码托管平台（GitHub/GitLab）配合 CI 日志与行内评论体验更佳，软件内提供一键“在浏览器中打开”按钮。
+- **遥测数据、强制账号、云服务**：不会向外部发送任何追踪数据，无需注册任何平台。
+- **插件市场**：暂不支持扩展插件。
 
-# Windows (PowerShell)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.18.0/AngKorGit_0.18.0_x64-setup.exe -o "$env:TEMP\AngKorGit-setup.exe"; Start-Process "$env:TEMP\AngKorGit-setup.exe"
+## 📦 安装与下载
 
-# Linux (AppImage)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.18.0/AngKorGit_0.18.0_amd64.AppImage -o ~/Downloads/AngKorGit.AppImage && chmod +x ~/Downloads/AngKorGit.AppImage && ~/Downloads/AngKorGit.AppImage
-```
+本仓库的 [Releases 发行页面](https://github.com/wuwuzhazha/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
 
-The builds aren't signed with a paid certificate, so your OS asks once on first launch. After that the app updates itself, and every update is verified with a signature before it installs. All releases are built in public by GitHub Actions from this source tree. The full first-launch walkthrough is on the [getting started page](https://angkorgit.app/docs/getting-started/).
+- **Windows**：下载 `AngKorGit_0.17.0_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名。
+- **macOS / Linux**：本次未发布这两个平台的中文安装包。可自行编译中文源码，或到[上游发行页面](https://github.com/cheat2001/angkorgit/releases)下载未汉化的原版。不要使用不存在的本仓库 DMG/AppImage 下载地址。
 
-### macOS, first launch
+> **提示**：由于未购买商业代码签名证书，Windows SmartScreen 或 macOS Gatekeeper 首次启动时可能会弹出未知开发者提示，在 Windows 下点击“更多信息 → 仍要运行”，在 macOS 下于“系统设置 → 隐私与安全性”中点击“仍然打开”即可。
 
-1. Open the `.dmg` and drag AngKorGit into Applications. Don't run it from inside the dmg window, macOS would start it from a temporary location where permissions can't be saved.
-2. Launch it. macOS says the app cannot be opened. Close that, go to System Settings, Privacy & Security, scroll down and click Open Anyway. This happens once.
-3. The first time you open a repository in Desktop, Documents or Downloads, macOS asks for access to that folder. Allow, once per folder.
-4. If you connect a GitHub or GitLab account, the first git operation per session asks to read the token from your Keychain. Plain Allow is enough, Always Allow has no effect on unsigned apps.
+## 🛠️ 从源码编译构建
 
-If a permission dialog ever loops, reset the stale records and try again:
-
-```sh
-tccutil reset All dev.angkorgit.app
-```
-
-### Windows and Linux
-
-Windows: SmartScreen says the publisher is unknown. More info, then Run anyway. An `.msi` is on the releases page too.
-
-Linux: `chmod +x` the AppImage and run it, or install the `.deb` or `.rpm`. Needs WebKitGTK 4.1 and libssl, which most desktops already have.
-
-## Building from source
-
-You need [Node 20+](https://nodejs.org), [pnpm 10+](https://pnpm.io), [Rust stable](https://rustup.rs) and the [Tauri v2 system dependencies](https://v2.tauri.app/start/prerequisites/).
+构建前请准备开发环境：[Node 20+](https://nodejs.org)、[pnpm 10+](https://pnpm.io)、[Rust 稳定版](https://rustup.rs) 以及 [Tauri v2 系统依赖](https://v2.tauri.app/start/prerequisites/)。Windows 还需要 Visual Studio C++ 生成工具和加入 `PATH` 的原生 Windows Perl（例如 Strawberry Perl），用于构建 OpenSSL。安装已构建的应用不需要 Perl。
 
 ```bash
 # 1. 安装项目依赖
