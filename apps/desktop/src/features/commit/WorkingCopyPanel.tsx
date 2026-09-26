@@ -46,15 +46,15 @@ function statusBadge(kind: string | null) {
   switch (kind) {
     case 'new':
     case 'untracked':
-      return <ChangeMark tone="success" title="Added">A</ChangeMark>;
+      return <ChangeMark tone="success" title="新增">A</ChangeMark>;
     case 'modified':
-      return <ChangeMark tone="info" title="Modified">M</ChangeMark>;
+      return <ChangeMark tone="info" title="已修改">M</ChangeMark>;
     case 'deleted':
-      return <ChangeMark tone="danger" title="Deleted">D</ChangeMark>;
+      return <ChangeMark tone="danger" title="已删除">D</ChangeMark>;
     case 'renamed':
-      return <ChangeMark tone="primary" title="Renamed">R</ChangeMark>;
+      return <ChangeMark tone="primary" title="重命名">R</ChangeMark>;
     case 'conflicted':
-      return <ChangeMark tone="danger" title="Conflicted">!</ChangeMark>;
+      return <ChangeMark tone="danger" title="冲突">!</ChangeMark>;
     default:
       return null;
   }
@@ -921,8 +921,8 @@ export function WorkingCopyPanel() {
           <EmptyCard
             tone="success"
             icon={<Check />}
-            title="Working tree clean"
-            description="Nothing to commit. Edits you make show up here."
+            title="工作区干净"
+            description="没有可提交的内容，你的修改会显示在这里。"
             className="mt-1"
             action={
               !amend && repo?.state !== 'merge' ? (
@@ -956,7 +956,7 @@ export function WorkingCopyPanel() {
                   className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-danger/10"
                   onClick={() => openConflict(file)}
                 >
-                  <ChangeMark tone="danger" title="Conflicted">!</ChangeMark>
+                  <ChangeMark tone="danger" title="冲突">!</ChangeMark>
                   <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
                     <span className="max-w-full shrink-0 truncate font-medium text-foreground">{basename(file)}</span>
                     <DirName path={file} className="text-[11px]" />
@@ -1119,11 +1119,11 @@ export function WorkingCopyPanel() {
         </div>
         {stagedFiles.length === 0 &&
           (filtering && allStaged.length > 0 ? (
-            <p className="px-2 pb-2 text-xs text-faint">No staged files match the filter.</p>
+            <p className="px-2 pb-2 text-xs text-faint">没有暂存文件符合过滤条件。</p>
           ) : (
             <EmptyCard
               icon={<SquareCheck />}
-              title="Nothing staged"
+              title="尚未暂存内容"
               description="Tick a file above, or 全部暂存, to put it in the next commit."
             />
           ))}
@@ -1257,7 +1257,7 @@ export function WorkingCopyPanel() {
                 toast.success('Absolute path copied');
               }}
             >
-              <Copy /> Copy absolute path
+              <Copy /> 复制 absolute path
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file, fileMenu.staged)}>
@@ -1385,7 +1385,7 @@ export function WorkingCopyPanel() {
                   summaryRef.current?.focus();
                 }
               }}
-              placeholder="What changed and why"
+              placeholder="说明改了什么、为什么"
               aria-label="提交说明"
               className={cn(
                 'min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:ring-0 focus-visible:border-0',
@@ -1401,7 +1401,7 @@ export function WorkingCopyPanel() {
             <Hint
               label={
                 stagedFiles.length === 0
-                  ? 'Stage some changes to review them with AI'
+                  ? '暂存一些更改后即可用 AI 审查'
                   : '提交前用 AI 审查暂存更改'
               }
             >
@@ -1437,7 +1437,7 @@ export function WorkingCopyPanel() {
               label={
                 <span className="flex items-center gap-1">
                   {stagedFiles.length === 0 && !amend && repo?.state !== 'merge'
-                    ? 'Stage a file to commit'
+                    ? '暂存文件后即可提交'
                     : 'Commit'}{' '}
                   <Kbd>{modKey()}</Kbd>
                   <Kbd>⏎</Kbd>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 export const REVIEW_WAIT_MESSAGES = [
-  'Reading the changes…',
+  '正在读取更改…',
   '正在思考边界情况…',
   '正在查找缺陷…',
   '正在检查你的约定…',
@@ -10,10 +10,10 @@ export const REVIEW_WAIT_MESSAGES = [
 ];
 
 export const EXPLAIN_WAIT_MESSAGES = [
-  'Reading the changes…',
-  'Following the logic…',
-  'Working out what moved and why…',
-  'Putting it in plain words…',
+  '正在读取更改…',
+  '正在梳理逻辑…',
+  '正在辨别移动的代码…',
+  '正在组织成通俗的文字…',
 ];
 
 const WAIT_MESSAGE_INTERVAL = 6000;

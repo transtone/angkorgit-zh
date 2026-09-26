@@ -90,51 +90,51 @@ export function DiffAiStrip({
         )}
         <span className="flex-1" />
         {busy ? (
-          <Hint label={`Stop the ${title}`}>
-            <Button variant="ghost" size="icon-sm" aria-label={`Stop the ${title}`} onClick={onStop}>
+          <Hint label={`停止 ${title}`}>
+            <Button variant="ghost" size="icon-sm" aria-label={`停止 ${title}`} onClick={onStop}>
               <X className="size-3.5" />
             </Button>
           </Hint>
         ) : (
           <>
-            <Hint label="Copy as text">
+            <Hint label="复制为文本">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Copy ${title}`}
+                aria-label={`复制${title}`}
                 onClick={() => {
                   navigator.clipboard
                     .writeText(text ?? '')
-                    .then(() => toast.success('Copied'))
+                    .then(() => toast.success('已复制'))
                     .catch(() => toast.error('无法复制'));
                 }}
               >
                 <Copy className="size-3.5" />
               </Button>
             </Hint>
-            <Hint label={`Open ${title} in full view`}>
+            <Hint label={`在完整视图中打开${title}`}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Open ${title} in full view`}
+                aria-label={`在完整视图中打开${title}`}
                 onClick={() => setExpanded(true)}
               >
                 <Maximize2 className="size-3.5" />
               </Button>
             </Hint>
-            <Hint label={folded ? `Show the ${title}` : `Fold the ${title}`}>
+            <Hint label={folded ? `显示${title}` : `折叠${title}`}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={folded ? `Show the ${title}` : `Fold the ${title}`}
+                aria-label={folded ? `显示${title}` : `折叠${title}`}
                 aria-expanded={!folded}
                 onClick={() => setFolded((f) => !f)}
               >
                 {folded ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
               </Button>
             </Hint>
-            <Hint label={`Dismiss ${title}`}>
-              <Button variant="ghost" size="icon-sm" aria-label={`Dismiss ${title}`} onClick={onDismiss}>
+            <Hint label={`关闭${title}`}>
+              <Button variant="ghost" size="icon-sm" aria-label={`关闭${title}`} onClick={onDismiss}>
                 <X className="size-3.5" />
               </Button>
             </Hint>
@@ -145,7 +145,7 @@ export function DiffAiStrip({
         <div data-ai-body className="max-h-[min(40vh,22rem)] overflow-y-auto px-4 pb-3 pt-1">
           <AiReport text={text ?? ''} className="text-xs leading-relaxed" locate={locate} />
           {locatable && (
-            <p className="mt-3 text-[10px] text-faint">Click a quoted line to show it in the diff.</p>
+            <p className="mt-3 text-[10px] text-faint">点击引用的行可跳转到差异中的对应位置。</p>
           )}
         </div>
       )}

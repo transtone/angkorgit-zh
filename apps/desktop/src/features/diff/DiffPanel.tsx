@@ -316,7 +316,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       const source = !fullFileDiff && diff ? diff : await fetchDiff();
       if (!stillRunning()) return;
       if (!hasReviewableText(source)) {
-        toast.info('This file has no text changes to send');
+        toast.info('此文件没有可发送的文本更改');
         return;
       }
       const patch = patchTextOf(source);
@@ -336,7 +336,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       if (kind === 'review') {
         const projectInstructions = await ipc.readFile(path, PROJECT_REVIEW_FILE).catch((error) => {
           if (stillRunning() && (error as { code?: string } | null)?.code !== 'not_found') {
-            toast.warning(`Could not read ${PROJECT_REVIEW_FILE} — reviewing without project conventions`);
+            toast.warning(`无法读取 ${PROJECT_REVIEW_FILE}——不按项目约定审查`);
           }
           return '';
         });
@@ -350,12 +350,12 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       }
       if (!stillRunning()) return;
       if (!text) {
-        toast.error('The AI provider returned an empty answer — try again or check the model in Settings');
+        toast.error('AI 提供方返回了空回答——请重试或检查设置中的模型');
         return;
       }
       const current = diffRef.current;
       if (!fullFileDiff && hasReviewableText(current) && hashText(patchTextOf(current)) !== hashText(patch)) {
-        toast.info(`${file} changed while the AI was working — run it again`);
+        toast.info(`${file} 在 AI 工作期间发生了变化——请重新运行`);
         return;
       }
       useAiWork.getState().setFileAi(key, { kind, patchHash: hashText(patch), text });
@@ -375,7 +375,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     if (!diff || !el) return;
     const hit = locateDiffLine(diff, snippet);
     if (!hit) {
-      toast.info('That line is not part of this diff');
+      toast.info('该行不属于此差异');
       return;
     }
     setLocated(new Map([[hit.line, [{ start: hit.start, end: hit.end, current: true }]]]));
@@ -467,12 +467,12 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </Button>
         </Hint>
         <DropdownMenu>
-          <Hint label="View options">
+          <Hint label="视图选项">
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="View options"
+                aria-label="视图选项"
                 className={cn((wordDiff || wrapLines || fullFileDiff) && 'text-primary')}
               >
                 <SlidersHorizontal className="size-3.5" />
@@ -480,9 +480,9 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             </DropdownMenuTrigger>
           </Hint>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>View options</DropdownMenuLabel>
+            <DropdownMenuLabel>视图选项</DropdownMenuLabel>
             <DropdownMenuCheckboxItem checked={wordDiff} onCheckedChange={(v) => setWordDiff(v === true)}>
-              <WholeWord /> Word diff
+              <WholeWord /> 词级 diff
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
               checked={wrapLines}
@@ -496,7 +496,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             </DropdownMenuCheckboxItem>
             {textDiff && wrapUnavailable(textDiff) && (
               <p className="max-w-56 px-2 pb-1.5 pt-1 text-[11px] leading-snug text-faint">
-                Wrapping stays off for large files so scrolling keeps up.
+                大文件下保持关闭换行以保证滚动流畅。
               </p>
             )}
           </DropdownMenuContent>
@@ -535,18 +535,18 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             label={
               aiBusyKind
                 ? aiBusyKind === 'review'
-                  ? 'Reviewing with AI…'
-                  : 'Explaining with AI…'
+                  ? '正在用 AI 审查…'
+                  : '正在用 AI 解释…'
                 : aiAvailable
-                  ? 'Explain or review with AI'
-                  : 'No text changes to explain or review'
+                  ? '用 AI 解释或审查'
+                  : '没有可解释或审查的文本更改'
             }
           >
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="AI actions"
+                aria-label="AI 操作"
                 disabled={!aiAvailable || !!aiBusyKind}
                 className={cn(aiResult && !aiBusyKind && 'text-primary')}
               >
@@ -560,10 +560,10 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </Hint>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => void runFileAi('explain')}>
-              <Sparkles /> Explain changes
+              <Sparkles /> 解释更改
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void runFileAi('review')}>
-              <SearchCheck /> Review changes
+              <SearchCheck /> 审查更改
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -645,25 +645,25 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           <>
             <Separator orientation="vertical" className="mx-1 h-4" />
             {target.staged ? (
-              <Hint label="Unstage file">
+              <Hint label="取消暂存文件">
                 <Button
                   variant="secondary"
                   size="sm"
-                  aria-label="Unstage file"
+                  aria-label="取消暂存文件"
                   onClick={() => void runStage(() => ipc.unstageFile(path, target.path), 'Unstage')}
                 >
-                  <Minus className="size-3" /> {!compact && 'Unstage file'}
+                  <Minus className="size-3" /> {!compact && '取消暂存文件'}
                 </Button>
               </Hint>
             ) : (
-              <Hint label="Stage file">
+              <Hint label="暂存文件">
                 <Button
                   variant="secondary"
                   size="sm"
-                  aria-label="Stage file"
+                  aria-label="暂存文件"
                   onClick={() => void runStage(() => ipc.stageFile(path, target.path), 'Stage')}
                 >
-                  <Plus className="size-3" /> {!compact && 'Stage file'}
+                  <Plus className="size-3" /> {!compact && '暂存文件'}
                 </Button>
               </Hint>
             )}
@@ -846,7 +846,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               <DropdownMenuItem
                 onClick={() => {
                   void navigator.clipboard.writeText(lineMenu.selection);
-                  toast.success('Copied');
+                  toast.success('已复制');
                 }}
               >
                 <Copy /> 复制

@@ -46,14 +46,14 @@ export function AiResultDialog({
             onClick={() => {
               navigator.clipboard
                 .writeText(text)
-                .then(() => toast.success('Copied'))
+                .then(() => toast.success('已复制'))
                 .catch(() => toast.error('无法复制'));
             }}
           >
-            <Copy className="size-3" /> Copy
+            <Copy className="size-3" /> 复制
           </Button>
           <Button size="sm" onClick={() => onOpenChange(false)}>
-            Done
+            完成
           </Button>
         </div>
       </DialogContent>

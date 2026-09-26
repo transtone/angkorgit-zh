@@ -133,7 +133,7 @@ export function StatusBar() {
       </span>
       {!prUrl && unknownForgeHost && (
         <Hint
-          label={`AngKorGit does not know which forge runs ${unknownForgeHost}. Connect an account for it in Settings and pull requests light up here.`}
+          label={`AngKorGit 无法识别 ${unknownForgeHost}。请在设置中为其连接账户，拉取请求便会显示在这里。`}
         >
           <button
             type="button"
@@ -142,7 +142,7 @@ export function StatusBar() {
             onClick={() => openDialog('settings', { section: 'accounts' })}
           >
             <GitPullRequest className="size-3" />
-            Connect {unknownForgeHost}
+            连接 {unknownForgeHost}
           </button>
         </Hint>
       )}

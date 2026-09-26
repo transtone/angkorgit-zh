@@ -45,26 +45,26 @@ export function AiResultPanel({
           {icon} {title}
         </span>
         {busy ? (
-          <Hint label={`Stop the ${title}`}>
-            <Button variant="ghost" size="icon-sm" aria-label={`Stop the ${title}`} onClick={onStop}>
+          <Hint label={`停止 ${title}`}>
+            <Button variant="ghost" size="icon-sm" aria-label={`停止 ${title}`} onClick={onStop}>
               <X className="size-3" />
             </Button>
           </Hint>
         ) : (
           <span className="flex items-center">
-            <Hint label={`Open ${title} in full view`}>
+            <Hint label={`在完整视图中打开${title}`}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Open ${title} in full view`}
+                aria-label={`在完整视图中打开${title}`}
                 onClick={() => setExpanded(true)}
               >
                 <Maximize2 className="size-3" />
               </Button>
             </Hint>
             {onDismiss && (
-              <Hint label={`Dismiss ${title}`}>
-                <Button variant="ghost" size="icon-sm" aria-label={`Dismiss ${title}`} onClick={onDismiss}>
+              <Hint label={`关闭${title}`}>
+                <Button variant="ghost" size="icon-sm" aria-label={`关闭${title}`} onClick={onDismiss}>
                   <X className="size-3" />
                 </Button>
               </Hint>

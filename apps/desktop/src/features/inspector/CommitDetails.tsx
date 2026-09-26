@@ -606,7 +606,7 @@ export function CommitDetails({
       if (!stillRunning()) return;
       const patch = patchTextOfAll(fullDiffs);
       if (!patch.trim()) {
-        toast.info('This commit has no text changes to send');
+        toast.info('此次提交没有可发送的文本更改');
         return;
       }
       const context = { oid: commit.oid, summary: commit.summary, files: fullDiffs.map((d) => d.path) };
@@ -614,7 +614,7 @@ export function CommitDetails({
       if (kind === 'review') {
         const projectInstructions = await ipc.readFile(repoPath, PROJECT_REVIEW_FILE).catch((error) => {
           if (stillRunning() && (error as { code?: string } | null)?.code !== 'not_found') {
-            toast.warning(`Could not read ${PROJECT_REVIEW_FILE} — reviewing without project conventions`);
+            toast.warning(`无法读取 ${PROJECT_REVIEW_FILE}——不按项目约定审查`);
           }
           return '';
         });
@@ -628,7 +628,7 @@ export function CommitDetails({
       }
       if (!stillRunning()) return;
       if (!text) {
-        toast.error('The AI provider returned an empty answer — try again or check the model in Settings');
+        toast.error('AI 提供方返回了空回答——请重试或检查设置中的模型');
         return;
       }
       useAiWork.getState().setExplain(key, text);
@@ -856,12 +856,12 @@ export function CommitDetails({
                 {reviewBusy ? (
                   <>
                     <Logo size={14} animated="loop" className="logo-draw-loop" />
-                    Stop reviewing
+                    停止审查
                   </>
                 ) : (
                   <>
                     <SearchCheck className="text-primary" />
-                    Review with AI
+                    用 AI 审查
                   </>
                 )}
               </Button>
@@ -1118,7 +1118,7 @@ export function CommitDetails({
                 toast.success('Absolute path copied');
               }}
             >
-              <Copy /> Copy absolute path
+              <Copy /> 复制 absolute path
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

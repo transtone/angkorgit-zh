@@ -43,7 +43,7 @@ function Inline({ text, locate }: { text: string; locate?: AiReportLocate }) {
               <button
                 key={index}
                 type="button"
-                title="Show this line in the diff"
+                title="在差异中显示此行"
                 onClick={() => locate.onLocate(segment.text)}
                 className={cn(
                   'rounded bg-surface-raised px-1 py-px text-left font-mono text-[0.9em] text-foreground',

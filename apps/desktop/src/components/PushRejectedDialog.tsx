@@ -29,10 +29,10 @@ export function PushRejectedDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-w-md" data-push-rejected>
         <DialogHeader>
-          <DialogTitle>The remote has moved on</DialogTitle>
+          <DialogTitle>远端已超前</DialogTitle>
           <DialogDescription>
-            <span className="font-mono">{target}</span> has commits that are not in your branch, so
-            the push was refused. Pick how to bring the two together.
+            <span className="font-mono">{target}</span> 包含你的分支中没有的提交，因此
+            推送被拒绝，请选择一种合流方式。
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
@@ -44,10 +44,10 @@ export function PushRejectedDialog({
           >
             <ArrowDownToLine className="mt-0.5 size-4 shrink-0 text-primary" />
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-foreground">Pull with rebase</span>
+              <span className="block text-sm font-medium text-foreground">拉取（变基）</span>
               <span className="block text-xs text-muted">
-                Bring the remote commits in and replay yours on top. Right when someone else pushed to
-                this branch. Nothing is lost.
+                取回远端提交并将你的提交重放其上。适用于他人已推送到
+                同一分支的情形，不会丢失任何内容。
               </span>
             </span>
           </button>
@@ -60,8 +60,8 @@ export function PushRejectedDialog({
             <span className="min-w-0">
               <span className="block text-sm font-medium text-foreground">强制推送</span>
               <span className="block text-xs text-muted">
-                Replace the remote branch with yours. Right when you amended or rebased commits you had
-                already pushed. Commits that exist only on the remote are lost.
+                用你的分支替换远端分支。适用于你已修订或变基已推送提交的情形
+                。仅存在于远端的提交将会丢失。
               </span>
             </span>
           </button>

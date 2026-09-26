@@ -481,20 +481,20 @@ export function FileHistoryPanel({ file }: { file: string }) {
                   {selected === WORKING_COPY ? (
                     <SettingEmpty
                       icon={<FileCheck className="size-4" />}
-                      title="No uncommitted changes"
-                      description={`${basename(file)} on disk matches the last commit.`}
+                      title="无未提交更改"
+                      description={`${basename(file)} 在磁盘上的内容与最后一次提交一致。`}
                     />
                   ) : selected ? (
                     <SettingEmpty
                       icon={<FileText className="size-4" />}
-                      title="Nothing changed in this commit"
-                      description={`This commit did not touch ${basename(file)}. It may have been renamed here, or the change lives in another file.`}
+                      title="此次提交没有任何更改"
+                      description={`此次提交未改动 ${basename(file)}。它可能在此处被重命名，或改动位于另一个文件中。`}
                     />
                   ) : (
                     <SettingEmpty
                       icon={<MousePointerClick className="size-4" />}
-                      title="Pick a commit"
-                      description="Select a commit on the left to see what it changed in this file."
+                      title="选择一个提交"
+                      description="在左侧选择一个提交，查看它对此文件的更改。"
                     />
                   )}
                 </div>
@@ -540,7 +540,7 @@ export function FileHistoryPanel({ file }: { file: string }) {
               <DropdownMenuItem
                 onClick={() => {
                   void navigator.clipboard.writeText(lineMenu.selection);
-                  toast.success('Copied');
+                  toast.success('已复制');
                 }}
               >
                 <Copy /> 复制
