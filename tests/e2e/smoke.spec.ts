@@ -566,16 +566,16 @@ test('侧边栏列出演示拉取请求并打开创建对话框', async ({ page 
   await expect(page.getByText(/side-by-side word diff polish/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('草稿', { exact: true })).toBeVisible();
 
-  await page.getByText('Pull requests').hover();
-  await page.getByRole('button', { name: 'Create pull request', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Create pull request' })).toBeVisible();
-  await expect(page.getByPlaceholder('Title')).toBeVisible();
-  await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('heading', { name: 'Create pull request' })).toBeHidden();
+  await page.getByText('拉取请求').hover();
+  await page.getByRole('button', { name: '创建拉取请求', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '创建拉取请求' })).toBeVisible();
+  await expect(page.getByPlaceholder('标题')).toBeVisible();
+  await page.getByRole('button', { name: '取消' }).click();
+  await expect(page.getByRole('heading', { name: '创建拉取请求' })).toBeHidden();
 
-  await page.getByText('Pull requests').hover();
-  await page.getByRole('button', { name: 'Create pull request', exact: true }).click();
-  await page.getByRole('button', { name: 'Add reviewers' }).click();
+  await page.getByText('拉取请求').hover();
+  await page.getByRole('button', { name: '创建拉取请求', exact: true }).click();
+  await page.getByRole('button', { name: '添加审查人' }).click();
   await expect(page.getByRole('menuitemcheckbox', { name: /Dara Kim/ })).toBeVisible();
 });
 
@@ -633,9 +633,9 @@ test('侧边栏列出演示工作树并打开新建工作树对话框', async ({
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('工作树', { exact: true })).toBeVisible();
   await expect(page.getByText('angkorgit-feature-diff-viewer')).toBeVisible();
-  await expect(page.getByText('folder missing')).toBeVisible();
+  await expect(page.getByText('文件夹缺失')).toBeVisible();
   await page.getByText('Worktrees', { exact: true }).hover();
-  await page.getByRole('button', { name: 'New worktree' }).click();
+  await page.getByRole('button', { name: '新建工作树' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('新建工作树')).toBeVisible();
   await expect(dialog.getByPlaceholder('/path/to/new-folder')).toHaveValue(
@@ -1967,19 +1967,19 @@ test('dragging a diff selection past the bottom edge keeps growing it and copies
 test('the diff header reviews and explains a single file with AI', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const chip = page.locator('[data-ai-status]');
   await chip.click();
   const settings = page.getByRole('dialog');
   await settings.getByRole('combobox').first().click();
-  await page.getByRole('option', { name: /Installed AI CLI/ }).click();
+  await page.getByRole('option', { name: /已安装 AI CLI/ }).click();
   await settings.getByRole('button', { name: /Claude Code/ }).click();
   await expect(chip).toHaveText('Claude Code');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
 
   await page.getByText('ipc.ts', { exact: true }).first().click();
-  const diff = page.locator('section[aria-label="Diff for src/core/ipc.ts"]');
+  const diff = page.locator('section[aria-label="文件差异：src/core/ipc.ts"]');
   await expect(diff).toBeVisible();
   const aiButton = diff.getByRole('button', { name: 'AI actions' });
   await expect(aiButton).toBeEnabled();
@@ -2022,12 +2022,12 @@ test('the diff header reviews and explains a single file with AI', async ({ page
 test('a commit can be reviewed with AI from the inspector', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const chip = page.locator('[data-ai-status]');
   await chip.click();
   const settings = page.getByRole('dialog');
   await settings.getByRole('combobox').first().click();
-  await page.getByRole('option', { name: /Installed AI CLI/ }).click();
+  await page.getByRole('option', { name: /已安装 AI CLI/ }).click();
   await settings.getByRole('button', { name: /Claude Code/ }).click();
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();

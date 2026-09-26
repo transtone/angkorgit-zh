@@ -58,7 +58,7 @@ export function PushRejectedDialog({
           >
             <ArrowUpFromLine className="mt-0.5 size-4 shrink-0 text-danger" />
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-foreground">Force push</span>
+              <span className="block text-sm font-medium text-foreground">强制推送</span>
               <span className="block text-xs text-muted">
                 Replace the remote branch with yours. Right when you amended or rebased commits you had
                 already pushed. Commits that exist only on the remote are lost.
@@ -68,7 +68,7 @@ export function PushRejectedDialog({
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            取消
           </Button>
         </DialogFooter>
       </DialogContent>

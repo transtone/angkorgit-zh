@@ -106,7 +106,7 @@ export function DiffAiStrip({
                   navigator.clipboard
                     .writeText(text ?? '')
                     .then(() => toast.success('Copied'))
-                    .catch(() => toast.error('Could not copy'));
+                    .catch(() => toast.error('无法复制'));
                 }}
               >
                 <Copy className="size-3.5" />

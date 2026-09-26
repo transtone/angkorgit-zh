@@ -393,7 +393,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           )}
           <PaletteItem
             icon={<RefreshCw />}
-            label="Refresh"
+            label="刷新"
             shortcut="R"
             onSelect={() => {
               close();

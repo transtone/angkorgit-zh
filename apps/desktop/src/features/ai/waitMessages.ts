@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 
 export const REVIEW_WAIT_MESSAGES = [
   'Reading the changes…',
-  'Thinking through edge cases…',
-  'Hunting for bugs…',
-  'Checking your conventions…',
-  'Looking for missing tests…',
-  'Polishing the feedback…',
+  '正在思考边界情况…',
+  '正在查找缺陷…',
+  '正在检查你的约定…',
+  '正在查找缺失的测试…',
+  '正在润色反馈…',
 ];
 
 export const EXPLAIN_WAIT_MESSAGES = [

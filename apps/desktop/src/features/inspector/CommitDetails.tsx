@@ -726,13 +726,13 @@ export function CommitDetails({
               {commit.summary}
             </h2>
             {!stash && (
-              <Hint label={canReword ? 'Edit the commit message' : 'Already pushed to a remote'}>
+              <Hint label={canReword ? '编辑提交消息' : '已推送到远端'}>
                 <span className="-mt-1 inline-flex shrink-0">
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     className="text-muted"
-                    aria-label="Edit commit message"
+                    aria-label="编辑提交消息"
                     disabled={!canReword}
                     onClick={startEditing}
                   >
@@ -836,12 +836,12 @@ export function CommitDetails({
               {aiBusy ? (
                 <>
                   <Logo size={14} animated="loop" className="logo-draw-loop" />
-                  Stop explaining
+                  停止解释
                 </>
               ) : (
                 <>
                   <Sparkles className="text-primary" />
-                  Explain with AI
+                  用 AI 解释
                 </>
               )}
             </Button>
@@ -868,7 +868,7 @@ export function CommitDetails({
             )}
         </div>
         <AiResultPanel
-          title="AI explanation"
+          title="AI 解释"
           icon={<Sparkles className="size-3.5" />}
           busy={aiBusy}
           waitMessages={EXPLAIN_WAIT_MESSAGES}
@@ -879,7 +879,7 @@ export function CommitDetails({
           bodyClassName="max-h-72"
         />
         <AiResultPanel
-          title="AI review"
+          title="AI 审查"
           icon={<SearchCheck className="size-3.5" />}
           busy={reviewBusy}
           waitMessages={REVIEW_WAIT_MESSAGES}

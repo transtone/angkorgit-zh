@@ -440,7 +440,7 @@ export function CreatePrDialog() {
           </label>
           {baseOptions.length === 0 && (
             <DialogNote tone="info">
-              No branches found on {activeTargetName} — fetch it first so the target branch list can fill in.
+              {activeTargetName} 上没有找到分支——请先获取该远端，再选择目标分支。
             </DialogNote>
           )}
           {notPushed && (

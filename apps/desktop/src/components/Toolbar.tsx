@@ -409,7 +409,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         setPushRejected(true);
         return;
       }
-      toast.error(`${label} failed: ${(error as { message?: string }).message ?? error}`);
+      toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
     } finally {
       setBusy(null);
     }
@@ -464,7 +464,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         }}
         onForcePush={() => {
           setPushRejected(false);
-          runPush('Push (force)', () => ipc.push(repo.path, remote, true, false, true));
+          runPush('推送（强制）', () => ipc.push(repo.path, remote, true, false, true));
         }}
       />
 

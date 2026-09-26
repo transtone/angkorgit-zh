@@ -58,8 +58,8 @@ function useCompactHeader(ref: React.RefObject<HTMLElement>): boolean {
 }
 
 const FILE_AI_TITLES: Record<FileAiKind, string> = {
-  explain: 'AI explanation',
-  review: 'AI review',
+  explain: 'AI 解释',
+  review: 'AI 审查',
 };
 
 function fileAiIcon(kind: FileAiKind, className: string) {
@@ -305,7 +305,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
 
   const runFileAi = async (kind: FileAiKind) => {
     if (!aiConfigured()) {
-      toast.info('Configure an AI provider in Settings first');
+      toast.info('请先在设置中配置 AI 提供方');
       return;
     }
     const key = aiKey;
@@ -361,7 +361,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       useAiWork.getState().setFileAi(key, { kind, patchHash: hashText(patch), text });
     } catch (error) {
       if (stillRunning()) {
-        toast.error(`AI request failed: ${(error as { message?: string } | null)?.message ?? String(error)}`);
+        toast.error(`AI 请求失败：${(error as { message?: string } | null)?.message ?? String(error)}`);
       }
     } finally {
       useAiWork.getState().endFileAi(key, run);
@@ -489,10 +489,10 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               disabled={!!textDiff && wrapUnavailable(textDiff)}
               onCheckedChange={(v) => setWrapLines(v === true)}
             >
-              <WrapText /> Wrap long lines
+              <WrapText /> 自动换行
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem checked={fullFileDiff} onCheckedChange={(v) => setFullFileDiff(v === true)}>
-              <FileText /> Show whole file
+              <FileText /> 显示整个文件
             </DropdownMenuCheckboxItem>
             {textDiff && wrapUnavailable(textDiff) && (
               <p className="max-w-56 px-2 pb-1.5 pt-1 text-[11px] leading-snug text-faint">
@@ -501,7 +501,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Hint label="File history">
+        <Hint label="文件历史">
           <Button
             variant="ghost"
             size="icon-sm"

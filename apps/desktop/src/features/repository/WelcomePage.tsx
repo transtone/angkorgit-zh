@@ -200,7 +200,7 @@ export function WelcomePage() {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onSearchKey}
                   placeholder="Search repositories"
-                  aria-label="Search recent repositories"
+                  aria-label="搜索最近仓库"
                   className="h-7 pl-8 text-xs"
                 />
               </div>

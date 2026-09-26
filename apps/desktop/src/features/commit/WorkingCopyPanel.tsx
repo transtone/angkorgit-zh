@@ -927,7 +927,7 @@ export function WorkingCopyPanel() {
             action={
               !amend && repo?.state !== 'merge' ? (
                 <Button variant="ghost" size="sm" className="-mb-1 self-start text-muted" onClick={() => setAmend(true)}>
-                  <Undo2 className="size-3" /> Amend last commit…
+                  <Undo2 className="size-3" /> 修订上一次提交…
                 </Button>
               ) : undefined
             }
@@ -1124,7 +1124,7 @@ export function WorkingCopyPanel() {
             <EmptyCard
               icon={<SquareCheck />}
               title="Nothing staged"
-              description="Tick a file above, or Stage all, to put it in the next commit."
+              description="Tick a file above, or 全部暂存, to put it in the next commit."
             />
           ))}
         {fileTree ? (
@@ -1310,7 +1310,7 @@ export function WorkingCopyPanel() {
             />
           </div>
           <AiResultPanel
-            title="AI review"
+            title="AI 审查"
             icon={<SearchCheck className="size-3.5" />}
             busy={reviewBusy}
             waitMessages={REVIEW_WAIT_MESSAGES}
@@ -1386,7 +1386,7 @@ export function WorkingCopyPanel() {
                 }
               }}
               placeholder="What changed and why"
-              aria-label="Commit description"
+              aria-label="提交说明"
               className={cn(
                 'min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:ring-0 focus-visible:border-0',
                 commitBoxHeight === null ? 'max-h-[260px]' : 'max-h-[600px] overflow-y-auto',
@@ -1402,7 +1402,7 @@ export function WorkingCopyPanel() {
               label={
                 stagedFiles.length === 0
                   ? 'Stage some changes to review them with AI'
-                  : 'Review staged changes with AI before committing'
+                  : '提交前用 AI 审查暂存更改'
               }
             >
               <span className="inline-flex">
@@ -1455,7 +1455,7 @@ export function WorkingCopyPanel() {
                 onClick={() => void commit()}
               >
                 {committing && <Spinner className="text-primary-foreground" />}
-                {amend ? 'Amend commit' : `Commit${stagedFiles.length > 0 ? ` ${stagedFiles.length} file${stagedFiles.length === 1 ? '' : 's'}` : ''}`}
+                {amend ? '修订提交' : `提交${stagedFiles.length > 0 ? ` ${stagedFiles.length} 个文件` : ''}`}
               </Button>
               </span>
             </Hint>
