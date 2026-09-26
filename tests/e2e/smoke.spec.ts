@@ -1402,9 +1402,9 @@ test('the pull button offers merge and rebase', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Pull options' }).click();
-  await expect(page.getByRole('menuitem', { name: 'Pull with merge' })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: 'Pull with rebase' })).toBeVisible();
+  await page.getByRole('button', { name: '拉取选项' }).click();
+  await expect(page.getByRole('menuitem', { name: '拉取（合并）' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '拉取（变基）' })).toBeVisible();
   await page.keyboard.press('Escape');
 });
 
@@ -1981,28 +1981,28 @@ test('the diff header reviews and explains a single file with AI', async ({ page
   await page.getByText('ipc.ts', { exact: true }).first().click();
   const diff = page.locator('section[aria-label="文件差异：src/core/ipc.ts"]');
   await expect(diff).toBeVisible();
-  const aiButton = diff.getByRole('button', { name: 'AI actions' });
+  const aiButton = diff.getByRole('button', { name: 'AI 操作' });
   await expect(aiButton).toBeEnabled();
   await aiButton.click();
-  await page.getByRole('menuitem', { name: 'Review changes' }).click();
+  await page.getByRole('menuitem', { name: '审查更改' }).click();
   const panel = diff.locator('[data-ai-result-panel]');
   await expect(panel).toHaveAttribute('data-ai-result-panel', 'busy');
-  await expect(panel).toContainText('AI review');
+  await expect(panel).toContainText('AI 审查');
   await expect(aiButton).toBeDisabled();
   await expect(panel).toHaveAttribute('data-ai-result-panel', 'done', { timeout: 10_000 });
   await expect(panel).toContainText('demo response');
   await expect(aiButton).toBeEnabled();
 
-  await expect(diff.getByRole('button', { name: 'Copy AI review' })).toBeVisible();
-  await diff.getByRole('button', { name: 'Fold the AI review' }).click();
+  await expect(diff.getByRole('button', { name: '复制 AI 审查' })).toBeVisible();
+  await diff.getByRole('button', { name: '折叠 AI 审查' }).click();
   await expect(panel).toHaveAttribute('data-ai-folded', 'true');
   await expect(panel.locator('[data-ai-body]')).toHaveCount(0);
-  await diff.getByRole('button', { name: 'Show the AI review' }).click();
+  await diff.getByRole('button', { name: '显示 AI 审查' }).click();
   await expect(panel.locator('[data-ai-body]')).toContainText('demo response');
-  await diff.getByRole('button', { name: 'Open AI review in full view' }).click();
+  await diff.getByRole('button', { name: '在完整视图中打开 AI 审查' }).click();
   const fullView = page.getByRole('dialog');
   await expect(fullView).toContainText('demo response');
-  await fullView.getByRole('button', { name: 'Done' }).click();
+  await fullView.getByRole('button', { name: '完成' }).click();
   await expect(fullView).toBeHidden();
 
   await page.keyboard.press('Escape');
@@ -2012,10 +2012,10 @@ test('the diff header reviews and explains a single file with AI', async ({ page
   await expect(diff.locator('[data-ai-result-panel]')).toHaveCount(0);
 
   await aiButton.click();
-  await page.getByRole('menuitem', { name: 'Explain changes' }).click();
-  await expect(diff.locator('[data-ai-result-panel]')).toContainText('AI explanation');
+  await page.getByRole('menuitem', { name: '解释更改' }).click();
+  await expect(diff.locator('[data-ai-result-panel]')).toContainText('AI 解释');
   await expect(diff.locator('[data-ai-result-panel]')).toHaveAttribute('data-ai-result-panel', 'done', { timeout: 10_000 });
-  await diff.getByRole('button', { name: 'Dismiss AI explanation' }).click();
+  await diff.getByRole('button', { name: '关闭 AI 解释' }).click();
   await expect(diff.locator('[data-ai-result-panel]')).toHaveCount(0);
 });
 
@@ -2034,14 +2034,14 @@ test('a commit can be reviewed with AI from the inspector', async ({ page }) => 
 
   await page.getByText('feat(graph): virtualize commit rows').first().click();
   const inspector = page.locator('[aria-label="Commit files"]').locator('..');
-  await expect(page.getByRole('button', { name: 'Review with AI' })).toBeVisible();
-  await page.getByRole('button', { name: 'Review with AI' }).click();
-  await expect(page.getByRole('button', { name: 'Stop reviewing' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '用 AI 审查' })).toBeVisible();
+  await page.getByRole('button', { name: '用 AI 审查' }).click();
+  await expect(page.getByRole('button', { name: '停止审查' })).toBeVisible();
   const panel = inspector.locator('[data-ai-result-panel]');
-  await expect(panel).toContainText('AI review');
+  await expect(panel).toContainText('AI 审查');
   await expect(panel).toHaveAttribute('data-ai-result-panel', 'done', { timeout: 10_000 });
   await expect(panel).toContainText('demo response');
-  await expect(page.getByRole('button', { name: 'Review with AI' })).toBeVisible();
-  await page.getByRole('button', { name: 'Dismiss AI review' }).click();
+  await expect(page.getByRole('button', { name: '用 AI 审查' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭 AI 审查' }).click();
   await expect(panel).toHaveCount(0);
 });
