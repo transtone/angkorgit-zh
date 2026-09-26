@@ -566,7 +566,7 @@ test('侧边栏列出演示拉取请求并打开创建对话框', async ({ page 
   await expect(page.getByText(/side-by-side word diff polish/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('草稿', { exact: true })).toBeVisible();
 
-  await page.getByText('拉取请求').hover();
+  await page.getByText('拉取请求', { exact: true }).hover();
   await page.getByRole('button', { name: '创建拉取请求', exact: true }).click();
   await expect(page.getByRole('heading', { name: '创建拉取请求' })).toBeVisible();
   await expect(page.getByPlaceholder('标题')).toBeVisible();
@@ -634,7 +634,7 @@ test('侧边栏列出演示工作树并打开新建工作树对话框', async ({
   await expect(page.getByText('工作树', { exact: true })).toBeVisible();
   await expect(page.getByText('angkorgit-feature-diff-viewer')).toBeVisible();
   await expect(page.getByText('文件夹缺失')).toBeVisible();
-  await page.getByText('Worktrees', { exact: true }).hover();
+  await page.getByText('工作树', { exact: true }).hover();
   await page.getByRole('button', { name: '新建工作树' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('新建工作树')).toBeVisible();
@@ -1246,7 +1246,7 @@ test('right-clicking a commit file offers the working copy file actions', async 
   await expect(menu.getByRole('menuitem', { name: '文件历史' })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: /Show in Finder|在文件管理器中显示/ })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: '复制路径' })).toBeVisible();
-  await expect(menu.getByRole('menuitem', { name: 'Copy absolute path' })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: '复制绝对路径' })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: /Apply this file/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
@@ -1288,7 +1288,7 @@ test('staged files can be discarded from the row, the menu and the header', asyn
   await dialog.getByRole('button', { name: '取消' }).click();
 
   await page.getByText('CommitGraph.tsx', { exact: true }).first().click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: /Discard changes/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /丢弃更改/ })).toBeVisible();
   await page.keyboard.press('Escape');
 
   await page.getByRole('button', { name: '全部丢弃已暂存的更改' }).click();
@@ -2033,7 +2033,7 @@ test('a commit can be reviewed with AI from the inspector', async ({ page }) => 
   await expect(settings).toBeHidden();
 
   await page.getByText('feat(graph): virtualize commit rows').first().click();
-  const inspector = page.locator('[aria-label="Commit files"]').locator('..');
+  const inspector = page.locator('[aria-label="提交文件"]').locator('..');
   await expect(page.getByRole('button', { name: '用 AI 审查' })).toBeVisible();
   await page.getByRole('button', { name: '用 AI 审查' }).click();
   await expect(page.getByRole('button', { name: '停止审查' })).toBeVisible();
