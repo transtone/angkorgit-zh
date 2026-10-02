@@ -17,17 +17,18 @@ async function latestReleaseVersion(): Promise<string> {
 export const SITE = {
   name: 'AngKorGit',
   alternateNames: ['Angkor Git', 'AngkorGit', 'angkorgit', 'Git Angkor', 'GitAngkor', 'gitangkor'],
-  title: 'AngKorGit: a free, native Git client for macOS, Windows and Linux',
+  title:
+    'AngKorGit（Angkor Git）——快速、免费的 Git 客户端与 Git GUI，支持 macOS、Windows 和 Linux',
   description:
-    'AngKorGit is a free, open source Git client and Git GUI for macOS, Windows and Linux. Native Rust and libgit2, no Electron, no account. Commit graph, side by side diffs, a visual conflict resolver, worktrees, pull requests and AI help.',
-  repo: 'https://github.com/cheat2001/angkorgit',
-  releases: 'https://github.com/cheat2001/angkorgit/releases',
-  license: 'https://github.com/cheat2001/angkorgit/blob/main/LICENSE',
-  docs: 'https://github.com/cheat2001/angkorgit/tree/main/docs',
-  contributing: 'https://github.com/cheat2001/angkorgit/blob/main/docs/Contributing.md',
-  codeOfConduct: 'https://github.com/cheat2001/angkorgit/blob/main/CODE_OF_CONDUCT.md',
-  security: 'https://github.com/cheat2001/angkorgit/blob/main/SECURITY.md',
-  ci: 'https://github.com/cheat2001/angkorgit/actions/workflows/ci.yml',
+    'Angkor Git (AngKorGit) 是一款快速、免费、开源的 Git 客户端与 Git GUI，适用于 macOS、Windows 和 Linux，基于 Tauri v2、Rust 与 libgit2 原生构建。可视化提交图、并排 diff 审查、可视化冲突解决与 AI 辅助。',
+  repo: 'https://github.com/wuwuzhazha/angkorgit-zh',
+  releases: 'https://github.com/wuwuzhazha/angkorgit-zh/releases',
+  license: 'https://github.com/wuwuzhazha/angkorgit-zh/blob/main/LICENSE',
+  docs: 'https://github.com/wuwuzhazha/angkorgit-zh/tree/main/docs',
+  contributing: 'https://github.com/wuwuzhazha/angkorgit-zh/blob/main/docs/Contributing.md',
+  codeOfConduct: 'https://github.com/wuwuzhazha/angkorgit-zh/blob/main/CODE_OF_CONDUCT.md',
+  security: 'https://github.com/wuwuzhazha/angkorgit-zh/blob/main/SECURITY.md',
+  ci: 'https://github.com/wuwuzhazha/angkorgit-zh/actions/workflows/ci.yml',
   buyMeACoffee: 'https://buymeacoffee.com/chansocheatsok',
   tagline: '日常 Git，令人愉悦。',
   latestVersion: await latestReleaseVersion(),
@@ -37,9 +38,9 @@ export const SITE = {
 };
 
 export const NAV = [
-  { href: '/#conflicts', label: 'What it does' },
-  { href: '/#box', label: 'In the box' },
-  { href: '/#install', label: 'Install' },
-  { href: '/compare/', label: 'Compare' },
-  { href: '/docs/', label: 'Docs' },
+  { href: '/#conflicts', label: '功能简介' },
+  { href: '/#box', label: '内置功能' },
+  { href: '/#install', label: '安装' },
+  { href: '/compare/', label: '功能对比' },
+  { href: '/docs/', label: '文档' },
 ] as const;

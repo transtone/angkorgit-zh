@@ -1263,3 +1263,52 @@ ui	Done	完成	^\s*Done\s*$
 ui	Copy absolute path	复制绝对路径
 ui	Absolute path copied	已复制绝对路径
 ui	Discard changes…	丢弃更改…
+ui	Keyboard shortcut…	键盘快捷键…
+ui	Change keyboard shortcut…	更改键盘快捷键…
+ui	Close tab	关闭标签页
+ui	Close other tabs	关闭其他标签页
+ui	Keyboard shortcut	键盘快捷键	DialogTitle>Keyboard shortcut
+ui	Press the keys that switch to	按下用于在 AngKorGit 任意位置直接切换到
+ui	from anywhere in AngKorGit, even when it is not open.	的快捷键，即使该仓库未打开也有效。
+ui	Shortcut keys	快捷键	aria-label="Shortcut keys"
+ui	Press a key combination	按下按键组合
+ui	Press new keys to change it, or Backspace to clear.	按下新按键以更改，或按退格键清除。
+ui	A letter, digit or F key together with ${MODIFIER_WORDS}.	字母、数字或 F 键，搭配 ${MODIFIER_WORDS}。
+ui	Add ${MODIFIER_WORDS} so it cannot fire while typing.	请添加 ${MODIFIER_WORDS}，避免打字时误触发。
+ui	AngKorGit already uses this shortcut.	AngKorGit 已占用此快捷键。
+ui	Currently switches to	当前用于切换到
+ui	. Saving moves it here.	。保存将改绑至此处。
+ui	This is the current shortcut.	这是当前设置的快捷键。
+ui	anywhere to switch to	在任意位置按下
+ui	now switches to	现在可用于切换到
+ui	Shortcut removed from	已移除快捷键：
+ui	Remove shortcut	移除快捷键
+ui	Keyboard shortcut for this repository…	为此仓库设置键盘快捷键…
+ui	Repository shortcuts	仓库快捷键
+ui	A key combination that switches to a repository from anywhere in the app, opening it if it is not already open. Right-click a tab or a recent repository and choose Keyboard shortcut… to add one.	可在应用任意位置切换至指定仓库的按键组合；若该仓库尚未打开则会自动打开。在标签页或最近仓库上右键并选择“键盘快捷键…”即可添加。
+ui	No repository shortcuts yet	暂无仓库快捷键
+ui	Right-click a repository tab, or a repository on the welcome page, to give it one.	右键点击仓库标签页或欢迎页中的仓库即可设置快捷键。
+ui	Remove the shortcut for	移除快捷键：
+ui	Switch to tab 1 to 9	切换到第 1 至 9 个标签页
+ui	Previous / next tab	上一个 / 下一个标签页
+ui	Next change, wrapping (diff open)	下一个改动（循环，打开差异时）
+ui	Previous / next change (diff, file history)	上一个 / 下一个改动（差异、文件历史）
+ui	Ignore whitespace	忽略空白字符
+ui	View options. Whitespace is ignored, so hunk and line staging are off: these hunks are not the patch git would apply.	视图选项。已忽略空白字符，代码块与单行暂存已停用：当前显示的块不是 Git 会实际应用的补丁。
+ui	Staging is off: these hunks are not the patch git would apply.	暂存已停用：当前显示的块不是 Git 会实际应用的补丁。
+ui	Only whitespace changed in this file	此文件仅有空白字符更改
+ui	${blocks.length} change${blocks.length === 1 ? '' : 's'}	${blocks.length} 个更改
+ui	Force push?	强制推送？
+ui	will be replaced with your local	将被本地的
+ui	. Commits that exist only on the remote are lost, and anyone who pulled the branch will need to reset to it.	覆盖。仅存在于远端的提交将会丢失，任何已拉取该分支的人都需要重置到新历史。
+ui	Rewrite a pushed commit?	重写已推送的提交？
+ui	This commit is already on a remote. Saving rewrites it and every commit after it on this branch, so the next push has to be a force push, and anyone who pulled the branch will need to reset to the new history.	该提交已存在于远端。保存将重写该提交及其在此分支上的后续所有提交，因此下一次推送必须为强制推送，并且任何已拉取该分支的人都需要重置到新历史。
+ui	Rewrite commit	重写提交
+ui	Edit the commit message (already pushed, the next push must be forced)	编辑提交信息（已推送，下次必须强制推送）
+ui	Reconnect ${reconnecting.username} @ ${reconnecting.host}	重新连接 ${reconnecting.username} @ ${reconnecting.host}
+ui	Create one	前往创建	Create one <ExternalLink
+ui	Reconnect	重新连接	reconnecting \? 'Reconnect' : 'Connect'
+ui	Reconnected	已重新连接		whole
+ui	Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode, Antigravity CLI or Cursor CLI, then scan again.	安装 Claude Code、GitHub Copilot CLI、Codex CLI、Gemini CLI、OpenCode、Antigravity CLI 或 Cursor CLI，然后重新扫描。
+ui	Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity or Cursor CLI — with its own login and quota. No API key needed.	使用本机已安装的 AI CLI 工具——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode、Antigravity 或 Cursor CLI——享有其自身登录态与配额，无需 API 密钥。
+core	Cursor IDE built-in agent CLI	Cursor 编辑器内置终端 Agent CLI
