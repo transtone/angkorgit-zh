@@ -363,10 +363,10 @@ export function CommitDetails({
     if (!canSave) return;
     if (pushed) {
       const ok = await confirmDialog({
-        title: 'Rewrite a pushed commit?',
+        title: '重写已推送的提交？',
         description:
-          'This commit is already on a remote. Saving rewrites it and every commit after it on this branch, so the next push has to be a force push, and anyone who pulled the branch will need to reset to the new history.',
-        confirmLabel: 'Rewrite commit',
+          '该提交已存在于远端。保存将重写该提交及其在此分支上的后续所有提交，因此下一次推送必须为强制推送，并且任何已拉取该分支的人都需要重置到新历史。',
+        confirmLabel: '重写提交',
         destructive: true,
       });
       if (!ok) return;
@@ -683,8 +683,8 @@ export function CommitDetails({
                   draftBodyRef.current?.focus();
                 }
               }}
-              placeholder="Summary"
-              aria-label="Commit summary"
+              placeholder="摘要"
+              aria-label="提交摘要"
               rows={1}
               spellCheck
               className="min-h-9 resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-2 text-sm font-medium leading-snug text-foreground shadow-none placeholder:font-normal placeholder:text-faint focus-visible:border-0 focus-visible:ring-0"
@@ -747,7 +747,7 @@ export function CommitDetails({
               {commit.summary}
             </h2>
             {!stash && (
-              <Hint label={pushed ? 'Edit the commit message (already pushed, the next push must be forced)' : 'Edit the commit message'}>
+              <Hint label={pushed ? '编辑提交信息（已推送，下次必须强制推送）' : '编辑提交消息'}>
                 <span className="-mt-1 inline-flex shrink-0">
                   <Button
                     variant="ghost"

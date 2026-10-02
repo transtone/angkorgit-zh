@@ -378,7 +378,7 @@ export function AccountsTab() {
       setToken('');
       setUsername('');
       closeForm();
-      if (isVerified) toast.success(`${wasReconnect ? 'Reconnected' : 'Connected'} ${cleanHost} as ${finalUsername}`);
+      if (isVerified) toast.success(`${wasReconnect ? '已重新连接' : 'Connected'} ${cleanHost} as ${finalUsername}`);
       else toast.warning(`Saved ${cleanHost} as ${finalUsername} — token not verified`);
       const added = updated.find((a) => a.host === cleanHost && a.username === finalUsername);
       if (added) void runChecks([added]);
@@ -433,7 +433,7 @@ export function AccountsTab() {
       action={
         !showForm ? (
           <Button variant="secondary" size="sm" onClick={startAdd}>
-            <Plus className="size-3.5" /> Add account
+            <Plus className="size-3.5" /> 添加账户
           </Button>
         ) : undefined
       }
@@ -526,10 +526,10 @@ export function AccountsTab() {
             <p className="mb-3 flex items-center gap-2 text-xs font-medium text-foreground">
               <KeyRound className="size-3.5 text-primary" />
               {reconnecting
-                ? `Reconnect ${reconnecting.username} @ ${reconnecting.host}`
+                ? `重新连接 ${reconnecting.username} @ ${reconnecting.host}`
                 : accounts.length === 0
-                  ? 'Connect your first account'
-                  : 'Add account'}
+                  ? '连接你的第一个账户'
+                  : '添加账户'}
             </p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               <Field label="Provider">
@@ -556,15 +556,15 @@ export function AccountsTab() {
                 />
               </Field>
               <Field
-                label={provider === 'bitbucket' ? 'Atlassian account email' : 'Username'}
+                label={provider === 'bitbucket' ? 'Atlassian 账户邮箱' : 'Username'}
                 hint={
                   reconnecting
                     ? undefined
                     : provider === 'bitbucket'
-                      ? 'Bitbucket username is detected'
+                      ? '已检测到 Bitbucket 用户名'
                       : provider === 'other'
                         ? undefined
-                        : 'detected from the token'
+                        : '从令牌中检测到'
                 }
               >
                 <Input
@@ -586,7 +586,7 @@ export function AccountsTab() {
                         void openExternal(tokenPage);
                       }}
                     >
-                      Create one <ExternalLink className="size-3" />
+                      前往创建 <ExternalLink className="size-3" />
                     </a>
                   ) : undefined
                 }
@@ -609,12 +609,12 @@ export function AccountsTab() {
               <span className="flex shrink-0 gap-2">
                 {accounts.length > 0 && (
                   <Button variant="ghost" size="sm" onClick={closeForm}>
-                    Cancel
+                    取消
                   </Button>
                 )}
                 <Button size="sm" onClick={() => void connect()} disabled={busy || !token.trim() || !host.trim()}>
                   {busy ? <Spinner className="text-primary-foreground" /> : null}
-                  {reconnecting ? 'Reconnect' : 'Connect'}
+                  {reconnecting ? '重新连接' : 'Connect'}
                 </Button>
               </span>
             </div>

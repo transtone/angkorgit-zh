@@ -150,22 +150,22 @@ export function ChangeNavButtons({
       <Hint
         label={
           <span className="flex items-center gap-1">
-            Previous change <Kbd>P</Kbd>
+            上一个更改 <Kbd>P</Kbd>
           </span>
         }
       >
-        <Button variant="ghost" size="icon-sm" aria-label="Previous change" onClick={() => onJump(-1)}>
+        <Button variant="ghost" size="icon-sm" aria-label="上一个更改" onClick={() => onJump(-1)}>
           <ChevronUp className="size-4" />
         </Button>
       </Hint>
       <Hint
         label={
           <span className="flex items-center gap-1">
-            Next change <Kbd>N</Kbd>
+            下一个更改 <Kbd>N</Kbd>
           </span>
         }
       >
-        <Button variant="ghost" size="icon-sm" aria-label="Next change" onClick={() => onJump(1)}>
+        <Button variant="ghost" size="icon-sm" aria-label="下一个更改" onClick={() => onJump(1)}>
           <ChevronDown className="size-4" />
         </Button>
       </Hint>

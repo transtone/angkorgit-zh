@@ -393,8 +393,8 @@ function CliAgentPicker() {
       {!scanning && agents.length === 0 && (
         <SettingEmpty
           icon={<SquareTerminal className="size-4" />}
-          title="No AI CLI found"
-          description="Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode, Antigravity CLI or Cursor CLI, then scan again."
+          title="未找到 AI CLI"
+          description="安装 Claude Code、GitHub Copilot CLI、Codex CLI、Gemini CLI、OpenCode、Antigravity CLI 或 Cursor CLI，然后重新扫描。"
           action={
             <Button variant="secondary" size="sm" onClick={() => void scan()}>
               <RefreshCw className="size-3.5" /> 重新扫描
@@ -752,14 +752,14 @@ function RepoShortcutsCard() {
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <SettingCard
-      title="Repository shortcuts"
-      description="A key combination that switches to a repository from anywhere in the app, opening it if it is not already open. Right-click a tab or a recent repository and choose Keyboard shortcut… to add one."
+      title="仓库快捷键"
+      description="可在应用任意位置切换至指定仓库的按键组合；若该仓库尚未打开则会自动打开。在标签页或最近仓库上右键并选择“键盘快捷键…”即可添加。"
     >
       {entries.length === 0 ? (
         <SettingEmpty
           icon={<Keyboard className="size-4" />}
-          title="No repository shortcuts yet"
-          description="Right-click a repository tab, or a repository on the welcome page, to give it one."
+          title="暂无仓库快捷键"
+          description="右键点击仓库标签页或欢迎页中的仓库即可设置快捷键。"
         />
       ) : (
         <div className="flex flex-col" data-repo-shortcuts>
@@ -776,11 +776,11 @@ function RepoShortcutsCard() {
                     <Kbd key={i}>{label}</Kbd>
                   ))}
                 </span>
-                <Hint label="Remove shortcut">
+                <Hint label="移除快捷键">
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Remove the shortcut for ${entry.name}`}
+                    aria-label={`移除快捷键： ${entry.name}`}
                     onClick={() => setRepoShortcut(entry.path, null)}
                   >
                     <X className="size-3.5" />
@@ -802,22 +802,22 @@ const SHORTCUTS: Array<[string, string[]]> = [
   ['撤销/重做操作', ['mod', 'Z / ⇧Z']],
   ['刷新仓库', ['mod', 'R']],
   ['Settings', ['mod', ',']],
-  ['Switch to tab 1 to 9', ['mod', '1 … 9']],
-  ['Previous / next tab', ['mod', '⇧', '[ / ]']],
-  ['Commit staged changes', ['mod', '⏎']],
-  ['Previous / next commit', ['↑ / ↓']],
-  ['First / last commit', ['Home / End']],
+  ['切换到第 1 至 9 个标签页', ['mod', '1 … 9']],
+  ['上一个 / 下一个标签页', ['mod', '⇧', '[ / ]']],
+  ['提交暂存的更改', ['mod', '⏎']],
+  ['上一个/下一个提交', ['↑ / ↓']],
+  ['第一个/最后一个提交', ['Home / End']],
   ['Open the commit\u2019s files / back to the graph', ['→ / ←']],
-  ['Next change, wrapping (diff open)', ['→']],
+  ['下一个改动（循环，打开差异时）', ['→']],
   ['Previous / next file (file list)', ['↑ / ↓']],
-  ['Search commits / find in diff', ['mod', 'F']],
-  ['Previous match (find in diff)', ['⇧', '⏎']],
-  ['Select / copy diff side', ['mod', 'A / C']],
-  ['Save (file editor)', ['mod', 'S']],
-  ['Zoom in / out / reset', ['mod', '+ / − / 0']],
-  ['Previous / next change (diff, file history)', ['P / N']],
-  ['Previous / next file (diff)', ['[ / ]']],
-  ['Close diff view', ['Esc']],
+  ['搜索提交 / diff 内查找', ['mod', 'F']],
+  ['上一个匹配（diff 内查找）', ['⇧', '⏎']],
+  ['选择/复制 diff 一侧', ['mod', 'A / C']],
+  ['保存（文件编辑器）', ['mod', 'S']],
+  ['放大/缩小/重置', ['mod', '+ / − / 0']],
+  ['上一个 / 下一个改动（差异、文件历史）', ['P / N']],
+  ['上一个/下一个文件（diff）', ['[ / ]']],
+  ['关闭 diff 视图', ['Esc']],
 ];
 
 export function SettingsDialog() {
@@ -1384,8 +1384,8 @@ export function SettingsDialog() {
                     title="提供方"
                     description={
                       settings.ai.provider === 'cli'
-                        ? 'Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity or Cursor CLI — with its own login and quota. No API key needed.'
-                        : 'Used for commit messages, diff explanations, conflict help and reviews. Local models via Ollama or LM Studio need no API key.'
+                        ? '使用本机已安装的 AI CLI 工具——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode、Antigravity 或 Cursor CLI——享有其自身登录态与配额，无需 API 密钥。'
+                        : '用于提交消息、diff 解释、冲突帮助与审查。通过 Ollama 或 LM Studio 的本地模型无需 API 密钥。'
                     }
                     action={
                       <Select
@@ -1470,7 +1470,7 @@ export function SettingsDialog() {
 
               {section === 'shortcuts' && (
                 <div className="flex flex-col gap-4">
-                  <SettingCard title="Keyboard shortcuts">
+                  <SettingCard title="键盘快捷键">
                     <div className="flex flex-col">
                       {SHORTCUTS.map(([label, keys], index) => (
                         <div key={label}>

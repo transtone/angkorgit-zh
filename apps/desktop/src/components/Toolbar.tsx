@@ -435,12 +435,12 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const confirmForcePush = async () => {
     const branch = repo.headBranch ?? 'the current branch';
     const ok = await confirmDialog({
-      title: 'Force push?',
-      description: `${remote}/${branch} will be replaced with your local ${branch}. Commits that exist only on the remote are lost, and anyone who pulled the branch will need to reset to it.`,
-      confirmLabel: 'Force push',
+      title: '强制推送？',
+      description: `${remote}/${branch} 将被本地的 ${branch}覆盖。仅存在于远端的提交将会丢失，任何已拉取该分支的人都需要重置到新历史。`,
+      confirmLabel: '强制推送',
       destructive: true,
     });
-    if (ok) runPush('Push (force)', () => ipc.push(repo.path, remote, true, false, true));
+    if (ok) runPush('推送（强制）', () => ipc.push(repo.path, remote, true, false, true));
   };
 
   return (
@@ -565,7 +565,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={() => void confirmForcePush()} destructive>
-              Force push
+              强制推送
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => runPush('推送（含标签）', () => ipc.push(repo.path, remote, false, true, true))}>
               推送（含标签）

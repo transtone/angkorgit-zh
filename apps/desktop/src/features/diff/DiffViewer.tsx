@@ -187,7 +187,7 @@ export function DiffViewer({
   hunkActions,
   onLineContextMenu,
   search,
-  emptyLabel = 'No changes',
+  emptyLabel = '无更改',
 }: {
   diff: FileDiff;
   scrollRef?: React.RefObject<HTMLDivElement>;

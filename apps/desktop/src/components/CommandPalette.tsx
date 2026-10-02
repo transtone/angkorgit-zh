@@ -562,7 +562,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<Keyboard />}
-            label="Keyboard shortcut for this repository…"
+            label="为此仓库设置键盘快捷键…"
             keys={repoShortcuts[path] ? chordLabels(parseChordId(repoShortcuts[path])!, isMac) : undefined}
             onSelect={() => {
               close();

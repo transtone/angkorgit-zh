@@ -192,27 +192,27 @@ export function RepoTabs() {
           <DropdownMenuContent align="start" side="bottom">
             <DropdownMenuLabel className="max-w-72 truncate font-mono">{tabMenu.path}</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => useUi.getState().openDialog('repoShortcut', { repoPath: tabMenu.path })}>
-              <Keyboard /> {shortcuts[tabMenu.path] ? 'Change keyboard shortcut…' : 'Keyboard shortcut…'}
+              <Keyboard /> {shortcuts[tabMenu.path] ? '更改键盘快捷键…' : '键盘快捷键…'}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(tabMenu.path);
-                toast.success('Path copied');
+                toast.success('路径已复制');
               }}
             >
-              <Copy /> Copy path
+              <Copy /> 复制路径
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => close(tabMenu.path)}>
-              <X /> Close tab
+              <X /> 关闭标签页
             </DropdownMenuItem>
             <DropdownMenuItem disabled={tabs.length < 2} onClick={() => closeOthers(tabMenu.path)}>
-              <X /> Close other tabs
+              <X /> 关闭其他标签页
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      <Hint label="Open another repository">
+      <Hint label="打开另一个仓库">
         <Button
           variant="ghost"
           size="icon-sm"

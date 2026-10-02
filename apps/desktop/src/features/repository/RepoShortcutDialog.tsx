@@ -61,12 +61,12 @@ export function RepoShortcutDialog() {
   const save = () => {
     if (!draft || !draftId || !canSave) return;
     setRepoShortcut(repoPath, draftId);
-    toast.success(`${chordText(draft, isMac)} now switches to ${name}`);
+    toast.success(`${chordText(draft, isMac)} 现在可用于切换到 ${name}`);
     closeDialog();
   };
   const remove = () => {
     setRepoShortcut(repoPath, null);
-    toast.success(`Shortcut removed from ${name}`);
+    toast.success(`已移除快捷键： ${name}`);
     closeDialog();
   };
 
@@ -88,33 +88,33 @@ export function RepoShortcutDialog() {
 
   const hint = !draft
     ? current
-      ? 'Press new keys to change it, or Backspace to clear.'
-      : `A letter, digit or F key together with ${MODIFIER_WORDS}.`
+      ? '按下新按键以更改，或按退格键清除。'
+      : `字母、数字或 F 键，搭配 ${MODIFIER_WORDS}。`
     : problem === 'no_modifier'
-      ? `Add ${MODIFIER_WORDS} so it cannot fire while typing.`
+      ? `请添加 ${MODIFIER_WORDS}，避免打字时误触发。`
       : problem === 'reserved'
-        ? 'AngKorGit already uses this shortcut.'
+        ? 'AngKorGit 已占用此快捷键。'
         : takenBy
-          ? `Currently switches to ${repoDisplayName(takenBy, recents)}. Saving moves it here.`
+          ? `当前用于切换到 ${repoDisplayName(takenBy, recents)}。保存将改绑至此处。`
           : draftId === current
-            ? 'This is the current shortcut.'
-            : `Press ${chordText(draft, isMac)} anywhere to switch to ${name}.`;
+            ? '这是当前设置的快捷键。'
+            : `Press ${chordText(draft, isMac)} 在任意位置按下 ${name}.`;
   const tone = problem ? 'text-danger' : takenBy ? 'text-primary' : 'text-muted';
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && closeDialog()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Keyboard shortcut</DialogTitle>
+          <DialogTitle>键盘快捷键</DialogTitle>
           <DialogDescription>
-            Press the keys that switch to <span className="font-medium text-foreground">{name}</span> from anywhere
+            按下用于在 AngKorGit 任意位置直接切换到 <span className="font-medium text-foreground">{name}</span> from anywhere
             in AngKorGit, even when it is not open.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
           <div
             role="textbox"
-            aria-label="Shortcut keys"
+            aria-label="快捷键"
             aria-readonly
             tabIndex={0}
             autoFocus
@@ -134,7 +134,7 @@ export function RepoShortcutDialog() {
                 </Kbd>
               ))
             ) : (
-              <span className="text-sm text-faint">Press a key combination</span>
+              <span className="text-sm text-faint">按下按键组合</span>
             )}
           </div>
           <p className={cn('text-xs', tone)} data-shortcut-hint>
@@ -144,11 +144,11 @@ export function RepoShortcutDialog() {
         <DialogFooter>
           {current && (
             <Button variant="ghost" className="mr-auto text-danger hover:text-danger" onClick={remove}>
-              Remove shortcut
+              移除快捷键
             </Button>
           )}
           <Button variant="ghost" onClick={closeDialog}>
-            Cancel
+            取消
           </Button>
           <Button disabled={!canSave} onClick={save}>
             Save

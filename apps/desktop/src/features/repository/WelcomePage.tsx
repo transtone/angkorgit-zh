@@ -342,7 +342,7 @@ export function WelcomePage() {
               <FolderOpen /> {isMac ? '在 Finder 中显示' : '在文件管理器中显示'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('repoShortcut', { repoPath: menu.repo.path })}>
-              <Keyboard /> {shortcuts[menu.repo.path] ? 'Change keyboard shortcut…' : 'Keyboard shortcut…'}
+              <Keyboard /> {shortcuts[menu.repo.path] ? '更改键盘快捷键…' : '键盘快捷键…'}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {

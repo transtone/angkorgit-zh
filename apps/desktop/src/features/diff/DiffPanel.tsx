@@ -509,15 +509,15 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           <Hint
             label={
               ignoreWhitespace
-                ? 'View options. Whitespace is ignored, so hunk and line staging are off: these hunks are not the patch git would apply.'
-                : 'View options'
+                ? '视图选项。已忽略空白字符，代码块与单行暂存已停用：当前显示的块不是 Git 会实际应用的补丁。'
+                : '视图选项'
             }
           >
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="View options"
+                aria-label="视图选项"
                 className={cn((wordDiff || wrapLines || fullFileDiff || ignoreWhitespace) && 'text-primary')}
               >
                 <SlidersHorizontal className="size-3.5" />
@@ -525,12 +525,12 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             </DropdownMenuTrigger>
           </Hint>
           <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuLabel>View options</DropdownMenuLabel>
+            <DropdownMenuLabel>视图选项</DropdownMenuLabel>
             <DropdownMenuCheckboxItem icon={<WholeWord />} checked={wordDiff} onCheckedChange={(v) => setWordDiff(v === true)}>
-              Word diff
+              词级 diff
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem icon={<Space />} checked={ignoreWhitespace} onCheckedChange={(v) => setIgnoreWhitespace(v === true)}>
-              Ignore whitespace
+              忽略空白字符
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
               icon={<WrapText />}
@@ -538,16 +538,16 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               disabled={!!textDiff && wrapUnavailable(textDiff)}
               onCheckedChange={(v) => setWrapLines(v === true)}
             >
-              Wrap long lines
+              自动换行
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem icon={<FileText />} checked={fullFileDiff} onCheckedChange={(v) => setFullFileDiff(v === true)}>
-              Show whole file
+              显示整个文件
             </DropdownMenuCheckboxItem>
             {ignoreWhitespace && (
-              <MenuNote>Staging is off: these hunks are not the patch git would apply.</MenuNote>
+              <MenuNote>暂存已停用：当前显示的块不是 Git 会实际应用的补丁。</MenuNote>
             )}
             {textDiff && wrapUnavailable(textDiff) && (
-              <MenuNote>Wrapping stays off for large files so scrolling keeps up.</MenuNote>
+              <MenuNote>大文件下保持关闭换行以保证滚动流畅。</MenuNote>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -732,7 +732,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             diff={diff}
             scrollRef={scrollRef}
             search={highlight}
-            emptyLabel={ignoreWhitespace ? 'Only whitespace changed in this file' : undefined}
+            emptyLabel={ignoreWhitespace ? '此文件仅有空白字符更改' : undefined}
             onLineContextMenu={(e, info) => {
               e.preventDefault();
               setLineMenu({
