@@ -24,6 +24,7 @@ import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
 import { focusRequests, useUi } from '@/features/ui/store';
+import { stepOpenDiffChange } from '@/features/diff/changeNav';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { AiResultPanel } from '@/features/ai/AiResultPanel';
 import { REVIEW_WAIT_MESSAGES } from '@/features/ai/waitMessages';
@@ -776,6 +777,7 @@ export function WorkingCopyPanel() {
       if (!entry) return;
       e.preventDefault();
       e.stopPropagation();
+      if (current && useUi.getState().centerDiff && stepOpenDiffChange(1) !== 'none') return;
       showDiff(entry.file, entry.staged);
       return;
     }

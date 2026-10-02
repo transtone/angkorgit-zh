@@ -2,40 +2,9 @@
 import Commit from './Commit.astro';
 import TerminalBlock from './TerminalBlock.astro';
 import { SITE } from '../lib/site';
+import { BREW as brew, PLATFORMS as platforms } from '../lib/install';
 
 const version = SITE.latestVersion;
-const upstreamVersion = '0.15.0';
-const upstreamAsset = (asset: string) =>
-  `https://github.com/cheat2001/angkorgit/releases/download/v${upstreamVersion}/${asset}`;
-
-const platforms = [
-  {
-    name: 'Windows',
-    detail: 'x64 中文版安装程序',
-    asset: `AngKorGit_${version}_x64-setup.exe`,
-    url: SITE.assetUrl(version, `AngKorGit_${version}_x64-setup.exe`),
-    action: '下载中文版',
-    note: 'SmartScreen 会提示发布者未知。点击“更多信息”，然后“仍要运行”。发布页面也提供 .msi 安装包；自动更新使用本仓库的签名。',
-  },
-  {
-    name: 'macOS',
-    detail: '上游原版，未汉化',
-    asset: `AngKorGit_${upstreamVersion}_universal.dmg`,
-    url: upstreamAsset(`AngKorGit_${upstreamVersion}_universal.dmg`),
-    action: '下载上游原版',
-    note: '支持 Intel 与 Apple Silicon。本次不提供 macOS 中文安装包；如需中文界面，可自行编译本仓库源码。',
-  },
-  {
-    name: 'Linux',
-    detail: '上游原版，未汉化',
-    asset: `AngKorGit_${upstreamVersion}_amd64.AppImage`,
-    url: upstreamAsset(`AngKorGit_${upstreamVersion}_amd64.AppImage`),
-    action: '下载上游原版',
-    note: '添加执行权限后运行，需要 WebKitGTK 4.1 与 libssl。中文版本需自行编译；上游还提供 .deb 和 .rpm。',
-  },
-];
-
-const brew = 'brew install --cask cheat2001/tap/angkorgit';
 ---
 
 <Commit id="install" class="py-20 lg:py-28">
@@ -62,7 +31,9 @@ const brew = 'brew install --cask cheat2001/tap/angkorgit';
             platforms.map((p) => (
               <li class="grid gap-4 py-6 sm:grid-cols-[7rem_1fr_auto] sm:items-start">
                 <div>
-                  <h3 class="text-lg font-medium tracking-tight text-foreground">{p.name}</h3>
+                  <h3 class="text-lg font-medium tracking-tight text-foreground">
+                    <a href={`/download/${p.id}/`} class="link-underline">{p.name}</a>
+                  </h3>
                   <p class="mt-0.5 text-xs text-faint">{p.detail}</p>
                 </div>
                 <div class="min-w-0">

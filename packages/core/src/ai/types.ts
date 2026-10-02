@@ -45,7 +45,7 @@ export type AiProviderKind =
   | 'ollama'
   | 'lmstudio';
 
-export type CliAgentId = 'claude' | 'copilot' | 'codex' | 'gemini' | 'opencode' | 'antigravity';
+export type CliAgentId = 'claude' | 'copilot' | 'codex' | 'gemini' | 'opencode' | 'antigravity' | 'cursor';
 
 export interface CliAgentInfo {
   id: CliAgentId;

@@ -162,6 +162,7 @@ interface SettingsState {
   worktreeRoot: string | null;
   cloneRoot: string | null;
   editorId: string | null;
+  repoShortcuts: Record<string, string>;
   profiles: IdentityProfile[];
   ai: AiConfig;
   aiProfiles: Partial<Record<AiProviderKind, AiProfile>>;
@@ -189,6 +190,7 @@ interface SettingsState {
   setWorktreeRoot: (value: string | null) => void;
   setCloneRoot: (value: string | null) => void;
   setEditorId: (value: string | null) => void;
+  setRepoShortcut: (path: string, chord: string | null) => void;
   addProfile: (profile: Omit<IdentityProfile, 'id'>) => void;
   updateProfile: (id: string, patch: Partial<Omit<IdentityProfile, 'id'>>) => void;
   removeProfile: (id: string) => void;
@@ -250,6 +252,7 @@ export const useSettings = create<SettingsState>()(
       worktreeRoot: null,
       cloneRoot: null,
       editorId: null,
+      repoShortcuts: {},
       reduceMotion:
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -288,6 +291,14 @@ export const useSettings = create<SettingsState>()(
       setWorktreeRoot: (worktreeRoot) => set({ worktreeRoot }),
       setCloneRoot: (cloneRoot) => set({ cloneRoot }),
       setEditorId: (editorId) => set({ editorId }),
+      setRepoShortcut: (path, chord) =>
+        set((s) => {
+          const repoShortcuts = Object.fromEntries(
+            Object.entries(s.repoShortcuts).filter(([p, id]) => p !== path && id !== chord),
+          );
+          if (chord) repoShortcuts[path] = chord;
+          return { repoShortcuts };
+        }),
       setInterfaceFontFamily: (interfaceFontFamily) => {
         applyFonts(interfaceFontFamily, get().codeFontFamily);
         set({ interfaceFontFamily });

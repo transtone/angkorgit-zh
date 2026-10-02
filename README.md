@@ -62,13 +62,19 @@
 
 ## ✨ 核心特性
 
-- **流畅丝滑的提交图（Commit Graph）**：虚拟化长列表渲染，十万条提交记录滚动如同五十条般流畅。拖动分支即可完成合并（Merge）或变基（Rebase），在软件内发起的合并永远是规范的真实合并提交。分支与标签药丸标签完整展示，搜索框粘贴哈希直达对应提交。拖错分支按 `⌘Z` / `Ctrl+Z` 即可一键撤销。
-- **直观易读的冲突解决器（Conflict Resolver）**：左右双栏对比，每一侧均清晰标注行号。勾选框一键选取整侧变更，悬停加号逐行精细采纳，底部结果面板本身就是一个可以直接打字编辑的无缝编辑器。只有点击“标记已解决”后才会真正落盘。
-- **多工作树并行（Worktrees）**：为紧急热修复或 AI Agent 在同级目录下独立检出同一个仓库的分支，而无需触碰手头未完成的工作。侧边栏清晰罗列工作树，点击在独立标签页中切换，检出已在其他文件夹打开的分支时会自动直接跳转。
-- **日常所需一应俱全**：支持整文件、代码块（Hunk）乃至单行暂存；提交自带摘要与说明分割框，支持追加修改（Amend）、还原（Revert）与重置（Reset）；支持交互式变基、单条或批量拣选（Cherry-pick）、暂存（Stash）、标签管理、子模块；提供内联与并排词级高亮差异对比、缩略小地图、图片对比与文件历史；每个仓库内置原生 PTY 终端；执行任何破坏性操作前均有明确的确认对话框，并提供完善的操作撤销功能。
-- **远端协同与多账户**：复用 Git 原生的凭据链；支持 SSH 密钥与 Personal Access Token，单个主机支持挂载多个账户，身份配置按仓库绑定，不污染全局 gitconfig；直连 GitHub、GitLab 与 Bitbucket 拉取请求（PR/MR）：浏览列表、检出分支、创建请求、挑选审查人；无缝对接已有 Git 提交签名机制（GPG / SSH）。
-- **AI 助手（可选）**：从暂存区代码 diff 自动生成提交信息、通俗解释某次提交或合并冲突、审查即将提交的内容、自动编写拉取请求说明。支持本地已登录的 AI CLI 工具（Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode、Antigravity），或通过 API 密钥 / 本机 Ollama 驱动。所有请求从本机直达大模型，每一个生成过程均配备显式中断（Stop）按钮。
-- **键盘优先**：`⌘K` / `Ctrl+K` 调出命令面板直达所有功能，菜单项旁清晰标注快捷键，`Esc` 键每次精准关闭最上层浮层。
+**The graph.** Virtualized, so a hundred thousand commits scroll like fifty. Drag a branch onto another to merge or rebase, and a merge from the app is always a real merge commit. Ref chips show the whole name or fold behind a count. Paste a hash into the search and it jumps there. ⌘Z undoes the merge if you picked the wrong branch.
+
+**Conflicts you can read.** Both sides in one view with line numbers on each. One checkbox takes a whole side, a plus on hover takes one line, and the result pane is an editor you can type into. Nothing touches the file until you press Mark resolved.
+
+**Worktrees.** A second checkout of the same repository in a sibling folder, for a hotfix or an AI agent while your real work sits untouched. The sidebar lists them, each opens as its own tab, and checking out a branch that is already open in another folder takes you there instead.
+
+**Everything else you reach for.** Stage files, hunks or single lines. Commit with a summary and a description, amend, revert, reset. Interactive rebase, cherry-pick one or many, stash, tags, submodules. Diffs inline or side by side with word level highlighting, a minimap, image diffs and file history. A built-in terminal per repository. Real confirmation dialogs before anything destructive, and undo for the rest.
+
+**Remotes and accounts.** Fetch, pull and push through the same credential chain git uses. SSH keys and access tokens, several accounts on one host, identity profiles stored per repository and never in your global gitconfig. Pull requests from GitHub, GitLab and Bitbucket: list, check out, create, pick reviewers. Commit signing through your existing git config.
+
+**AI, if you want it.** A commit message from the staged diff, a plain explanation of a commit or a conflict, a review of what you are about to commit, a pull request description. It uses the AI CLI you already log into (Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity, Cursor CLI), or an API key, or Ollama on your own machine. Requests go straight from your computer to the provider you chose. Every one of them has a Stop button.
+
+**Keyboard first.** ⌘K opens a palette with every command in the app, shortcuts are printed next to menu items, Escape closes exactly one thing at a time.
 
 <table>
   <tr>
@@ -136,27 +142,46 @@
 3. 在 PR 里补齐新增英文串，CI（typecheck / 单元测试 / Playwright / Rust）全绿后合并。
 4. **发布中文版**（`release-zh.yml`，手动触发）：先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名与 `latest.json`）。
 
-上游新引入的英文串会进入 `zh-dict/pending.tsv`（构建产物，不入库），翻译后补进 `dict.tsv` 即可。
-详见 [docs/Localization.md](docs/Localization.md)。
+Grab the file for your platform from the [releases page](https://github.com/cheat2001/angkorgit/releases), or use the terminal. The commands below are pinned to the current release, so bump the version if a newer one is out.
 
-## 🚫 故意不做的事情
+```bash
+# macOS with Homebrew (also clears the Gatekeeper flag for you)
+brew install --cask cheat2001/tap/angkorgit
 
-- **应用内代码评审（PR Review）**：代码托管平台（GitHub/GitLab）配合 CI 日志与行内评论体验更佳，软件内提供一键“在浏览器中打开”按钮。
-- **遥测数据、强制账号、云服务**：不会向外部发送任何追踪数据，无需注册任何平台。
-- **插件市场**：暂不支持扩展插件。
+# macOS, direct download
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.20.0/AngKorGit_0.20.0_universal.dmg -o ~/Downloads/AngKorGit.dmg && xattr -cr ~/Downloads/AngKorGit.dmg && open ~/Downloads/AngKorGit.dmg
 
-## 📦 安装与下载
+# Windows (PowerShell)
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.20.0/AngKorGit_0.20.0_x64-setup.exe -o "$env:TEMP\AngKorGit-setup.exe"; Start-Process "$env:TEMP\AngKorGit-setup.exe"
 
-本仓库的 [Releases 发行页面](https://github.com/wuwuzhazha/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
+# Linux (AppImage)
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.20.0/AngKorGit_0.20.0_amd64.AppImage -o ~/Downloads/AngKorGit.AppImage && chmod +x ~/Downloads/AngKorGit.AppImage && ~/Downloads/AngKorGit.AppImage
+```
 
-- **Windows**：下载 `AngKorGit_0.18.0_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名。
-- **macOS / Linux**：本次未发布这两个平台的中文安装包。可自行编译中文源码，或到[上游发行页面](https://github.com/cheat2001/angkorgit/releases)下载未汉化的原版。不要使用不存在的本仓库 DMG/AppImage 下载地址。
+The builds aren't signed with a paid certificate, so your OS asks once on first launch. After that the app updates itself, and every update is verified with a signature before it installs. All releases are built in public by GitHub Actions from this source tree. The full first-launch walkthrough is on the [getting started page](https://angkorgit.app/docs/getting-started/).
 
-> **提示**：由于未购买商业代码签名证书，Windows SmartScreen 或 macOS Gatekeeper 首次启动时可能会弹出未知开发者提示，在 Windows 下点击“更多信息 → 仍要运行”，在 macOS 下于“系统设置 → 隐私与安全性”中点击“仍然打开”即可。
+### macOS, first launch
 
-## 🛠️ 从源码编译构建
+1. Open the `.dmg` and drag AngKorGit into Applications. Don't run it from inside the dmg window, macOS would start it from a temporary location where permissions can't be saved.
+2. Launch it. macOS says the app cannot be opened. Close that, go to System Settings, Privacy & Security, scroll down and click Open Anyway. This happens once.
+3. The first time you open a repository in Desktop, Documents or Downloads, macOS asks for access to that folder. Allow, once per folder.
+4. If you connect a GitHub or GitLab account, the first git operation per session asks to read the token from your Keychain. Plain Allow is enough, Always Allow has no effect on unsigned apps.
 
-构建前请准备开发环境：[Node 20+](https://nodejs.org)、[pnpm 10+](https://pnpm.io)、[Rust 稳定版](https://rustup.rs) 以及 [Tauri v2 系统依赖](https://v2.tauri.app/start/prerequisites/)。Windows 还需要 Visual Studio C++ 生成工具和加入 `PATH` 的原生 Windows Perl（例如 Strawberry Perl），用于构建 OpenSSL。安装已构建的应用不需要 Perl。
+If a permission dialog ever loops, reset the stale records and try again:
+
+```sh
+tccutil reset All dev.angkorgit.app
+```
+
+### Windows and Linux
+
+Windows: SmartScreen says the publisher is unknown. More info, then Run anyway. An `.msi` is on the releases page too.
+
+Linux: `chmod +x` the AppImage and run it, or install the `.deb` or `.rpm`. Needs WebKitGTK 4.1 and libssl, which most desktops already have.
+
+## Building from source
+
+You need [Node 20+](https://nodejs.org), [pnpm 10+](https://pnpm.io), [Rust stable](https://rustup.rs) and the [Tauri v2 system dependencies](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 # 1. 安装项目依赖

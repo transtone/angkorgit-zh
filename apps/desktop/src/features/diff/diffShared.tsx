@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react';
 import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
 import { MAX_RENDERED_LINE, clipRenderedLine, wordDiff, type WordSegment } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
-import { highlightLineState, supportsBlockComments } from '@/shared/highlight';
+import { embeddedDiffLanguages, highlightLineState, supportsBlockComments } from '@/shared/highlight';
 
 const WRAP_LINE_LIMIT = 3000;
 
@@ -46,31 +46,45 @@ export function pairHunkLines(hunk: DiffHunk): LinePair[] {
 
 const COMMENT_STATE_LINE_CAP = 8000;
 const commentStates = new WeakMap<DiffLine, boolean>();
+const lineLanguages = new WeakMap<DiffLine, string>();
 const preparedDiffs = new WeakMap<FileDiff, string | null>();
 
-export function prepareCommentStates(diff: FileDiff, language: string | null): void {
-  if (!supportsBlockComments(language) || preparedDiffs.get(diff) === language) return;
+export const lineLanguage = (line: DiffLine, language: string | null): string | null =>
+  lineLanguages.get(line) ?? language;
+
+export function prepareLineStates(diff: FileDiff, language: string | null): void {
+  if (preparedDiffs.get(diff) === language) return;
   preparedDiffs.set(diff, language);
   let total = 0;
   for (const hunk of diff.hunks) total += hunk.lines.length;
   if (total > COMMENT_STATE_LINE_CAP) return;
+  const overrides = embeddedDiffLanguages(diff.hunks, language);
+  if (overrides) for (const [line, lang] of overrides) lineLanguages.set(line, lang);
+  if (!supportsBlockComments(language) && !overrides) return;
   for (const hunk of diff.hunks) {
     let oldState = false;
     let newState = false;
+    let previous = language;
     for (const line of hunk.lines) {
+      const lang = lineLanguage(line, language);
+      if (lang !== previous) {
+        oldState = false;
+        newState = false;
+        previous = lang;
+      }
       if (line.kind === 'deletion') {
         commentStates.set(line, oldState);
-        oldState = highlightLineState(line.content, language, oldState).endsInComment;
+        oldState = highlightLineState(line.content, lang, oldState).endsInComment;
       } else if (line.kind === 'addition') {
         commentStates.set(line, newState);
-        newState = highlightLineState(line.content, language, newState).endsInComment;
+        newState = highlightLineState(line.content, lang, newState).endsInComment;
       } else {
         commentStates.set(line, newState);
-        const endsNew: boolean = highlightLineState(line.content, language, newState).endsInComment;
+        const endsNew: boolean = highlightLineState(line.content, lang, newState).endsInComment;
         const endsOld: boolean =
           oldState === newState
             ? endsNew
-            : highlightLineState(line.content, language, oldState).endsInComment;
+            : highlightLineState(line.content, lang, oldState).endsInComment;
         newState = endsNew;
         oldState = endsOld;
       }
@@ -115,13 +129,14 @@ export const CodeLine = memo(function CodeLine({
 }) {
   const html = useMemo(() => {
     const inComment = startsInComment(line);
+    const lang = lineLanguage(line, language);
     const clipped = clipRenderedLine(line.content);
     const pairWithinCap = !!pair && pair.content.length <= MAX_RENDERED_LINE;
     if (useWordDiff && pair && pairWithinCap && clipped.hidden === 0 && line.kind !== 'context' && pair.content !== line.content) {
       const diff = side === 'old' ? wordDiff(line.content, pair.content) : wordDiff(pair.content, line.content);
-      return segmentsToHtml(side === 'old' ? diff.old : diff.new, language, side, inComment);
+      return segmentsToHtml(side === 'old' ? diff.old : diff.new, lang, side, inComment);
     }
-    if (clipped.hidden === 0) return highlightLineState(clipped.text, language, inComment).html;
+    if (clipped.hidden === 0) return highlightLineState(clipped.text, lang, inComment).html;
     const body = highlightLineState(clipped.text, null, false).html;
     return `${body}<span class="ml-2 rounded-sm bg-surface-raised px-1.5 text-faint" title="此行仅显示前 ${MAX_RENDERED_LINE.toLocaleString()} 个字符">… 另有 ${clipped.hidden.toLocaleString()} 个字符</span>`;
   }, [line, pair, language, useWordDiff, side]);

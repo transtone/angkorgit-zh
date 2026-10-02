@@ -6,6 +6,87 @@
 
 ## [未发布]
 
+## [0.20.0] — 2026-09-30
+
+The keyboard release. → walks through the changes of an open diff, ⌘1 to ⌘9 and
+⌘⇧[ / ⌘⇧] switch repository tabs, and any repository can be given its own key
+combination that jumps to it from anywhere in the app, shown on the tab, the welcome
+page, the repository menu and the palette. The diff learns to ignore whitespace from a
+contributor, a pushed commit's message can be edited after a warning, force push from
+the menu asks first, and Cursor CLI works on Windows.
+
+### Added
+- **Ignore whitespace in the diff.** View options gains an Ignore whitespace checkbox
+  (`git diff -w`). It applies to the working copy, commits, and file history. Hunk and
+  line staging turn off while it is on, because the hunks on screen are not the patch
+  git would apply, and a file whose only change is whitespace says so instead of showing
+  an empty diff. (#38)
+- **→ walks through the changes.** With a diff open, → jumps to the next change, the
+  same jump as N, wrapping around inside the file. ↑ and ↓ still switch files and ←
+  still returns to the graph, so a commit can be read from the arrow keys alone.
+- **Switch repositories from the keyboard.** ⌘1 to ⌘9 (Ctrl on Windows and Linux) jump
+  to the nth tab and ⌘⇧[ / ⌘⇧] step through the tabs. Each repository can also get its
+  own key combination: right-click a tab or a recent repository and choose Keyboard
+  shortcut…, press the keys, and it switches to that repository from anywhere in the
+  app, opening it first when it is not open. Combinations need ⌃, ⌥ or ⌘ and cannot
+  collide with the app's own shortcuts. Tabs, the welcome page, the repository menu
+  and the palette show the assigned keys, and Settings → Shortcuts lists and removes
+  them.
+- **Tab menu.** Right-click a repository tab for Keyboard shortcut…, Copy path, Close
+  tab and Close other tabs.
+- **Edit the message of a pushed commit.** Edit commit message is no longer disabled once a
+  commit is on a remote. Saving asks first, because the branch then needs a force push and
+  anyone who pulled it has to reset.
+
+### Changed
+- The commit message editor's summary field wraps long first lines instead of scrolling
+  them off to the side, so the start of a long summary can be reached with the mouse.
+- Force push from the Push menu asks for confirmation first and names what the remote
+  branch will be replaced with. The push-rejected dialog already explained itself and is
+  unchanged.
+
+### Fixed
+- **Cursor CLI on Windows failed every AI request with "batch file arguments are
+  invalid".** Cursor installs a `cursor-agent.cmd` launcher there, and Rust refuses to hand
+  a multi-line prompt to a batch file. The app now runs the launcher's own `node.exe
+  index.js` entry directly, the way the launcher itself does. (#43)
+
+## [0.19.0] — 2026-09-28
+
+The languages release. The diff highlighter learns Less, SCSS, Dockerfiles, Makefiles,
+CMake and the ini family from a contributor, then Astro, Svelte, Vue and HTML: frontmatter
+and `<script>` / `<style>` blocks colour in their own language, in diffs and in blame.
+Around it, Cursor CLI joins the AI assistants, file history answers N and P like the diff
+view, Alt+Up reaches coding agents in the embedded terminal on Linux and Windows, and
+reconnecting an account no longer looks like adding one.
+
+### Added
+- **Cursor CLI as an AI assistant.** Settings → AI → Installed AI CLI detects Cursor's
+  `agent` (and the older `cursor-agent` name) next to the other CLIs and runs it in print
+  mode with your own Cursor login, trusting only the empty scratch folder it runs in. A model override passes through as `--model`. (#43)
+- **N and P in file history.** The diff pane of file history jumps to the next and
+  previous change with the same keys as the diff view, and its header carries the same
+  arrows and change count. (#44)
+- **More languages in the diff highlighter.** Diffs for Less, SCSS, Dockerfiles,
+  Makefiles, CMake, `.ini` / `.properties`, and `.editorconfig` pick up highlight.js
+  grammars instead of rendering as plain text. Common aliases (`cts`, `pyi`, `mdx`,
+  `kts`, …) and basenames (`Dockerfile`, `Makefile`, `CMakeLists.txt`) map to the
+  right grammar. CSS selector token classes are coloured so style diffs are readable.
+- **Astro, Svelte, Vue and HTML blocks in the diff highlighter.** `.astro` files colour their
+  template as markup and the `---` frontmatter as TypeScript, and `<script>` and `<style>`
+  blocks in Astro, Svelte, Vue and HTML files colour as TypeScript or JavaScript (following
+  `lang="ts"`) and CSS, SCSS or Less, in diffs and in blame. `.svelte` uses the markup grammar
+  and `.toml` the ini grammar, so no new grammar ships for any of it.
+
+### Fixed
+- **Alt+Up and Alt+Down reach the shell in the embedded terminal on Linux and Windows.**
+  xterm.js rewrote them into Ctrl+Up and Ctrl+Down there, so a coding agent's "Alt+Up to
+  answer" shortcut never fired. The terminal now sends the Alt sequence itself on every
+  platform. (#45)
+- **Reconnecting an account no longer looks like adding one.** "Reconnect with a new
+  token…" now opens the form titled with the account, locks provider, host and username,
+  and its button reads Reconnect, so a typo cannot create a second account.
+
 ## [0.18.0] — 2026-09-24
 
 The review release. AI can now review one file from its diff or a whole commit from the
@@ -1500,7 +1581,9 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/cheat2001/angkorgit/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/cheat2001/angkorgit/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/cheat2001/angkorgit/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cheat2001/angkorgit/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/cheat2001/angkorgit/compare/v0.15.0...v0.16.0

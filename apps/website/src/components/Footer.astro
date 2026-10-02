@@ -1,6 +1,8 @@
 ---
 import Logo from './Logo.astro';
 import { SITE } from '../lib/site';
+import { PLATFORMS } from '../lib/install';
+import { COMPETITORS } from '../lib/compare';
 ---
 
 <footer class="relative overflow-hidden border-t border-border-subtle">
@@ -21,7 +23,7 @@ import { SITE } from '../lib/site';
     <path d="M0 160 H640" />
   </svg>
 
-  <div class="container-site rail-offset relative grid gap-12 py-16 md:grid-cols-[1.6fr_1fr_1fr]">
+  <div class="container-site rail-offset relative grid gap-12 py-16 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
     <div class="space-y-5">
       <a href="/" class="flex items-center gap-2.5">
         <Logo size={28} class="text-foreground" />
@@ -46,13 +48,33 @@ import { SITE } from '../lib/site';
     </div>
 
     <div>
-      <h3 class="font-mono text-xs uppercase tracking-[0.14em] text-faint">参与</h3>
+      <h3 class="font-mono text-xs uppercase tracking-[0.14em] text-faint">Download</h3>
       <ul class="mt-4 space-y-2.5 text-sm text-muted">
-        <li><a class="transition-colors hover:text-foreground" href={`${SITE.repo}/issues`}>报告缺陷</a></li>
-        <li><a class="transition-colors hover:text-foreground" href={SITE.contributing}>贡献指南</a></li>
-        <li><a class="transition-colors hover:text-foreground" href={SITE.codeOfConduct}>行为准则</a></li>
-        <li><a class="transition-colors hover:text-foreground" href={SITE.security}>安全</a></li>
-        <li><a class="transition-colors hover:text-foreground" href={SITE.license}>许可证</a></li>
+        {PLATFORMS.map((p) => (
+          <li><a class="transition-colors hover:text-foreground" href={`/download/${p.id}/`}>Git client for {p.name}</a></li>
+        ))}
+        <li><a class="transition-colors hover:text-foreground" href="/#install">Homebrew and all builds</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h3 class="font-mono text-xs uppercase tracking-[0.14em] text-faint">Compare</h3>
+      <ul class="mt-4 space-y-2.5 text-sm text-muted">
+        {COMPETITORS.map((c) => (
+          <li><a class="transition-colors hover:text-foreground" href={`/compare/${c.slug}/`}>vs {c.short}</a></li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <h3 class="font-mono text-xs uppercase tracking-[0.14em] text-faint">Taking part</h3>
+      <ul class="mt-4 space-y-2.5 text-sm text-muted">
+        <li><a class="transition-colors hover:text-foreground" href={`${SITE.repo}/issues`}>Report a bug</a></li>
+        <li><a class="transition-colors hover:text-foreground" href={SITE.contributing}>Contributing</a></li>
+        <li><a class="transition-colors hover:text-foreground" href={SITE.codeOfConduct}>Code of conduct</a></li>
+        <li><a class="transition-colors hover:text-foreground" href={SITE.security}>Security</a></li>
+        <li><a class="transition-colors hover:text-foreground" href="/code-signing/">Code signing policy</a></li>
+        <li><a class="transition-colors hover:text-foreground" href={SITE.license}>License</a></li>
       </ul>
     </div>
   </div>

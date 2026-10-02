@@ -80,6 +80,13 @@ export const CLI_AGENTS: Record<CliAgentId, CliAgentSpec> = {
     promptVia: 'arg',
     args: (model) => ['--output-format', 'text', ...(model ? ['--model', model] : []), '-p'],
   },
+  cursor: {
+    id: 'cursor',
+    label: 'Cursor CLI',
+    binary: 'agent',
+    promptVia: 'arg',
+    args: (model) => ['-p', '--trust', '--output-format', 'text', ...(model ? ['--model', model] : [])],
+  },
 };
 
 const ANSI_PATTERN = /\u001b(?:\[[0-9;?]*[0-9A-Za-z]|\][^\u0007]*(?:\u0007|\u001b\\))/g;

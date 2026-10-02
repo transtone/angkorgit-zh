@@ -119,6 +119,22 @@ describe('cli agent specs', () => {
     expect(withModel.at(-1)).toBe('-p');
     expect(withModel.join(' ')).toBe('--output-format text --model gemini-3.1-pro-high -p');
   });
+
+  it('cursor runs in print mode with the prompt as the last positional argument', async () => {
+    expect(CLI_AGENTS.cursor.binary).toBe('agent');
+    expect(CLI_AGENTS.cursor.args('')).toEqual(['-p', '--trust', '--output-format', 'text']);
+    expect(CLI_AGENTS.cursor.args('gpt-5.4').join(' ')).toBe('-p --trust --output-format text --model gpt-5.4');
+    const calls: CliRunRequest[] = [];
+    const provider = cliAgentProvider(
+      config({ cliAgent: 'cursor', cliPath: '/home/u/.local/bin/cursor-agent' }),
+      runner({ stdout: 'fix: cursor answer' }, calls),
+    );
+    const result = await provider.complete({ messages: [{ role: 'user', content: 'diff' }] });
+    expect(result.text).toBe('fix: cursor answer');
+    expect(calls[0].program).toBe('/home/u/.local/bin/cursor-agent');
+    expect(calls[0].args.at(-1)).toBe('diff');
+    expect(calls[0].stdin).toBe('');
+  });
 });
 
 describe('cleanCliOutput / composeCliPrompt', () => {

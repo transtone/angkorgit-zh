@@ -1,0 +1,45 @@
+---
+import Page from '../../layouts/Page.astro';
+import InstallCta from '../../components/InstallCta.astro';
+import { COMPETITORS } from '../../lib/compare';
+---
+
+<Page
+  title="AngKorGit compared with GitKraken, Sourcetree, Fork, Tower and GitHub Desktop"
+  description="How AngKorGit, a free and open source Git client for macOS, Windows and Linux, compares with GitKraken, Sourcetree, Fork, Tower and GitHub Desktop. Platforms, price, source and what each one does that the other does not."
+  kicker="Compare"
+  heading="Which Git client, <em>honestly</em>."
+  crumbs={[{ href: '/compare/', label: 'Compare' }]}
+>
+  <Fragment slot="intro">
+    <p>
+      I used most of these before writing my own, and I still recommend some of them to people. Each page below is
+      the same shape: a side by side on platforms, price and source, then what the other client does that AngKorGit
+      doesn't, then the reverse. No stars, no scores.
+    </p>
+    <p>
+      The short version. If you're on Linux, need it free, or want to read the source, AngKorGit is the one on this list
+      that does all three. If you're paying for Fork or Tower and happy, you probably don't need to switch.
+    </p>
+  </Fragment>
+
+  <ul class="mt-14 grid gap-4 sm:grid-cols-2">
+    {
+      COMPETITORS.map((c) => (
+        <li>
+          <a href={`/compare/${c.slug}/`} class="group block h-full rounded-lg border border-border-subtle bg-surface p-6 transition-colors hover:border-primary/50">
+            <p class="font-mono text-xs uppercase tracking-[0.18em] text-primary">{c.kicker}</p>
+            <h2 class="display mt-3 text-2xl leading-tight text-foreground" set:html={c.heading} />
+            <p class="mt-3 text-[15px] leading-relaxed text-muted">{c.facts[0].theirs}. {c.facts[1].theirs}.</p>
+            <span class="mt-4 inline-flex items-center gap-1 text-sm text-muted transition-colors group-hover:text-primary">
+              Read the comparison
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m0 0-6-6m6 6-6 6" /></svg>
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <InstallCta />
+</Page>

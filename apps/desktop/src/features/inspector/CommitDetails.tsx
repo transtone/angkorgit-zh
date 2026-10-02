@@ -47,10 +47,12 @@ import {
 } from '@angkorgit/design-system';
 import { ipc } from '@/core/ipc';
 import { FileFilterInput } from '@/components/FileFilterInput';
+import { confirmDialog } from '@/components/confirm';
 import { useGraph } from '@/features/graph/store';
 import { useRepo } from '@/features/repository/store';
 import { useUndo } from '@/features/history/undoStore';
 import { focusRequests, useUi } from '@/features/ui/store';
+import { stepOpenDiffChange } from '@/features/diff/changeNav';
 import { useSettings } from '@/features/settings/store';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
@@ -297,11 +299,12 @@ export function CommitDetails({
   const unpushed = useRepo((s) => s.unpushed);
   const refresh = useRepo((s) => s.refresh);
   const reloadGraph = useGraph((s) => s.reload);
-  const canReword = !stash && unpushed.includes(commit.oid);
+  const pushed = !unpushed.includes(commit.oid);
+  const canReword = !stash;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
-  const draftSummaryRef = useRef<HTMLInputElement>(null);
+  const draftSummaryRef = useRef<HTMLTextAreaElement>(null);
   const draftBodyRef = useRef<HTMLTextAreaElement>(null);
   const [descHeight, setDescHeight] = useState<number | null>(null);
   const [descResizing, setDescResizing] = useState(false);
@@ -337,6 +340,13 @@ export function CommitDetails({
   useEffect(() => {
     if (editing) draftSummaryRef.current?.focus();
   }, [editing]);
+  const draftParts = splitCommitMessage(draft);
+  useLayoutEffect(() => {
+    const el = draftSummaryRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [editing, draftParts.summary]);
   const editMessageRequest = useUi((s) => s.editMessageRequest);
   useEffect(() => {
     if (!editMessageRequest || editMessageRequest.seq === focusRequests.editMessageConsumed) return;
@@ -344,7 +354,6 @@ export function CommitDetails({
     focusRequests.editMessageConsumed = editMessageRequest.seq;
     startEditing();
   }, [editMessageRequest, commit.oid, startEditing]);
-  const draftParts = splitCommitMessage(draft);
   const canSave = draftParts.summary.trim().length > 0 && draft.trim() !== originalMessage.trim() && !saving;
   const cancelEditing = () => {
     setEditing(false);
@@ -352,6 +361,16 @@ export function CommitDetails({
   };
   const saveMessage = async () => {
     if (!canSave) return;
+    if (pushed) {
+      const ok = await confirmDialog({
+        title: 'Rewrite a pushed commit?',
+        description:
+          'This commit is already on a remote. Saving rewrites it and every commit after it on this branch, so the next push has to be a force push, and anyone who pulled the branch will need to reset to the new history.',
+        confirmLabel: 'Rewrite commit',
+        destructive: true,
+      });
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       const newOid = await useUndo.getState().tracked({
@@ -438,6 +457,7 @@ export function CommitDetails({
       if (shownDiffs.length === 0) return;
       e.preventDefault();
       e.stopPropagation();
+      if (e.key === 'ArrowRight' && activeIndex >= 0 && stepOpenDiffChange(1) !== 'none') return;
       openFileAt(activeIndex < 0 ? 0 : activeIndex);
       return;
     }
@@ -653,7 +673,7 @@ export function CommitDetails({
             )}
             onKeyDown={onEditorKeyDown}
           >
-            <input
+            <Textarea
               ref={draftSummaryRef}
               value={draftParts.summary}
               onChange={(e) => setDraft(joinCommitMessage(e.target.value, draftParts.body))}
@@ -663,10 +683,11 @@ export function CommitDetails({
                   draftBodyRef.current?.focus();
                 }
               }}
-              placeholder="摘要"
-              aria-label="提交摘要"
+              placeholder="Summary"
+              aria-label="Commit summary"
+              rows={1}
               spellCheck
-              className="h-9 w-full min-w-0 bg-transparent px-3 text-sm font-medium text-foreground outline-none placeholder:font-normal placeholder:text-faint"
+              className="min-h-9 resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-2 text-sm font-medium leading-snug text-foreground shadow-none placeholder:font-normal placeholder:text-faint focus-visible:border-0 focus-visible:ring-0"
             />
             <div className="mx-3 h-px bg-border-subtle" />
             <Textarea
@@ -726,7 +747,7 @@ export function CommitDetails({
               {commit.summary}
             </h2>
             {!stash && (
-              <Hint label={canReword ? '编辑提交消息' : '已推送到远端'}>
+              <Hint label={pushed ? 'Edit the commit message (already pushed, the next push must be forced)' : 'Edit the commit message'}>
                 <span className="-mt-1 inline-flex shrink-0">
                   <Button
                     variant="ghost"

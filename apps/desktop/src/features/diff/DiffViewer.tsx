@@ -3,7 +3,7 @@ import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
 import { useUi } from '@/features/ui/store';
 import { languageOf } from '@/shared/highlight';
-import { CodeLine, gutter, lineBg, pairHunkLines, prepareCommentStates, wrapUnavailable, type SearchRanges } from './diffShared';
+import { CodeLine, gutter, lineBg, pairHunkLines, prepareLineStates, wrapUnavailable, type SearchRanges } from './diffShared';
 import { flattenDiff, VirtualInlineDiff, VirtualSplitDiff, type LineMenuInfo } from './VirtualDiff';
 
 interface HunkProps {
@@ -187,18 +187,20 @@ export function DiffViewer({
   hunkActions,
   onLineContextMenu,
   search,
+  emptyLabel = 'No changes',
 }: {
   diff: FileDiff;
   scrollRef?: React.RefObject<HTMLDivElement>;
   hunkActions?: (hunkIndex: number) => React.ReactNode;
   onLineContextMenu?: (event: React.MouseEvent, info: LineMenuInfo) => void;
   search?: SearchRanges;
+  emptyLabel?: string;
 }) {
   const diffView = useUi((s) => s.diffView);
   const useWord = useUi((s) => s.wordDiff);
   const wrapLines = useUi((s) => s.wrapLines);
   const language = useMemo(() => languageOf(diff.path), [diff.path]);
-  prepareCommentStates(diff, language);
+  prepareLineStates(diff, language);
   const split = diffView === 'split';
   const wrap = wrapLines && !wrapUnavailable(diff);
 
@@ -212,7 +214,7 @@ export function DiffViewer({
     return <p className="py-8 text-center text-sm text-faint">二进制文件——无文本 diff</p>;
   }
   if (diff.hunks.length === 0) {
-    return <p className="py-8 text-center text-sm text-faint">无更改</p>;
+    return <p className="py-8 text-center text-sm text-faint">{emptyLabel}</p>;
   }
 
   if (!wrap && scrollRef) {

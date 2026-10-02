@@ -52,7 +52,6 @@ export function CommitGraph() {
   const worktrees = useRepo((s) => s.worktrees);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
-  const unpushed = useRepo((s) => s.unpushed);
   const { rows, commits, maxLane, hasMore, loading, error, filters, find, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
     useGraph();
   const openDialog = useUi((s) => s.openDialog);
@@ -731,7 +730,6 @@ export function CommitGraph() {
               检出提交（游离状态）
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={!unpushed.includes(menu.commit.oid)}
               onClick={() => {
                 select(menu.commit.oid);
                 requestEditMessage(menu.commit.oid);

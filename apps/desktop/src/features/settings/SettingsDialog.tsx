@@ -23,6 +23,7 @@ import {
   UserRound,
   UsersRound,
   Wifi,
+  X,
 } from 'lucide-react';
 import {
   AI_PROVIDER_PRESETS,
@@ -33,6 +34,8 @@ import {
   type AiProviderKind,
   type CliAgentInfo,
   type CommitStylePreset,
+  chordLabels,
+  parseChordId,
 } from '@angkorgit/core';
 import {
   Badge,
@@ -72,7 +75,7 @@ import { AccountsTab, providerIcon } from './AccountsTab';
 import { Field, SettingCard, SettingEmpty, SettingRow } from './SettingCard';
 import { FontsCard } from './FontsCard';
 import { getAiProvider } from '@/features/ai/client';
-import { modKey, shortenHome } from '@/shared/utils';
+import { basename, isMac, modKey, shortenHome } from '@/shared/utils';
 
 type SectionId = 'appearance' | 'git' | 'accounts' | 'ai' | 'shortcuts';
 
@@ -390,8 +393,8 @@ function CliAgentPicker() {
       {!scanning && agents.length === 0 && (
         <SettingEmpty
           icon={<SquareTerminal className="size-4" />}
-          title="未找到 AI CLI"
-          description="Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode or Antigravity CLI, then scan again."
+          title="No AI CLI found"
+          description="Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode, Antigravity CLI or Cursor CLI, then scan again."
           action={
             <Button variant="secondary" size="sm" onClick={() => void scan()}>
               <RefreshCw className="size-3.5" /> 重新扫描
@@ -739,6 +742,59 @@ function ReviewStyleCard() {
   );
 }
 
+function RepoShortcutsCard() {
+  const shortcuts = useSettings((s) => s.repoShortcuts);
+  const setRepoShortcut = useSettings((s) => s.setRepoShortcut);
+  const recents = useRepo((s) => s.recents);
+  const entries = Object.entries(shortcuts)
+    .map(([path, id]) => ({ path, chord: parseChordId(id), name: recents.find((r) => r.path === path)?.name ?? basename(path) }))
+    .filter((e) => e.chord !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return (
+    <SettingCard
+      title="Repository shortcuts"
+      description="A key combination that switches to a repository from anywhere in the app, opening it if it is not already open. Right-click a tab or a recent repository and choose Keyboard shortcut… to add one."
+    >
+      {entries.length === 0 ? (
+        <SettingEmpty
+          icon={<Keyboard className="size-4" />}
+          title="No repository shortcuts yet"
+          description="Right-click a repository tab, or a repository on the welcome page, to give it one."
+        />
+      ) : (
+        <div className="flex flex-col" data-repo-shortcuts>
+          {entries.map((entry, index) => (
+            <div key={entry.path}>
+              {index > 0 && <Separator />}
+              <div className="flex items-center gap-3 py-2">
+                <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span className="truncate text-sm">{entry.name}</span>
+                  <span className="truncate font-mono text-[11px] text-faint">{shortenHome(entry.path)}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  {chordLabels(entry.chord!, isMac).map((label, i) => (
+                    <Kbd key={i}>{label}</Kbd>
+                  ))}
+                </span>
+                <Hint label="Remove shortcut">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remove the shortcut for ${entry.name}`}
+                    onClick={() => setRepoShortcut(entry.path, null)}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </Hint>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </SettingCard>
+  );
+}
+
 const SHORTCUTS: Array<[string, string[]]> = [
   ['命令面板', ['mod', 'K / P']],
   ['切换终端', ['mod', '`']],
@@ -746,19 +802,22 @@ const SHORTCUTS: Array<[string, string[]]> = [
   ['撤销/重做操作', ['mod', 'Z / ⇧Z']],
   ['刷新仓库', ['mod', 'R']],
   ['Settings', ['mod', ',']],
-  ['提交暂存的更改', ['mod', '⏎']],
-  ['上一个/下一个提交', ['↑ / ↓']],
-  ['第一个/最后一个提交', ['Home / End']],
-  ['打开提交的文件 / 返回提交图', ['→ / ←']],
-  ['上一个/下一个文件（文件列表）', ['↑ / ↓']],
-  ['搜索提交 / diff 内查找', ['mod', 'F']],
-  ['上一个匹配（diff 内查找）', ['⇧', '⏎']],
-  ['选择/复制 diff 一侧', ['mod', 'A / C']],
-  ['保存（文件编辑器）', ['mod', 'S']],
-  ['放大/缩小/重置', ['mod', '+ / − / 0']],
-  ['上一个/下一个更改（diff）', ['P / N']],
-  ['上一个/下一个文件（diff）', ['[ / ]']],
-  ['关闭 diff 视图', ['Esc']],
+  ['Switch to tab 1 to 9', ['mod', '1 … 9']],
+  ['Previous / next tab', ['mod', '⇧', '[ / ]']],
+  ['Commit staged changes', ['mod', '⏎']],
+  ['Previous / next commit', ['↑ / ↓']],
+  ['First / last commit', ['Home / End']],
+  ['Open the commit\u2019s files / back to the graph', ['→ / ←']],
+  ['Next change, wrapping (diff open)', ['→']],
+  ['Previous / next file (file list)', ['↑ / ↓']],
+  ['Search commits / find in diff', ['mod', 'F']],
+  ['Previous match (find in diff)', ['⇧', '⏎']],
+  ['Select / copy diff side', ['mod', 'A / C']],
+  ['Save (file editor)', ['mod', 'S']],
+  ['Zoom in / out / reset', ['mod', '+ / − / 0']],
+  ['Previous / next change (diff, file history)', ['P / N']],
+  ['Previous / next file (diff)', ['[ / ]']],
+  ['Close diff view', ['Esc']],
 ];
 
 export function SettingsDialog() {
@@ -1325,8 +1384,8 @@ export function SettingsDialog() {
                     title="提供方"
                     description={
                       settings.ai.provider === 'cli'
-                        ? '使用本机已安装的 AI CLI——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode 或 Antigravity——以其自身的登录与配额运行，无需 API 密钥。'
-                        : '用于提交消息、diff 解释、冲突帮助与审查。通过 Ollama 或 LM Studio 的本地模型无需 API 密钥。'
+                        ? 'Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity or Cursor CLI — with its own login and quota. No API key needed.'
+                        : 'Used for commit messages, diff explanations, conflict help and reviews. Local models via Ollama or LM Studio need no API key.'
                     }
                     action={
                       <Select
@@ -1410,23 +1469,26 @@ export function SettingsDialog() {
               )}
 
               {section === 'shortcuts' && (
-                <SettingCard title="键盘快捷键">
-                  <div className="flex flex-col">
-                    {SHORTCUTS.map(([label, keys], index) => (
-                      <div key={label}>
-                        {index > 0 && <Separator />}
-                        <div className="flex items-center justify-between py-2.5">
-                          <span className="text-sm">{label}</span>
-                          <span className="flex items-center gap-1">
-                            {keys.map((key) => (
-                              <Kbd key={key}>{key === 'mod' ? modKey() : key}</Kbd>
-                            ))}
-                          </span>
+                <div className="flex flex-col gap-4">
+                  <SettingCard title="Keyboard shortcuts">
+                    <div className="flex flex-col">
+                      {SHORTCUTS.map(([label, keys], index) => (
+                        <div key={label}>
+                          {index > 0 && <Separator />}
+                          <div className="flex items-center justify-between py-2.5">
+                            <span className="text-sm">{label}</span>
+                            <span className="flex items-center gap-1">
+                              {keys.map((key) => (
+                                <Kbd key={key}>{key === 'mod' ? modKey() : key}</Kbd>
+                              ))}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </SettingCard>
+                      ))}
+                    </div>
+                  </SettingCard>
+                  <RepoShortcutsCard />
+                </div>
               )}
             </div>
           </div>

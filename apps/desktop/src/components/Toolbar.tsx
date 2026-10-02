@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { chordLabels, parseChordId } from '@angkorgit/core';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
@@ -54,7 +55,7 @@ import { useUndo } from '@/features/history/undoStore';
 import { useSettings, type IdentityProfile } from '@/features/settings/store';
 import { applyProfileToRepo, ensureRepoProfile } from '@/features/settings/profiles';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
-import { capCount, modKey } from '@/shared/utils';
+import { capCount, isMac, modKey } from '@/shared/utils';
 
 function RepoSwitcher() {
   const repo = useRepo((s) => s.repo);
@@ -63,6 +64,7 @@ function RepoSwitcher() {
   const busy = useRepo((s) => s.busy);
   const openDialog = useUi((s) => s.openDialog);
   const profiles = useSettings((s) => s.profiles);
+  const shortcuts = useSettings((s) => s.repoShortcuts);
   const profileId = useRepo((s) => s.profileId);
   const [activeEmail, setActiveEmail] = useState('');
 
@@ -131,6 +133,7 @@ function RepoSwitcher() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           {recents.map((recent) => {
             const isCurrent = recent.path === repo.path;
+            const chord = shortcuts[recent.path] ? parseChordId(shortcuts[recent.path]) : null;
             return (
               <DropdownMenuItem key={recent.path} onClick={() => void switchTo(recent.path)}>
                 {isCurrent ? <Check className="text-primary" /> : <FolderGit2 />}
@@ -138,6 +141,13 @@ function RepoSwitcher() {
                   <span className={cn('block truncate', isCurrent && 'text-primary')}>{recent.name}</span>
                   <span className="block truncate font-mono text-[10px] text-faint">{recent.path}</span>
                 </span>
+                {chord && (
+                  <span className="flex shrink-0 items-center gap-0.5">
+                    {chordLabels(chord, isMac).map((label, index) => (
+                      <Kbd key={index}>{label}</Kbd>
+                    ))}
+                  </span>
+                )}
               </DropdownMenuItem>
             );
           })}
@@ -422,6 +432,16 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       await run(label, op);
       void import('@/features/forge/store').then(({ useForge }) => useForge.getState().load(true));
     })();
+  const confirmForcePush = async () => {
+    const branch = repo.headBranch ?? 'the current branch';
+    const ok = await confirmDialog({
+      title: 'Force push?',
+      description: `${remote}/${branch} will be replaced with your local ${branch}. Commits that exist only on the remote are lost, and anyone who pulled the branch will need to reset to it.`,
+      confirmLabel: 'Force push',
+      destructive: true,
+    });
+    if (ok) runPush('Push (force)', () => ipc.push(repo.path, remote, true, false, true));
+  };
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1 border-b border-border-subtle bg-surface px-2">
@@ -544,8 +564,8 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => runPush('推送（强制）', () => ipc.push(repo.path, remote, true, false, true))} destructive>
-              强制推送
+            <DropdownMenuItem onClick={() => void confirmForcePush()} destructive>
+              Force push
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => runPush('推送（含标签）', () => ipc.push(repo.path, remote, false, true, true))}>
               推送（含标签）

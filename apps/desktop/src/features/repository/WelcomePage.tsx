@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { chordText, parseChordId } from '@angkorgit/core';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -14,6 +15,7 @@ import {
   Settings,
   Trash2,
   X,
+  Keyboard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -36,7 +38,9 @@ import type { RecentRepository } from '@angkorgit/core';
 import { appVersion, ipc, pickDirectory } from '@/core/ipc';
 import { useRepo } from './store';
 import { useUi } from '@/features/ui/store';
+import { useSettings } from '@/features/settings/store';
 import { CloneDialog } from './CloneDialog';
+import { RepoShortcutDialog } from './RepoShortcutDialog';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { SettingEmpty } from '@/features/settings/SettingCard';
 import { isMac, shortenHome, timeAgo } from '@/shared/utils';
@@ -46,6 +50,7 @@ export function WelcomePage() {
   const { recents, open, opening, loadRecents } = useRepo();
   const openDialog = useUi((s) => s.openDialog);
   const worktreeTabs = useUi((s) => s.worktreeTabs);
+  const shortcuts = useSettings((s) => s.repoShortcuts);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [missing, setMissing] = useState<Set<string>>(new Set());
@@ -230,6 +235,7 @@ export function WelcomePage() {
               filtered.map((repo, index) => {
                 const gone = missing.has(repo.path);
                 const isWorktree = worktreeTabs.includes(repo.path);
+                const chord = shortcuts[repo.path] ? parseChordId(shortcuts[repo.path]) : null;
                 const active = index === activeIndex;
                 return (
                   <div
@@ -265,6 +271,11 @@ export function WelcomePage() {
                         <span className={cn('truncate text-sm font-medium', gone ? 'text-muted' : 'text-foreground')}>
                           {repo.name}
                         </span>
+                        {chord && (
+                          <Kbd className="h-4 shrink-0 px-1 text-[9px] font-normal" data-recent-shortcut>
+                            {chordText(chord, isMac)}
+                          </Kbd>
+                        )}
                         {gone && (
                           <span className="flex shrink-0 items-center gap-1 text-[11px] text-danger">
                             <AlertTriangle className="size-3" /> 文件夹缺失
@@ -330,6 +341,9 @@ export function WelcomePage() {
             <DropdownMenuItem disabled={missing.has(menu.repo.path)} onClick={() => void ipc.revealPath(menu.repo.path)}>
               <FolderOpen /> {isMac ? '在 Finder 中显示' : '在文件管理器中显示'}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openDialog('repoShortcut', { repoPath: menu.repo.path })}>
+              <Keyboard /> {shortcuts[menu.repo.path] ? 'Change keyboard shortcut…' : 'Keyboard shortcut…'}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(menu.repo.path);
@@ -348,6 +362,7 @@ export function WelcomePage() {
 
       <CloneDialog onCloned={(path) => void openRepository(path)} />
       <SettingsDialog />
+      <RepoShortcutDialog />
     </motion.div>
   );
 }

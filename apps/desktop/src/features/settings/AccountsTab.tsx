@@ -257,6 +257,7 @@ export function AccountsTab() {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [reconnecting, setReconnecting] = useState<HostingAccount | null>(null);
   const tokenInputRef = useRef<HTMLInputElement>(null);
   const focusTokenRef = useRef(false);
   const skipMenuRefocusRef = useRef(false);
@@ -324,6 +325,7 @@ export function AccountsTab() {
     setHost(account.host);
     setUsername(kind === 'bitbucket' ? (account.email ?? '') : account.username);
     setToken('');
+    setReconnecting(account);
     if (adding) {
       requestAnimationFrame(() => tokenInputRef.current?.focus());
       return;
@@ -332,10 +334,23 @@ export function AccountsTab() {
     setAdding(true);
   };
 
+  const closeForm = () => {
+    setAdding(false);
+    setReconnecting(null);
+  };
+
+  const startAdd = () => {
+    setReconnecting(null);
+    setToken('');
+    setUsername('');
+    setAdding(true);
+  };
+
   const connect = async () => {
     const cleanHost = host.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
     if (!cleanHost || !token.trim()) return;
     setBusy(true);
+    const wasReconnect = reconnecting !== null;
     try {
       let finalUsername = username.trim();
       let isVerified = false;
@@ -362,9 +377,9 @@ export function AccountsTab() {
       setAccounts(updated);
       setToken('');
       setUsername('');
-      setAdding(false);
-      if (isVerified) toast.success(`已以 ${finalUsername} 身份连接到 ${cleanHost}`);
-      else toast.warning(`已将 ${finalUsername} 保存到 ${cleanHost}——令牌未验证`);
+      closeForm();
+      if (isVerified) toast.success(`${wasReconnect ? 'Reconnected' : 'Connected'} ${cleanHost} as ${finalUsername}`);
+      else toast.warning(`Saved ${cleanHost} as ${finalUsername} — token not verified`);
       const added = updated.find((a) => a.host === cleanHost && a.username === finalUsername);
       if (added) void runChecks([added]);
     } catch (error) {
@@ -417,8 +432,8 @@ export function AccountsTab() {
       description="当远端的主机匹配时自动使用——无需 SSH 配置即可通过 HTTPS 推送和拉取。每个主机可以有多个账户；其中一个是默认账户，各配置可选用其他账户。"
       action={
         !showForm ? (
-          <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
-            <Plus className="size-3.5" /> 添加账户
+          <Button variant="secondary" size="sm" onClick={startAdd}>
+            <Plus className="size-3.5" /> Add account
           </Button>
         ) : undefined
       }
@@ -510,11 +525,15 @@ export function AccountsTab() {
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
             <p className="mb-3 flex items-center gap-2 text-xs font-medium text-foreground">
               <KeyRound className="size-3.5 text-primary" />
-              {accounts.length === 0 ? '连接你的第一个账户' : '添加账户'}
+              {reconnecting
+                ? `Reconnect ${reconnecting.username} @ ${reconnecting.host}`
+                : accounts.length === 0
+                  ? 'Connect your first account'
+                  : 'Add account'}
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               <Field label="Provider">
-                <Select value={provider} onValueChange={(v) => changeProvider(v as ProviderKind)}>
+                <Select value={provider} onValueChange={(v) => changeProvider(v as ProviderKind)} disabled={reconnecting !== null}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -531,18 +550,27 @@ export function AccountsTab() {
                 <Input
                   placeholder="gitlab.example.com"
                   value={host}
-                  disabled={!preset.hostEditable}
+                  disabled={!preset.hostEditable || reconnecting !== null}
                   onChange={(e) => setHost(e.target.value)}
                   className="font-mono"
                 />
               </Field>
               <Field
-                label={provider === 'bitbucket' ? 'Atlassian 账户邮箱' : 'Username'}
-                hint={provider === 'bitbucket' ? '已检测到 Bitbucket 用户名' : provider === 'other' ? undefined : '从令牌中检测到'}
+                label={provider === 'bitbucket' ? 'Atlassian account email' : 'Username'}
+                hint={
+                  reconnecting
+                    ? undefined
+                    : provider === 'bitbucket'
+                      ? 'Bitbucket username is detected'
+                      : provider === 'other'
+                        ? undefined
+                        : 'detected from the token'
+                }
               >
                 <Input
                   placeholder={provider === 'bitbucket' ? 'you@company.com' : 'optional'}
                   value={username}
+                  disabled={reconnecting !== null && username.trim() !== ''}
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </Field>
@@ -558,7 +586,7 @@ export function AccountsTab() {
                         void openExternal(tokenPage);
                       }}
                     >
-                      Create one on {preset.label} <ExternalLink className="size-3" />
+                      Create one <ExternalLink className="size-3" />
                     </a>
                   ) : undefined
                 }
@@ -571,7 +599,7 @@ export function AccountsTab() {
                   onChange={(e) => setToken(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void connect();
-                    if (e.key === 'Escape' && accounts.length > 0) setAdding(false);
+                    if (e.key === 'Escape' && accounts.length > 0) closeForm();
                   }}
                 />
               </Field>
@@ -580,13 +608,13 @@ export function AccountsTab() {
               <span className="min-w-0 text-[11px] leading-relaxed text-faint">{preset.tokenHint}</span>
               <span className="flex shrink-0 gap-2">
                 {accounts.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>
-                    取消
+                  <Button variant="ghost" size="sm" onClick={closeForm}>
+                    Cancel
                   </Button>
                 )}
                 <Button size="sm" onClick={() => void connect()} disabled={busy || !token.trim() || !host.trim()}>
                   {busy ? <Spinner className="text-primary-foreground" /> : null}
-                  Connect
+                  {reconnecting ? 'Reconnect' : 'Connect'}
                 </Button>
               </span>
             </div>

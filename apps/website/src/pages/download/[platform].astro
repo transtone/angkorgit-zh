@@ -1,0 +1,195 @@
+---
+import Page from '../../layouts/Page.astro';
+import TerminalBlock from '../../components/TerminalBlock.astro';
+import Faq from '../../components/Faq.astro';
+import { SITE } from '../../lib/site';
+import { BREW, PLATFORMS, type Platform } from '../../lib/install';
+
+export function getStaticPaths() {
+  return PLATFORMS.map((p) => ({ params: { platform: p.id }, props: { p } }));
+}
+
+const { p } = Astro.props as { p: Platform };
+const version = SITE.latestVersion;
+const url = SITE.assetUrl(version, p.asset);
+
+const pages = {
+  macos: {
+    title: 'Git client for macOS: AngKorGit, free, native, Apple Silicon and Intel',
+    description:
+      'Download AngKorGit for macOS, a free and open source Git client with a commit graph, side by side diffs, a visual conflict resolver and worktrees. One universal build for Apple Silicon and Intel, Homebrew cask available.',
+    heading: 'A Git client for <em>macOS</em> that opens fast.',
+    intro: [
+      'One universal build for Apple Silicon and Intel. The window is WKWebView, the one Safari uses, and the engine is Rust and libgit2 in the same process, so there is no daemon and no bundled browser.',
+      'It is not signed with an Apple developer certificate yet, so macOS asks once on first launch. Homebrew clears that flag for you, which is why it is the install I recommend.',
+    ],
+    steps: [
+      'Open the .dmg and drag AngKorGit into Applications. Launch it from there, not from inside the dmg window, or macOS runs it from a temporary location where folder permissions cannot be saved.',
+      'On first launch macOS says the app cannot be opened. Close that, open System Settings, Privacy and Security, scroll down and click Open Anyway next to the AngKorGit line. That happens once.',
+      'When you open a repository under Desktop, Documents or Downloads, macOS asks whether AngKorGit may read that folder. Allow, and it is remembered.',
+    ],
+    terminal: {
+      label: 'macOS',
+      lines: [`curl -L ${url} -o ~/Downloads/AngKorGit.dmg`, 'xattr -cr ~/Downloads/AngKorGit.dmg', 'open ~/Downloads/AngKorGit.dmg'],
+      copy: `curl -L ${url} -o ~/Downloads/AngKorGit.dmg && xattr -cr ~/Downloads/AngKorGit.dmg && open ~/Downloads/AngKorGit.dmg`,
+    },
+    faq: [
+      { q: 'Does it run natively on Apple Silicon?', a: 'Yes. The .dmg is a universal binary, so it runs native on M series and on Intel from the same file. Homebrew installs the same build.' },
+      { q: 'Why does macOS warn me?', a: 'There is no paid Apple certificate on the build yet, so Gatekeeper asks once. The folder permissions you grant are remembered for that build, and an update asks for them once more. Every update is verified with a signature before it installs.' },
+      { q: 'Does it work with the keys in ~/.ssh and the macOS keychain?', a: 'Yes. SSH remotes use your agent or the keys in ~/.ssh. HTTPS remotes use an account you add in Settings, Authentication, whose token is stored in the keychain, or fall back to the same git credential helper the command line uses.' },
+      { q: 'Which macOS versions?', a: 'The build targets macOS 10.13 and later. I test on the current release and the one before it, so if you are on something older and hit a problem, open an issue.' },
+    ],
+  },
+  windows: {
+    title: 'Git client for Windows: AngKorGit, free, open source, no Electron',
+    description:
+      'Download AngKorGit for Windows, a free and open source Git GUI with a commit graph, hunk and line staging, a visual conflict resolver and worktrees. A small x64 installer built on WebView2, with an .msi on the releases page.',
+    heading: 'A Git client for <em>Windows</em> that isn’t a browser.',
+    intro: [
+      'The x64 installer is built on WebView2, which Windows 10 and 11 already ship, so there is no bundled Chromium. The engine is Rust and libgit2 in the same process. It uses the git credential manager you already have, so a remote that works in your terminal works here.',
+      'The build is not signed with a code signing certificate yet, so SmartScreen calls the publisher unknown on first run. That is the only extra click.',
+    ],
+    steps: [
+      'Run the installer. SmartScreen shows Windows protected your PC. Click More info, then Run anyway. The .msi on the releases page behaves the same way and suits a managed machine better.',
+      'Open a repository from the welcome screen, or run angkorgit open . from a terminal after installing the command line tool under Settings, Git.',
+      'Nothing else. There is no account. Add a GitHub, GitLab or Bitbucket token under Settings, Authentication when you want pull requests in the sidebar.',
+    ],
+    terminal: {
+      label: 'Windows (PowerShell)',
+      lines: [`curl -L ${url} -o "$env:TEMP\\AngKorGit-setup.exe"`, 'Start-Process "$env:TEMP\\AngKorGit-setup.exe"'],
+      copy: `curl -L ${url} -o "$env:TEMP\\AngKorGit-setup.exe"; Start-Process "$env:TEMP\\AngKorGit-setup.exe"`,
+    },
+    faq: [
+      { q: 'Does it need Git for Windows?', a: 'No. Git operations go through libgit2 inside the app. Git for Windows is still useful for the terminal panel and for the credential manager, and AngKorGit uses it when it is there.' },
+      { q: 'Will a terminal window flash when it runs git?', a: 'No. Every child process the app starts is created without a console window. That was a real bug in an early release and it is fixed.' },
+      { q: 'Which Windows versions?', a: 'Windows 10 and 11, x64. WebView2 comes with both. There is no ARM build yet.' },
+      { q: 'Does it work with SSH remotes?', a: 'Yes, with the keys in your user .ssh folder. Ed25519 and RSA keys both work. A key with a passphrase needs the agent, and that path is less travelled on Windows, so tell me if it fails.' },
+    ],
+  },
+  linux: {
+    title: 'Git client for Linux: AngKorGit, free, open source, AppImage, .deb and .rpm',
+    description:
+      'Download AngKorGit for Linux, a free and open source Git GUI with a commit graph, side by side diffs, a visual conflict resolver and worktrees. AppImage, .deb and .rpm builds, a community AUR package, and no account.',
+    heading: 'A Git client for <em>Linux</em> that gets the same app as everyone.',
+    intro: [
+      'Linux is not a port here. It is the same source, built in the same CI run as the macOS and Windows releases, with the same features. The window is WebKitGTK, the engine is Rust and libgit2 in the same process.',
+      'You get an AppImage, a .deb and an .rpm from the releases page, and there is a community angkorgit-bin package on the AUR. Tokens go into the Secret Service keyring, so GNOME Keyring and KWallet both work.',
+    ],
+    steps: [
+      'AppImage: chmod +x the file and run it. It needs WebKitGTK 4.1 and libssl, which most desktops already have. On Debian and Ubuntu the packages are libwebkit2gtk-4.1-0 and libssl3.',
+      'Debian and Ubuntu: install the .deb with apt or dpkg and it lands in your application menu. Fedora and openSUSE: the .rpm does the same.',
+      'Arch: yay -S angkorgit-bin, or your AUR helper of choice. The package is community maintained, so it can lag a release or two behind GitHub.',
+    ],
+    terminal: {
+      label: 'Linux',
+      lines: [`curl -L ${url} -o ~/Downloads/AngKorGit.AppImage`, 'chmod +x ~/Downloads/AngKorGit.AppImage', '~/Downloads/AngKorGit.AppImage'],
+      copy: `curl -L ${url} -o ~/Downloads/AngKorGit.AppImage && chmod +x ~/Downloads/AngKorGit.AppImage && ~/Downloads/AngKorGit.AppImage`,
+    },
+    faq: [
+      { q: 'Wayland or X11?', a: 'Both run. One known gap on Wayland: dragging a branch onto another in the sidebar does not work, because WebKitGTK drag and drop is unreliable there. Every drag gesture has a right-click menu equivalent, so merge, rebase and fast-forward are all still there.' },
+      { q: 'Where do tokens go?', a: 'Into the Freedesktop Secret Service, so GNOME Keyring or KWallet. Nothing is written to disk in plain text. If no keyring is running, the account shows as missing its token and tells you so.' },
+      { q: 'Does it update itself?', a: 'The AppImage does, with each update verified by signature before it installs. The .deb and .rpm are updated by installing the next release, and the AUR package follows when its maintainer updates it.' },
+      { q: 'Is there an ARM build?', a: 'Not yet. The releases are x86_64. Building from source on ARM works, the instructions are in the Development page under Docs.' },
+    ],
+  },
+} as const;
+
+const page = pages[p.id];
+
+const faqLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: page.faq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+
+const others = PLATFORMS.filter((o) => o.id !== p.id);
+---
+
+<Page
+  title={page.title}
+  description={page.description}
+  kicker={`Download · v${version}`}
+  heading={page.heading}
+  crumbs={[
+    { href: '/#install', label: 'Download' },
+    { href: `/download/${p.id}/`, label: p.name },
+  ]}
+  jsonLd={[faqLd]}
+>
+  <Fragment slot="intro">{page.intro.map((t) => <p>{t}</p>)}</Fragment>
+
+  <div class="mt-8 flex flex-wrap items-center gap-3">
+    <a href={url} class="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground shadow-soft transition-opacity hover:opacity-90">
+      Download for {p.name}
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14m0 0 6-6m-6 6-6-6" /></svg>
+    </a>
+    <span class="font-mono text-xs text-faint">{p.asset} · {p.detail}</span>
+  </div>
+
+  <section class="mt-14 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]" aria-labelledby="first-launch">
+    <div>
+      <h2 id="first-launch" class="display text-3xl">First launch</h2>
+      <ol class="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+        {page.steps.map((step, i) => (
+          <li class="flex gap-4">
+            <span class="mt-0.5 font-mono text-xs text-primary">{String(i + 1).padStart(2, '0')}</span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+    <div class="min-w-0 space-y-4">
+      {p.id === 'macos' && (
+        <div>
+          <p class="font-mono text-xs uppercase tracking-[0.14em] text-faint">Homebrew</p>
+          <div class="mt-2"><TerminalBlock label="terminal" lines={[BREW]} copy={BREW} /></div>
+        </div>
+      )}
+      <div>
+        <p class="font-mono text-xs uppercase tracking-[0.14em] text-faint">From the terminal</p>
+        <div class="mt-2"><TerminalBlock label={page.terminal.label} lines={[...page.terminal.lines]} copy={page.terminal.copy} /></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-14" aria-labelledby="what-you-get">
+    <h2 id="what-you-get" class="display text-3xl">What you get</h2>
+    <ul class="mt-5 grid gap-x-10 gap-y-3 text-[15px] leading-relaxed text-muted sm:grid-cols-2">
+      {[
+        'A virtualized commit graph. Drag one branch onto another to merge or rebase',
+        'Stage files, hunks or single lines. Commit drafts saved per repository',
+        'Inline or side by side diffs with word level highlighting and a minimap',
+        'A conflict resolver with both sides aligned and a result pane you edit in place',
+        'Interactive rebase, cherry-pick, stashes, tags, submodules, worktrees',
+        'Undo and redo for commits, checkouts, merges, rebases and resets',
+        'Pull requests for GitHub, GitLab and Bitbucket: list, check out, create',
+        'AI commit messages, explanations and reviews through the CLI you already have',
+        'A ⌘K palette with every command, and a terminal per repository',
+        '16 themes, dark and light. No account, no telemetry',
+      ].map((item) => (
+        <li class="flex gap-3"><span aria-hidden="true" class="mt-[0.6em] h-1.5 w-1.5 shrink-0 rounded-full bg-primary"></span><span>{item}</span></li>
+      ))}
+    </ul>
+  </section>
+
+  <figure class="mt-14">
+    <picture>
+      <source srcset="/screenshots/diff-light.webp" media="(prefers-color-scheme: light)" />
+      <img src="/screenshots/diff.webp" alt="AngKorGit showing a side by side diff with the commit graph behind it" class="w-full rounded-lg border border-border-subtle shadow-soft" loading="lazy" width="1512" height="949" />
+    </picture>
+    <figcaption class="mt-3 text-sm text-faint">The same interface on {p.name} as on every other platform.</figcaption>
+  </figure>
+
+  <Faq items={[...page.faq]} />
+
+  <nav class="mt-12 text-sm text-muted" aria-label="Other platforms">
+    Also for
+    {others.map((o, i) => (<><a href={`/download/${o.id}/`} class="link-underline text-foreground">{o.name}</a>{i < others.length - 1 ? ' and ' : '.'}</>))}
+    Every version is on the <a href={SITE.releases} class="link-underline text-foreground">releases page</a>, and the
+    <a href="/docs/getting-started/" class="link-underline text-foreground">getting started page</a> covers each prompt in more detail.
+  </nav>
+</Page>

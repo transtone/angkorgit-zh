@@ -51,7 +51,10 @@
 2. 在 `createAiProvider` 与 `AI_PROVIDER_PRESETS` 中注册。
 3. 验证设置界面、能力声明与传输层。
 
-本机 AI CLI（Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode、Antigravity）使用另一条路径：在 `packages/core/src/ai/cliAgents.ts` 中定义参数与标准输入形式，并将可执行文件加入 `apps/desktop/src-tauri/src/ai_cli.rs` 的白名单。
+Installed AI-CLI agents (Claude Code, GitHub Copilot CLI, Codex, Gemini CLI,
+OpenCode, Antigravity, Cursor CLI) follow a different path: add the agent's argv/stdin shape
+in `packages/core/src/ai/cliAgents.ts` and its binary to the allowlist in
+`apps/desktop/src-tauri/src/ai_cli.rs`.
 
 ## 中文版发布
 

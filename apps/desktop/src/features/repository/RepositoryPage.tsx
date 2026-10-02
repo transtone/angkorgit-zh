@@ -30,6 +30,7 @@ import { RepoDialogs } from './RepoDialogs';
 import { CloneDialog } from './CloneDialog';
 import { CreatePrDialog } from '@/features/forge/CreatePrDialog';
 import { CreateWorktreeDialog } from '@/features/worktrees/CreateWorktreeDialog';
+import { RepoShortcutDialog } from './RepoShortcutDialog';
 import { useForge } from '@/features/forge/store';
 import { seedForgeHostsFromAccounts } from '@/features/forge/hosts';
 import { useShortcuts } from '@/shared/useShortcuts';
@@ -417,6 +418,7 @@ export function RepositoryPage() {
       <RepoDialogs onDone={refreshAll} />
       <CreatePrDialog />
       <CreateWorktreeDialog />
+      <RepoShortcutDialog />
       <InteractiveRebaseDialog />
       <CloneDialog
         onCloned={(path) =>

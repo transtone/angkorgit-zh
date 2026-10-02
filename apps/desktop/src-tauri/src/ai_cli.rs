@@ -7,17 +7,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, AppResult};
 
-const AGENTS: &[(&str, &str, &str)] = &[
-    ("claude", "Claude Code", "claude"),
-    ("copilot", "GitHub Copilot CLI", "copilot"),
-    ("codex", "Codex CLI", "codex"),
-    ("gemini", "Gemini CLI", "gemini"),
-    ("opencode", "OpenCode", "opencode"),
-    ("antigravity", "Antigravity CLI", "agy"),
+const AGENTS: &[(&str, &str, &[&str])] = &[
+    ("claude", "Claude Code", &["claude"]),
+    ("copilot", "GitHub Copilot CLI", &["copilot"]),
+    ("codex", "Codex CLI", &["codex"]),
+    ("gemini", "Gemini CLI", &["gemini"]),
+    ("opencode", "OpenCode", &["opencode"]),
+    ("antigravity", "Antigravity CLI", &["agy"]),
+    ("cursor", "Cursor CLI", &["cursor-agent", "agent"]),
 ];
 
 const OUTPUT_FILE_PLACEHOLDER: &str = "{OUTPUT_FILE}";
 const VERSION_TIMEOUT: Duration = Duration::from_secs(15);
+const CURSOR_LAUNCHERS: &[&str] = &["cursor-agent", "agent"];
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -107,13 +109,74 @@ pub(crate) fn search_path(extra: Option<&Path>) -> std::ffi::OsString {
             push(&mut dirs, PathBuf::from(appdata).join("npm"));
         }
         if let Some(local_appdata) = std::env::var_os("LOCALAPPDATA") {
-            push(
-                &mut dirs,
-                PathBuf::from(local_appdata).join("Microsoft/WinGet/Links"),
-            );
+            let local_appdata = PathBuf::from(local_appdata);
+            push(&mut dirs, local_appdata.join("Microsoft/WinGet/Links"));
+            push(&mut dirs, local_appdata.join("cursor-agent"));
         }
     }
     std::env::join_paths(dirs).unwrap_or_default()
+}
+
+fn is_batch_launcher(program: &Path) -> bool {
+    program
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"))
+}
+
+fn cursor_version_key(name: &str) -> Option<u32> {
+    let head = name.split('-').next()?;
+    let mut parts = head.split('.');
+    let year: u32 = parts.next()?.parse().ok()?;
+    let month: u32 = parts.next()?.parse().ok()?;
+    let day: u32 = parts.next()?.parse().ok()?;
+    if parts.next().is_some() || !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return None;
+    }
+    Some(year * 10_000 + month * 100 + day)
+}
+
+pub(crate) fn cursor_node_launch(launcher: &Path) -> Option<(PathBuf, PathBuf)> {
+    let stem = launcher.file_stem()?.to_str()?.to_lowercase();
+    if !CURSOR_LAUNCHERS.contains(&stem.as_str()) {
+        return None;
+    }
+    let versions = launcher.parent()?.join("versions");
+    let mut best: Option<(u32, PathBuf)> = None;
+    for entry in std::fs::read_dir(versions).ok()?.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(key) = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .and_then(cursor_version_key)
+        else {
+            continue;
+        };
+        if best.as_ref().map_or(true, |(k, _)| key > *k) {
+            best = Some((key, path));
+        }
+    }
+    let (_, dir) = best?;
+    let node = dir.join("node.exe");
+    let index = dir.join("index.js");
+    (node.is_file() && index.is_file()).then_some((node, index))
+}
+
+fn launch_command(program: &Path) -> Command {
+    if is_batch_launcher(program) {
+        if let Some((node, index)) = cursor_node_launch(program) {
+            let mut command = crate::proc::hidden(&node);
+            command.arg(index);
+            if let Some(name) = program.file_name() {
+                command.env("CURSOR_INVOKED_AS", name);
+            }
+            return command;
+        }
+    }
+    crate::proc::hidden(program)
 }
 
 fn is_supported(program: &str) -> bool {
@@ -122,7 +185,9 @@ fn is_supported(program: &str) -> bool {
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_lowercase();
-    AGENTS.iter().any(|(_, _, bin)| *bin == stem)
+    AGENTS
+        .iter()
+        .any(|(_, _, bins)| bins.contains(&stem.as_str()))
 }
 
 pub(crate) fn capture(mut command: Command, stdin: &str, timeout: Duration) -> AppResult<Captured> {
@@ -247,8 +312,11 @@ pub fn detect() -> Vec<CliAgentInfo> {
     let path_env = search_path(None);
     let cwd = std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir());
     let mut located: Vec<(usize, PathBuf)> = Vec::new();
-    for (index, (_, _, bin)) in AGENTS.iter().enumerate() {
-        if let Ok(path) = which::which_in(bin, Some(&path_env), &cwd) {
+    for (index, (_, _, bins)) in AGENTS.iter().enumerate() {
+        let found = bins
+            .iter()
+            .find_map(|bin| which::which_in(bin, Some(&path_env), &cwd).ok());
+        if let Some(path) = found {
             located.push((index, path));
         }
     }
@@ -258,11 +326,15 @@ pub fn detect() -> Vec<CliAgentInfo> {
             .iter()
             .enumerate()
             .filter(|(index, _)| !located.iter().any(|(i, _)| i == index))
-            .map(|(_, (_, _, bin))| *bin)
+            .flat_map(|(_, (_, _, bins))| bins.iter().copied())
             .collect();
         if !missing.is_empty() {
             for (stem, path) in shell_lookup(&missing) {
-                if let Some(index) = AGENTS.iter().position(|(_, _, bin)| *bin == stem) {
+                let agent = AGENTS
+                    .iter()
+                    .position(|(_, _, bins)| bins.contains(&stem.as_str()))
+                    .filter(|index| !located.iter().any(|(i, _)| i == index));
+                if let Some(index) = agent {
                     located.push((index, path));
                 }
             }
@@ -315,7 +387,7 @@ pub fn run(request: CliRunRequest) -> AppResult<CliRunResult> {
         .collect();
 
     let program_dir = Path::new(&request.program).parent().map(Path::to_path_buf);
-    let mut command = crate::proc::hidden(&request.program);
+    let mut command = launch_command(Path::new(&request.program));
     command
         .args(&args)
         .current_dir(std::env::temp_dir())
@@ -351,6 +423,44 @@ mod tests {
     use super::*;
 
     #[test]
+    fn cursor_version_keys_follow_the_date_and_ignore_other_folders() {
+        assert_eq!(cursor_version_key("2026.09.26-abcdef01"), Some(20_260_926));
+        assert_eq!(
+            cursor_version_key("2026.09.26-12-00-00-abcdef01"),
+            Some(20_260_926)
+        );
+        assert_eq!(cursor_version_key("2026.9.5-aa"), Some(20_260_905));
+        assert_eq!(cursor_version_key("cache"), None);
+        assert_eq!(cursor_version_key("2026.13.01-aa"), None);
+        assert_eq!(cursor_version_key("2026.09.26.1-aa"), None);
+    }
+
+    #[test]
+    fn cursor_batch_launcher_resolves_to_the_newest_node_entry() {
+        let root = std::env::temp_dir().join(format!("angkorgit-cursor-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for version in ["2026.08.30-aaaa", "2026.09.26-12-00-00-bbbb", "notes"] {
+            let dir = root.join("versions").join(version);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("node.exe"), b"").unwrap();
+            std::fs::write(dir.join("index.js"), b"").unwrap();
+        }
+        let launcher = root.join("cursor-agent.cmd");
+        std::fs::write(&launcher, b"@echo off").unwrap();
+
+        let (node, index) = cursor_node_launch(&launcher).expect("resolved");
+        assert!(node.ends_with(Path::new("2026.09.26-12-00-00-bbbb").join("node.exe")));
+        assert!(index.ends_with(Path::new("2026.09.26-12-00-00-bbbb").join("index.js")));
+        assert!(is_batch_launcher(&launcher));
+        assert!(!is_batch_launcher(&root.join("cursor-agent")));
+
+        assert!(cursor_node_launch(&root.join("claude.cmd")).is_none());
+        std::fs::remove_dir_all(root.join("versions")).unwrap();
+        assert!(cursor_node_launch(&launcher).is_none());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn search_path_covers_dedicated_installer_dirs() {
         let path = search_path(None);
         let joined = path.to_string_lossy().to_string();
@@ -368,6 +478,17 @@ mod tests {
             timeout_secs: Some(5),
         });
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn accepts_cursor_cli_under_both_of_its_names() {
+        assert!(is_supported("agent"));
+        assert!(is_supported("/home/u/.local/bin/cursor-agent"));
+        #[cfg(windows)]
+        assert!(is_supported(
+            r"C:\Users\u\AppData\Local\cursor-agent\agent.exe"
+        ));
+        assert!(!is_supported("cursor"));
     }
 
     #[test]

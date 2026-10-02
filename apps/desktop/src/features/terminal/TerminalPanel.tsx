@@ -18,6 +18,7 @@ import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { killTerminalSession, sessions, type TerminalSession } from './sessions';
 import { monoFontStack } from './font';
+import { altArrowSequence } from './keys';
 import { terminalThemeFromTokens } from './theme';
 
 function newSession(): TerminalSession {
@@ -45,16 +46,27 @@ function newSession(): TerminalSession {
   };
 }
 
+function altArrowHandler(send: (data: string) => void): (event: KeyboardEvent) => boolean {
+  return (event) => {
+    const sequence = altArrowSequence(event);
+    if (sequence === null) return true;
+    send(sequence);
+    return false;
+  };
+}
+
 function spawnShell(session: TerminalSession, repoPath: string): void {
   const { terminal } = session;
   if (!isTauri()) {
     terminal.writeln('AngKorGit 演示终端——桌面应用中提供 PTY。');
     terminal.write('$ ');
-    terminal.onData((data) => {
+    const echo = (data: string) => {
       if (data === '\r') terminal.write('\r\n$ ');
       else if (data === '\x7f') terminal.write('\b \b');
       else terminal.write(data);
-    });
+    };
+    terminal.onData(echo);
+    terminal.attachCustomKeyEventHandler(altArrowHandler(echo));
     return;
   }
   void (async () => {
@@ -82,7 +94,9 @@ function spawnShell(session: TerminalSession, repoPath: string): void {
         return;
       }
       session.unlisteners.push(exitUnlisten);
-      terminal.onData((data) => void ipc.termWrite(id, data));
+      const send = (data: string) => void ipc.termWrite(id, data);
+      terminal.onData(send);
+      terminal.attachCustomKeyEventHandler(altArrowHandler(send));
       terminal.onResize(({ cols, rows }) => void ipc.termResize(id, cols, rows));
     } catch (error) {
       if (session.killed) return;

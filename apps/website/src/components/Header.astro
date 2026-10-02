@@ -110,8 +110,9 @@ import { NAV, SITE } from '../lib/site';
 
   const navLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('nav a'));
 
-  const docsLinks = navLinks.filter((link) => new URL(link.href).pathname.startsWith('/docs'));
-  if (location.pathname.startsWith('/docs')) {
+  const sectionOf = (pathname: string) => pathname.split('/')[1] ?? '';
+  const docsLinks = navLinks.filter((link) => sectionOf(new URL(link.href).pathname) === sectionOf(location.pathname));
+  if (['docs', 'compare'].includes(sectionOf(location.pathname))) {
     docsLinks.forEach((link) => {
       link.classList.add('nav-active');
       link.setAttribute('aria-current', 'page');

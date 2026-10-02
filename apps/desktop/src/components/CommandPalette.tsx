@@ -34,6 +34,7 @@ import {
   UserRoundSearch,
   ZoomIn,
   ZoomOut,
+  Keyboard,
 } from 'lucide-react';
 import { Kbd, Spinner } from '@angkorgit/design-system';
 import { ipc, openExternal, pickDirectory } from '@/core/ipc';
@@ -47,12 +48,13 @@ import { installCliTool } from '@/features/settings/cliTool';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { useUndo } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
-import { forgeNoun, pickForgeRemote, remoteWebUrl } from '@angkorgit/core';
-import { currentPullRequestUrl, modKey } from '@/shared/utils';
+import { chordLabels, forgeNoun, parseChordId, pickForgeRemote, remoteWebUrl } from '@angkorgit/core';
+import { currentPullRequestUrl, isMac, modKey } from '@/shared/utils';
 
 export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const repo = useRepo((s) => s.repo);
   const editorId = useSettings((s) => s.editorId);
+  const repoShortcuts = useSettings((s) => s.repoShortcuts);
   const { editors } = useEditors();
   const editor = preferredEditor(editors, editorId);
   const branches = useRepo((s) => s.branches);
@@ -464,6 +466,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
                 key={recent.path}
                 icon={<FolderGit2 />}
                 label={recent.name}
+                keys={repoShortcuts[recent.path] ? chordLabels(parseChordId(repoShortcuts[recent.path])!, isMac) : undefined}
                 onSelect={() => {
                   close();
                   void open(recent.path).catch((error) =>
@@ -558,6 +561,15 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
             }}
           />
           <PaletteItem
+            icon={<Keyboard />}
+            label="Keyboard shortcut for this repository…"
+            keys={repoShortcuts[path] ? chordLabels(parseChordId(repoShortcuts[path])!, isMac) : undefined}
+            onSelect={() => {
+              close();
+              openDialog('repoShortcut', { repoPath: path });
+            }}
+          />
+          <PaletteItem
             icon={<SquareTerminal />}
             label="Install command line tool"
             onSelect={() => {
@@ -612,11 +624,13 @@ function PaletteItem({
   icon,
   label,
   shortcut,
+  keys,
   onSelect,
 }: {
   icon: React.ReactNode;
   label: string;
   shortcut?: string;
+  keys?: string[];
   onSelect: () => void;
 }) {
   return (
@@ -630,6 +644,13 @@ function PaletteItem({
         <span className="flex items-center gap-0.5">
           <Kbd>{modKey()}</Kbd>
           <Kbd>{shortcut}</Kbd>
+        </span>
+      )}
+      {keys && (
+        <span className="flex items-center gap-0.5">
+          {keys.map((key, index) => (
+            <Kbd key={index}>{key}</Kbd>
+          ))}
         </span>
       )}
     </Command.Item>

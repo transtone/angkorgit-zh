@@ -94,11 +94,13 @@ Actions 从公开源码构建，更新经 minisign 校验（§3），用户可�
 brew install --cask cheat2001/tap/angkorgit
 ```
 
-只有一条命令：cask 会在安装的应用上运行 `xattr -cr`，放在
-`postflight` 块中，自动清除 Gatekeeper 隔离标记（之所以需要，
-是因为应用未签名；新版 Homebrew 已移除 `--no-quarantine`）。
-自有 tap 的 cask 可以这样做——homebrew/cask 官方库会拒绝，所以当
-cask 最终迁入官方库时，签名/公证必须取代 postflight。
+One command only: the cask runs `xattr -cr` on the installed app as a `run`
+step in a `postflight_steps` block, clearing the Gatekeeper quarantine
+automatically (needed because the app is not notarized; recent Homebrew removed
+`--no-quarantine`). Homebrew 7 deprecated the older `postflight do` block and
+warns on every `brew upgrade` (homebrew-tap issue #1), so keep the steps form.
+Own-tap casks may do this — homebrew/cask proper would reject it, so when the
+cask eventually moves there, signing/notarization must replace the postflight.
 
 **每次发布**都必须更新 cask：更新 `version` 与 `sha256`
 （新 universal dmg 的 `shasum -a 256`）于

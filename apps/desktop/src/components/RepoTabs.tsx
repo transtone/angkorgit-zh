@@ -1,16 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { FolderTree, Plus, X } from 'lucide-react';
-import { Button, Hint, cn } from '@angkorgit/design-system';
+import { Copy, FolderTree, Keyboard, Plus, X } from 'lucide-react';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Hint,
+  cn,
+} from '@angkorgit/design-system';
+import { chordText, parseChordId } from '@angkorgit/core';
 import { pickDirectory } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { killTerminalSession } from '@/features/terminal/sessions';
+import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
+import { isMac } from '@/shared/utils';
 
 export function RepoTabs() {
   const repo = useRepo((s) => s.repo);
   const tabs = useUi((s) => s.repoTabs);
   const worktreeTabs = useUi((s) => s.worktreeTabs);
+  const shortcuts = useSettings((s) => s.repoShortcuts);
+  const [tabMenu, setTabMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const [draggingTab, setDraggingTab] = useState<string | null>(null);
   const [dropTab, setDropTab] = useState<string | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -62,6 +77,14 @@ export function RepoTabs() {
   };
 
   const label = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+  const shortcutFor = (path: string) => {
+    const chord = shortcuts[path] ? parseChordId(shortcuts[path]) : null;
+    return chord ? chordText(chord, isMac) : null;
+  };
+  const closeOthers = (path: string) => {
+    for (const other of tabs) if (other !== path) close(other);
+    if (repo?.path !== path) activate(path);
+  };
 
   return (
     <div className="flex h-9 shrink-0 items-end gap-0.5 border-b border-border-subtle bg-surface px-2">
@@ -109,6 +132,10 @@ export function RepoTabs() {
                 if (source && source !== path) useUi.getState().moveRepoTab(source, path);
               }}
               onClick={() => activate(path)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setTabMenu({ x: e.clientX, y: e.clientY, path });
+              }}
               onAuxClick={(e) => {
                 if (e.button === 1) close(path); // middle-click closes
               }}
@@ -128,6 +155,17 @@ export function RepoTabs() {
                 />
               )}
               <span className="min-w-0 truncate">{label(path)}</span>
+              {shortcutFor(path) && (
+                <span
+                  className={cn(
+                    'inline-flex h-4 shrink-0 items-center rounded px-1 font-mono text-[9px] font-medium tracking-wide text-primary',
+                    active ? 'bg-primary/20' : 'bg-primary/15',
+                  )}
+                  data-tab-shortcut
+                >
+                  {shortcutFor(path)}
+                </span>
+              )}
               <button
                 type="button"
                 aria-label={`关闭 ${label(path)}`}
@@ -146,7 +184,35 @@ export function RepoTabs() {
           );
         })}
       </div>
-      <Hint label="打开另一个仓库">
+      {tabMenu && (
+        <DropdownMenu open onOpenChange={(o) => !o && setTabMenu(null)}>
+          <DropdownMenuTrigger asChild>
+            <span style={{ position: 'fixed', left: tabMenu.x, top: tabMenu.y }} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="bottom">
+            <DropdownMenuLabel className="max-w-72 truncate font-mono">{tabMenu.path}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => useUi.getState().openDialog('repoShortcut', { repoPath: tabMenu.path })}>
+              <Keyboard /> {shortcuts[tabMenu.path] ? 'Change keyboard shortcut…' : 'Keyboard shortcut…'}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                void navigator.clipboard.writeText(tabMenu.path);
+                toast.success('Path copied');
+              }}
+            >
+              <Copy /> Copy path
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => close(tabMenu.path)}>
+              <X /> Close tab
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={tabs.length < 2} onClick={() => closeOthers(tabMenu.path)}>
+              <X /> Close other tabs
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      <Hint label="Open another repository">
         <Button
           variant="ghost"
           size="icon-sm"

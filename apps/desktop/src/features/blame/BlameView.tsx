@@ -16,7 +16,7 @@ import {
 import { Avatar } from '@/components/Avatar';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
-import { highlightLine, languageOf } from '@/shared/highlight';
+import { embeddedLanguages, highlightLine, languageOf } from '@/shared/highlight';
 import { formatDate, timeAgo } from '@/shared/utils';
 
 const ROW_HEIGHT = 22;
@@ -65,6 +65,7 @@ export function BlameView({
   }, [path, file, rev, onResolvedRev]);
 
   const language = useMemo(() => languageOf(file), [file]);
+  const lineLanguages = useMemo(() => (blame ? embeddedLanguages(blame.lines, language) : null), [blame, language]);
   const hunkOfLine = useMemo(() => {
     const map: (BlameHunk | undefined)[] = [];
     for (const hunk of blame?.hunks ?? []) {
@@ -145,7 +146,7 @@ export function BlameView({
               <span className="w-12 shrink-0 select-none pr-2 text-right tabular-nums text-faint">{item.index + 1}</span>
               <span
                 className="min-w-0 flex-1 overflow-hidden pl-2"
-                dangerouslySetInnerHTML={{ __html: highlightLine(blame.lines[item.index], language) }}
+                dangerouslySetInnerHTML={{ __html: highlightLine(blame.lines[item.index], lineLanguages?.[item.index] ?? language) }}
               />
             </div>
           );

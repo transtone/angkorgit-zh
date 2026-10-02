@@ -45,24 +45,44 @@ DropdownMenuItem.displayName = 'DropdownMenuItem';
 
 export const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof Menu.CheckboxItem>,
-  React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem>
->(({ className, children, ...props }, ref) => (
-  <Menu.CheckboxItem
-    ref={ref}
-    className={cn(
-      'relative flex cursor-default select-none items-center rounded-md py-1.5 pl-7 pr-2 text-sm text-foreground outline-none focus:bg-surface-raised',
-      className,
-    )}
-    {...props}
-  >
-    <span className="absolute left-2 flex size-3.5 items-center justify-center">
-      <Menu.ItemIndicator>
-        <Check className="size-3.5" />
-      </Menu.ItemIndicator>
-    </span>
-    {children}
-  </Menu.CheckboxItem>
-));
+  React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem> & { icon?: React.ReactNode }
+>(({ className, children, icon, ...props }, ref) =>
+  icon ? (
+    <Menu.CheckboxItem
+      ref={ref}
+      className={cn(
+        'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none transition-colors',
+        'focus:bg-surface-raised data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:text-muted',
+        className,
+      )}
+      {...props}
+    >
+      {icon}
+      <span className="flex-1">{children}</span>
+      <span className="flex size-3.5 shrink-0 items-center justify-center">
+        <Menu.ItemIndicator>
+          <Check className="size-3.5 text-primary" />
+        </Menu.ItemIndicator>
+      </span>
+    </Menu.CheckboxItem>
+  ) : (
+    <Menu.CheckboxItem
+      ref={ref}
+      className={cn(
+        'relative flex cursor-default select-none items-center rounded-md py-1.5 pl-7 pr-2 text-sm text-foreground outline-none focus:bg-surface-raised',
+        className,
+      )}
+      {...props}
+    >
+      <span className="absolute left-2 flex size-3.5 items-center justify-center">
+        <Menu.ItemIndicator>
+          <Check className="size-3.5" />
+        </Menu.ItemIndicator>
+      </span>
+      {children}
+    </Menu.CheckboxItem>
+  ),
+);
 DropdownMenuCheckboxItem.displayName = 'DropdownMenuCheckboxItem';
 
 export const DropdownMenuLabel = React.forwardRef<

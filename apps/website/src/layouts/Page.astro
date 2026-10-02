@@ -1,0 +1,60 @@
+---
+import Base from './Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  kicker: string;
+  heading: string;
+  crumbs: { href: string; label: string }[];
+  jsonLd?: object[];
+}
+
+const { title, description, kicker, heading, crumbs, jsonLd = [] } = Astro.props;
+
+const breadcrumbLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [{ href: '/', label: 'Home' }, ...crumbs].map((crumb, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: crumb.label,
+    item: new URL(crumb.href, Astro.site).toString(),
+  })),
+};
+---
+
+<Base title={title} description={description}>
+  {[breadcrumbLd, ...jsonLd].map((ld) => <script type="application/ld+json" is:inline set:html={JSON.stringify(ld)} />)}
+  <Header />
+  <main id="main" class="container-site py-12 lg:py-16">
+    <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-2 text-sm text-muted">
+      <a href="/" class="transition-colors hover:text-primary">Home</a>
+      {
+        crumbs.map((crumb, index) => (
+          <>
+            <span aria-hidden="true">/</span>
+            {index === crumbs.length - 1 ? (
+              <span class="text-faint" aria-current="page">{crumb.label}</span>
+            ) : (
+              <a href={crumb.href} class="transition-colors hover:text-primary">{crumb.label}</a>
+            )}
+          </>
+        ))
+      }
+    </nav>
+
+    <header class="mt-10 max-w-3xl">
+      <p class="font-mono text-xs uppercase tracking-[0.18em] text-primary">{kicker}</p>
+      <h1 class="display mt-3 text-4xl leading-[1.02] sm:text-6xl" set:html={heading} />
+      <div class="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">
+        <slot name="intro" />
+      </div>
+    </header>
+
+    <slot />
+  </main>
+  <Footer />
+</Base>

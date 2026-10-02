@@ -32,6 +32,7 @@ export type DialogKind =
   | 'createPullRequest'
   | 'cherryPick'
   | 'createWorktree'
+  | 'repoShortcut'
   | null;
 
 export interface CenterDiffTarget {
@@ -72,6 +73,10 @@ export interface ClonePreset {
   branch?: string;
 }
 
+export interface RepoShortcutPreset {
+  repoPath: string;
+}
+
 export interface SettingsPreset {
   section: 'appearance' | 'git' | 'accounts' | 'ai' | 'shortcuts';
 }
@@ -84,6 +89,7 @@ export type DialogContext =
   | CreateWorktreePreset
   | StashPreset
   | ClonePreset
+  | RepoShortcutPreset
   | null;
 
 interface UiState {
@@ -95,6 +101,7 @@ interface UiState {
   dialogContext: DialogContext;
   diffView: DiffViewMode;
   wordDiff: boolean;
+  ignoreWhitespace: boolean;
   fullFileDiff: boolean;
   wrapLines: boolean;
   selectedFile: { path: string; staged: boolean } | null;
@@ -125,6 +132,7 @@ interface UiState {
   closeDialog: () => void;
   setDiffView: (mode: DiffViewMode) => void;
   setWordDiff: (on: boolean) => void;
+  setIgnoreWhitespace: (on: boolean) => void;
   setFullFileDiff: (on: boolean) => void;
   setWrapLines: (on: boolean) => void;
   selectFile: (file: { path: string; staged: boolean } | null) => void;
@@ -183,6 +191,7 @@ export const useUi = create<UiState>()(
   dialogContext: null,
   diffView: 'inline',
   wordDiff: true,
+  ignoreWhitespace: false,
   fullFileDiff: false,
   wrapLines: false,
   selectedFile: null,
@@ -224,6 +233,7 @@ export const useUi = create<UiState>()(
   },
   setDiffView: (diffView) => set({ diffView }),
   setWordDiff: (wordDiff) => set({ wordDiff }),
+  setIgnoreWhitespace: (ignoreWhitespace) => set({ ignoreWhitespace }),
   setFullFileDiff: (fullFileDiff) => set({ fullFileDiff }),
   setWrapLines: (wrapLines) => set({ wrapLines }),
   selectFile: (selectedFile) => set({ selectedFile }),
@@ -306,6 +316,7 @@ export const useUi = create<UiState>()(
         sidebarOpen: state.sidebarOpen,
         diffView: state.diffView,
         wordDiff: state.wordDiff,
+        ignoreWhitespace: state.ignoreWhitespace,
         fullFileDiff: state.fullFileDiff,
         wrapLines: state.wrapLines,
         repoTabs: state.repoTabs,

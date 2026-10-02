@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns2, Copy, FileText, History, Minus, Plus, Rows3, SearchCheck, SlidersHorizontal, Sparkles, TextSelect, Trash2, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Columns2, Copy, FileText, History, Info, Minus, Plus, Rows3, SearchCheck, SlidersHorizontal, Space, Sparkles, TextSelect, Trash2, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
 import type { CommitFileInfo, FileDiff } from '@angkorgit/core';
 import { aiCapabilities, hasCommittedHistory, hasReviewableText, hashText, locateDiffLine, patchTextOf, PROJECT_REVIEW_FILE } from '@angkorgit/core';
 import {
@@ -39,6 +39,7 @@ import { scrollDiffToLine, useDiffFind } from './diffSearch';
 import { useDiffSelectAll } from './diffCopy';
 import { diffSelectionText } from './diffSelection';
 import { changeBlocks, DiffMinimap, scrollToFraction } from './DiffMinimap';
+import { ChangeNavButtons, useChangeJump } from './changeNav';
 
 const LOCATE_HIGHLIGHT_MS = 2500;
 const COMPACT_HEADER_WIDTH = 960;
@@ -66,6 +67,15 @@ function fileAiIcon(kind: FileAiKind, className: string) {
   return kind === 'review' ? <SearchCheck className={className} /> : <Sparkles className={className} />;
 }
 
+function MenuNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-1 mb-0.5 mt-1 flex items-start gap-2 rounded-md bg-surface-raised px-2 py-1.5 text-[11px] leading-snug text-muted">
+      <Info className="mt-px size-3.5 shrink-0 text-faint" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const repo = useRepo((s) => s.repo);
   const status = useRepo((s) => s.status);
@@ -79,6 +89,8 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const setDiffView = useUi((s) => s.setDiffView);
   const wordDiff = useUi((s) => s.wordDiff);
   const setWordDiff = useUi((s) => s.setWordDiff);
+  const ignoreWhitespace = useUi((s) => s.ignoreWhitespace);
+  const setIgnoreWhitespace = useUi((s) => s.setIgnoreWhitespace);
   const fullFileDiff = useUi((s) => s.fullFileDiff);
   const setFullFileDiff = useUi((s) => s.setFullFileDiff);
   const wrapLines = useUi((s) => s.wrapLines);
@@ -90,6 +102,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const loadedKey = useRef<string | null>(null);
   const requestSeq = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const compact = useCompactHeader(headerRef);
   const [lineMenu, setLineMenu] = useState<{
@@ -115,10 +128,17 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const diffRef = useRef<FileDiff | null>(null);
   diffRef.current = diff;
 
-  const fetchDiff = async (contextLines?: number): Promise<FileDiff | null> => {
+  const fetchDiff = async (contextLines?: number, ignore = ignoreWhitespace): Promise<FileDiff | null> => {
     if (target.unchanged) return ipc.fileContents(path, target.path, target.oid ?? null);
     if (target.oid) {
-      const result = await ipc.commitFileDiff(path, target.oid, target.path, target.oldPath ?? null, contextLines);
+      const result = await ipc.commitFileDiff(
+        path,
+        target.oid,
+        target.path,
+        target.oldPath ?? null,
+        contextLines,
+        ignore,
+      );
       const untouched =
         result.hunks.length === 0 &&
         result.additions === 0 &&
@@ -127,7 +147,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         !result.isImage;
       return untouched ? null : result;
     }
-    return ipc.diffFile(path, target.path, target.staged ?? false, contextLines);
+    return ipc.diffFile(path, target.path, target.staged ?? false, contextLines, ignore);
   };
   const [commitFileList, setCommitFileList] = useState<CommitFileInfo[]>([]);
   const commitFiles = useMemo(() => commitFileList.map((f) => f.path), [commitFileList]);
@@ -180,16 +200,38 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
 
   const goFileRef = useRef(goFile);
   goFileRef.current = goFile;
-  const jumpChangeRef = useRef<(direction: 1 | -1) => void>(() => {});
-
+  const stepChangeRef = useRef<(direction: 1 | -1) => boolean>(() => false);
+  const arrowKeysBelongHere = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return false;
+    const ui = useUi.getState();
+    if (ui.paletteOpen || ui.dialog || ui.conflictFile) return false;
+    const active = document.activeElement;
+    return !active || active === document.body || !!rootRef.current?.contains(active);
+  };
   useShortcuts(
     useMemo(
       () => [
         { combo: '[', handler: () => goFileRef.current(-1), skipInInput: true },
         { combo: ']', handler: () => goFileRef.current(1), skipInInput: true },
-        { combo: 'p', handler: () => jumpChangeRef.current(-1), skipInInput: true },
-        { combo: 'n', handler: () => jumpChangeRef.current(1), skipInInput: true },
+        {
+          combo: 'arrowright',
+          skipInInput: true,
+          handler: (event: KeyboardEvent) => {
+            if (!arrowKeysBelongHere(event)) return;
+            stepChangeRef.current(1);
+          },
+        },
+        {
+          combo: 'arrowleft',
+          skipInInput: true,
+          handler: (event: KeyboardEvent) => {
+            if (!arrowKeysBelongHere(event)) return;
+            useUi.getState().closeCenterDiff();
+            useUi.getState().focusGraph();
+          },
+        },
       ],
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       [],
     ),
   );
@@ -213,6 +255,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     [diff, diffView],
   );
 
+  const anchorChangeRef = useRef<(index: number | null) => void>(() => undefined);
   const autoJumpKey = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (!diff || loading) return;
@@ -224,6 +267,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     const apply = () => {
       if (blocks.length > 0) scrollToFraction(el, blocks[0].fraction, 'auto');
       else el.scrollTo({ top: 0 });
+      anchorChangeRef.current(blocks.length > 0 ? 0 : null);
     };
     apply();
     const applied = el.scrollTop;
@@ -233,19 +277,13 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diff, loading, blocks]);
 
-  const jumpChange = (direction: 1 | -1) => {
-    const el = scrollRef.current;
-    if (!el || blocks.length === 0 || el.scrollHeight === 0) return;
-    const current = (el.scrollTop + el.clientHeight * 0.35) / el.scrollHeight;
-    const epsilon = 0.002;
-    const next =
-      direction === 1
-        ? (blocks.find((b) => b.fraction > current + epsilon) ?? blocks[0])
-        : ([...blocks].reverse().find((b) => b.fraction < current - epsilon) ??
-          blocks[blocks.length - 1]);
-    scrollToFraction(el, next.fraction);
-  };
-  jumpChangeRef.current = jumpChange;
+  const {
+    jump: jumpChange,
+    step: stepChange,
+    anchor: anchorChange,
+  } = useChangeJump(blocks, scrollRef, { arrowKeys: true, ready: !!diff && !loading });
+  stepChangeRef.current = stepChange;
+  anchorChangeRef.current = anchorChange;
 
   const statusEntry = isWorkingCopy
     ? status?.files.find((f) => f.path === target.path)
@@ -259,7 +297,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     if (!path) return;
     let cancelled = false;
     const seq = ++requestSeq.current;
-    const key = `${path}|${target.path}|${target.oid ?? ''}|${target.staged ?? false}|${target.unchanged ?? false}|${fullFileDiff}|${reloadToken}`;
+    const key = `${path}|${target.path}|${target.oid ?? ''}|${target.staged ?? false}|${target.unchanged ?? false}|${fullFileDiff}|${ignoreWhitespace}|${reloadToken}`;
     if (loadedKey.current !== key) setLoading(true);
     void fetchDiff(fullFileDiff ? 10_000_000 : undefined)
       .then((result) => {
@@ -283,7 +321,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, target.path, target.oid, target.staged, target.unchanged, fullFileDiff, reloadToken, statusSignature]);
+  }, [path, target.path, target.oid, target.staged, target.unchanged, fullFileDiff, ignoreWhitespace, reloadToken, statusSignature]);
 
   useEffect(
     () => () => {
@@ -313,7 +351,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     const run = useAiWork.getState().startFileAi(key, kind);
     const stillRunning = () => useAiWork.getState().isFileAiRun(key, run);
     try {
-      const source = !fullFileDiff && diff ? diff : await fetchDiff();
+      const source = !fullFileDiff && !ignoreWhitespace && diff ? diff : await fetchDiff(undefined, false);
       if (!stillRunning()) return;
       if (!hasReviewableText(source)) {
         toast.info('此文件没有可发送的文本更改');
@@ -402,6 +440,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
 
   return (
     <motion.section
+      ref={rootRef}
       className="flex h-full flex-col bg-background"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -467,37 +506,48 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </Button>
         </Hint>
         <DropdownMenu>
-          <Hint label="视图选项">
+          <Hint
+            label={
+              ignoreWhitespace
+                ? 'View options. Whitespace is ignored, so hunk and line staging are off: these hunks are not the patch git would apply.'
+                : 'View options'
+            }
+          >
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="视图选项"
-                className={cn((wordDiff || wrapLines || fullFileDiff) && 'text-primary')}
+                aria-label="View options"
+                className={cn((wordDiff || wrapLines || fullFileDiff || ignoreWhitespace) && 'text-primary')}
               >
                 <SlidersHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
           </Hint>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>视图选项</DropdownMenuLabel>
-            <DropdownMenuCheckboxItem checked={wordDiff} onCheckedChange={(v) => setWordDiff(v === true)}>
-              <WholeWord /> 词级 diff
+          <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuLabel>View options</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem icon={<WholeWord />} checked={wordDiff} onCheckedChange={(v) => setWordDiff(v === true)}>
+              Word diff
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem icon={<Space />} checked={ignoreWhitespace} onCheckedChange={(v) => setIgnoreWhitespace(v === true)}>
+              Ignore whitespace
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
+              icon={<WrapText />}
               checked={wrapLines}
               disabled={!!textDiff && wrapUnavailable(textDiff)}
               onCheckedChange={(v) => setWrapLines(v === true)}
             >
-              <WrapText /> 自动换行
+              Wrap long lines
             </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={fullFileDiff} onCheckedChange={(v) => setFullFileDiff(v === true)}>
-              <FileText /> 显示整个文件
+            <DropdownMenuCheckboxItem icon={<FileText />} checked={fullFileDiff} onCheckedChange={(v) => setFullFileDiff(v === true)}>
+              Show whole file
             </DropdownMenuCheckboxItem>
+            {ignoreWhitespace && (
+              <MenuNote>Staging is off: these hunks are not the patch git would apply.</MenuNote>
+            )}
             {textDiff && wrapUnavailable(textDiff) && (
-              <p className="max-w-56 px-2 pb-1.5 pt-1 text-[11px] leading-snug text-faint">
-                大文件下保持关闭换行以保证滚动流畅。
-              </p>
+              <MenuNote>Wrapping stays off for large files so scrolling keeps up.</MenuNote>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -567,38 +617,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        {blocks.length > 0 && (
-          <>
-            <Separator orientation="vertical" className="mx-1 h-4" />
-            <Hint
-              label={
-                <span className="flex items-center gap-1">
-                  上一个更改 <Kbd>P</Kbd>
-                </span>
-              }
-            >
-              <Button variant="ghost" size="icon-sm" aria-label="上一个更改" onClick={() => jumpChange(-1)}>
-                <ChevronUp className="size-4" />
-              </Button>
-            </Hint>
-            <Hint
-              label={
-                <span className="flex items-center gap-1">
-                  下一个更改 <Kbd>N</Kbd>
-                </span>
-              }
-            >
-              <Button variant="ghost" size="icon-sm" aria-label="下一个更改" onClick={() => jumpChange(1)}>
-                <ChevronDown className="size-4" />
-              </Button>
-            </Hint>
-            {!compact && (
-              <span className="text-[10px] text-faint">
-                {blocks.length} change{blocks.length === 1 ? '' : 's'}
-              </span>
-            )}
-          </>
-        )}
+        <ChangeNavButtons blocks={blocks} onJump={jumpChange} showCount={!compact} />
         {siblings.length > 1 && fileIndex >= 0 && (
           <>
             <Separator orientation="vertical" className="mx-1 h-4" />
@@ -713,6 +732,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             diff={diff}
             scrollRef={scrollRef}
             search={highlight}
+            emptyLabel={ignoreWhitespace ? 'Only whitespace changed in this file' : undefined}
             onLineContextMenu={(e, info) => {
               e.preventDefault();
               setLineMenu({
@@ -724,7 +744,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               });
             }}
             hunkActions={
-              isWorkingCopy && !fullFileDiff && !target.unchanged
+              isWorkingCopy && !fullFileDiff && !target.unchanged && !ignoreWhitespace
                 ? (hunkIndex) => (
                     <Button
                       variant="ghost"
@@ -769,7 +789,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             <span style={{ position: 'fixed', left: lineMenu.x, top: lineMenu.y }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom" onCloseAutoFocus={(e) => e.preventDefault()}>
-            {isWorkingCopy && lineMenu.info.line.kind !== 'context' && (
+            {isWorkingCopy && !ignoreWhitespace && lineMenu.info.line.kind !== 'context' && (
               <>
                 {target.staged ? (
                   <DropdownMenuItem

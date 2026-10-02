@@ -1,3 +1,4 @@
+import type { DiffHunk, DiffLine } from '@angkorgit/core';
 import hljs from 'highlight.js/lib/core';
 import typescript from 'highlight.js/lib/languages/typescript';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -8,6 +9,8 @@ import java from 'highlight.js/lib/languages/java';
 import csharp from 'highlight.js/lib/languages/csharp';
 import cpp from 'highlight.js/lib/languages/cpp';
 import css from 'highlight.js/lib/languages/css';
+import less from 'highlight.js/lib/languages/less';
+import scss from 'highlight.js/lib/languages/scss';
 import xml from 'highlight.js/lib/languages/xml';
 import json from 'highlight.js/lib/languages/json';
 import yaml from 'highlight.js/lib/languages/yaml';
@@ -18,6 +21,11 @@ import ruby from 'highlight.js/lib/languages/ruby';
 import php from 'highlight.js/lib/languages/php';
 import kotlin from 'highlight.js/lib/languages/kotlin';
 import swift from 'highlight.js/lib/languages/swift';
+import ini from 'highlight.js/lib/languages/ini';
+import properties from 'highlight.js/lib/languages/properties';
+import dockerfile from 'highlight.js/lib/languages/dockerfile';
+import makefile from 'highlight.js/lib/languages/makefile';
+import cmake from 'highlight.js/lib/languages/cmake';
 
 hljs.registerLanguage('typescript', typescript);
 hljs.registerLanguage('javascript', javascript);
@@ -28,6 +36,8 @@ hljs.registerLanguage('java', java);
 hljs.registerLanguage('csharp', csharp);
 hljs.registerLanguage('cpp', cpp);
 hljs.registerLanguage('css', css);
+hljs.registerLanguage('less', less);
+hljs.registerLanguage('scss', scss);
 hljs.registerLanguage('xml', xml);
 hljs.registerLanguage('json', json);
 hljs.registerLanguage('yaml', yaml);
@@ -38,17 +48,32 @@ hljs.registerLanguage('ruby', ruby);
 hljs.registerLanguage('php', php);
 hljs.registerLanguage('kotlin', kotlin);
 hljs.registerLanguage('swift', swift);
+hljs.registerLanguage('ini', ini);
+hljs.registerLanguage('properties', properties);
+hljs.registerLanguage('dockerfile', dockerfile);
+hljs.registerLanguage('makefile', makefile);
+hljs.registerLanguage('cmake', cmake);
+
+const BASENAME_TO_LANG: Record<string, string> = {
+  dockerfile: 'dockerfile',
+  makefile: 'makefile',
+  gnumakefile: 'makefile',
+  'cmakelists.txt': 'cmake',
+  '.editorconfig': 'ini',
+};
 
 const EXT_TO_LANG: Record<string, string> = {
   ts: 'typescript',
   tsx: 'typescript',
   mts: 'typescript',
+  cts: 'typescript',
   js: 'javascript',
   jsx: 'javascript',
   mjs: 'javascript',
   cjs: 'javascript',
   rs: 'rust',
   py: 'python',
+  pyi: 'python',
   go: 'go',
   java: 'java',
   cs: 'csharp',
@@ -57,12 +82,20 @@ const EXT_TO_LANG: Record<string, string> = {
   cc: 'cpp',
   cpp: 'cpp',
   hpp: 'cpp',
+  hh: 'cpp',
+  hxx: 'cpp',
+  cxx: 'cpp',
+  ino: 'cpp',
   css: 'css',
-  scss: 'css',
+  less: 'less',
+  scss: 'scss',
   html: 'xml',
+  htm: 'xml',
   svg: 'xml',
   xml: 'xml',
   vue: 'xml',
+  svelte: 'xml',
+  astro: 'astro',
   json: 'json',
   yml: 'yaml',
   yaml: 'yaml',
@@ -70,16 +103,172 @@ const EXT_TO_LANG: Record<string, string> = {
   zsh: 'bash',
   bash: 'bash',
   md: 'markdown',
+  markdown: 'markdown',
+  mdx: 'markdown',
   sql: 'sql',
   rb: 'ruby',
   php: 'php',
   kt: 'kotlin',
+  kts: 'kotlin',
   swift: 'swift',
+  ini: 'ini',
+  toml: 'ini',
+  properties: 'properties',
+  cmake: 'cmake',
 };
 
+const FRONTMATTER_LANGUAGES: Record<string, string> = { astro: 'typescript' };
+const MARKUP_GRAMMARS: Record<string, string> = { astro: 'xml' };
+
+function grammarOf(language: string): string {
+  return MARKUP_GRAMMARS[language] ?? language;
+}
+
+const FENCE = '---';
+const SCRIPT_OPEN = /^\s*<script\b([^>]*)>/i;
+const SCRIPT_CLOSE = /<\/script\s*>/i;
+const STYLE_OPEN = /^\s*<style\b([^>]*)>/i;
+const STYLE_CLOSE = /<\/style\s*>/i;
+const LANG_ATTR = /\blang\s*=\s*["']?([\w-]+)/i;
+
+interface Region {
+  language: string;
+  close: RegExp;
+}
+
+function scriptLanguage(attrs: string, language: string): string {
+  if (language === 'astro') return 'typescript';
+  const lang = LANG_ATTR.exec(attrs)?.[1]?.toLowerCase();
+  return lang === 'ts' || lang === 'typescript' ? 'typescript' : 'javascript';
+}
+
+function styleLanguage(attrs: string): string {
+  const lang = LANG_ATTR.exec(attrs)?.[1]?.toLowerCase();
+  return lang === 'scss' || lang === 'less' ? lang : 'css';
+}
+
+function openedRegion(content: string, language: string): Region | null {
+  const script = SCRIPT_OPEN.exec(content);
+  if (script && !SCRIPT_CLOSE.test(content)) {
+    return { language: scriptLanguage(script[1], language), close: SCRIPT_CLOSE };
+  }
+  const style = STYLE_OPEN.exec(content);
+  if (style && !STYLE_CLOSE.test(content)) {
+    return { language: styleLanguage(style[1]), close: STYLE_CLOSE };
+  }
+  return null;
+}
+
+function closedRegionLanguage(content: string, language: string): string | null {
+  if (SCRIPT_CLOSE.test(content)) return scriptLanguage('', language);
+  if (STYLE_CLOSE.test(content)) return 'css';
+  return null;
+}
+
+function hasEmbeddedLanguages(language: string | null): language is string {
+  return language !== null && grammarOf(language) === 'xml';
+}
+
+interface EmbedWalk<T> {
+  mode: 'unknown' | 'front' | 'body' | 'region';
+  region: Region | null;
+  pending: T[];
+}
+
+function newWalk<T>(): EmbedWalk<T> {
+  return { mode: 'unknown', region: null, pending: [] };
+}
+
+function embedStep<T>(
+  walk: EmbedWalk<T>,
+  lineNo: number | null,
+  content: string,
+  item: T,
+  language: string,
+  mark: (item: T, lang: string) => void,
+): void {
+  const frontmatter = FRONTMATTER_LANGUAGES[language];
+  const isFence = frontmatter !== undefined && content.trim() === FENCE;
+  if (lineNo === 1) {
+    walk.pending = [];
+    walk.region = null;
+    if (isFence) {
+      walk.mode = 'front';
+      return;
+    }
+    walk.mode = 'body';
+  }
+  if (walk.mode === 'front') {
+    if (isFence) walk.mode = 'body';
+    else mark(item, frontmatter as string);
+    return;
+  }
+  if (walk.mode === 'region' && walk.region) {
+    if (walk.region.close.test(content)) {
+      walk.mode = 'body';
+      walk.region = null;
+    } else {
+      mark(item, walk.region.language);
+    }
+    return;
+  }
+  const opened = openedRegion(content, language);
+  if (opened) {
+    walk.mode = 'region';
+    walk.region = opened;
+    walk.pending = [];
+    return;
+  }
+  if (walk.mode !== 'unknown') return;
+  const closed = isFence ? (frontmatter as string) : closedRegionLanguage(content, language);
+  if (closed === null) {
+    walk.pending.push(item);
+    return;
+  }
+  for (const pending of walk.pending) mark(pending, closed);
+  walk.pending = [];
+  walk.mode = 'body';
+}
+
+export function embeddedLanguages(lines: string[], language: string | null): string[] | null {
+  if (!hasEmbeddedLanguages(language)) return null;
+  const result = lines.map(() => language);
+  const walk = newWalk<number>();
+  lines.forEach((content, index) => {
+    embedStep(walk, index + 1, content, index, language, (i, lang) => {
+      result[i] = lang;
+    });
+  });
+  return result;
+}
+
+export function embeddedDiffLanguages(hunks: DiffHunk[], language: string | null): Map<DiffLine, string> | null {
+  if (!hasEmbeddedLanguages(language)) return null;
+  const marked = new Map<DiffLine, string>();
+  const mark = (line: DiffLine, lang: string) => marked.set(line, lang);
+  for (const hunk of hunks) {
+    const oldWalk = newWalk<DiffLine>();
+    const newWalk_ = newWalk<DiffLine>();
+    for (const line of hunk.lines) {
+      if (line.kind !== 'addition') embedStep(oldWalk, line.oldLineNo, line.content, line, language, mark);
+      if (line.kind !== 'deletion') embedStep(newWalk_, line.newLineNo, line.content, line, language, mark);
+    }
+  }
+  return marked;
+}
+
+function fileName(path: string): string {
+  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return (slash >= 0 ? path.slice(slash + 1) : path).toLowerCase();
+}
+
 export function languageOf(path: string): string | null {
-  const ext = path.split('.').pop()?.toLowerCase() ?? '';
-  return EXT_TO_LANG[ext] ?? null;
+  const name = fileName(path);
+  const byName = BASENAME_TO_LANG[name];
+  if (byName) return byName;
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0) return null;
+  return EXT_TO_LANG[name.slice(dot + 1)] ?? null;
 }
 
 const MAX_HIGHLIGHT_LENGTH = 5000;
@@ -94,6 +283,8 @@ const BLOCK_COMMENT_OPENERS: Record<string, string> = {
   csharp: '/*',
   cpp: '/*',
   css: '/*',
+  less: '/*',
+  scss: '/*',
   kotlin: '/*',
   swift: '/*',
   php: '/*',
@@ -102,7 +293,7 @@ const BLOCK_COMMENT_OPENERS: Record<string, string> = {
 };
 
 export function supportsBlockComments(language: string | null): boolean {
-  return language !== null && language in BLOCK_COMMENT_OPENERS;
+  return language !== null && grammarOf(language) in BLOCK_COMMENT_OPENERS;
 }
 
 export interface HighlightedLine {
@@ -156,9 +347,10 @@ export function highlightLineState(
   if (!language || code.length > MAX_HIGHLIGHT_LENGTH) {
     return { html: escapeHtml(code), endsInComment: false };
   }
-  const opener = BLOCK_COMMENT_OPENERS[language];
+  const grammar = grammarOf(language);
+  const opener = BLOCK_COMMENT_OPENERS[grammar];
   const continued = startsInComment && opener !== undefined;
-  const key = `${language} ${continued ? 1 : 0} ${code}`;
+  const key = `${grammar} ${continued ? 1 : 0} ${code}`;
   const cached = highlightCache.get(key);
   if (cached !== undefined) {
     highlightCache.delete(key);
@@ -167,7 +359,7 @@ export function highlightLineState(
   }
   let result: HighlightedLine;
   try {
-    const out = hljs.highlight(continued ? opener + code : code, { language, ignoreIllegals: true });
+    const out = hljs.highlight(continued ? opener + code : code, { language: grammar, ignoreIllegals: true });
     let html = out.value;
     if (continued) {
       const escapedOpener = opener.replace(/</g, '&lt;');
