@@ -171,7 +171,7 @@ export function ChangeNavButtons({
       </Hint>
       {showCount && (
         <span className="text-[10px] text-faint">
-          {blocks.length} change{blocks.length === 1 ? '' : 's'}
+          {blocks.length} 处改动
         </span>
       )}
     </>

@@ -151,7 +151,7 @@ export function RepoShortcutDialog() {
             取消
           </Button>
           <Button disabled={!canSave} onClick={save}>
-            Save
+            保存
           </Button>
         </DialogFooter>
       </DialogContent>

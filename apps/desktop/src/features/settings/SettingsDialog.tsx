@@ -780,7 +780,7 @@ function RepoShortcutsCard() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`移除快捷键： ${entry.name}`}
+                    aria-label={`移除 ${entry.name} 的快捷键`}
                     onClick={() => setRepoShortcut(entry.path, null)}
                   >
                     <X className="size-3.5" />

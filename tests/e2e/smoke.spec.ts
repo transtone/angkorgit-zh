@@ -78,14 +78,14 @@ test('reconnecting an account opens the token form with the account prefilled', 
   await expect(dialog.getByText('demo-user', { exact: true })).toBeVisible();
   await expect(dialog.getByPlaceholder('粘贴令牌')).toBeHidden();
   await dialog.getByRole('button', { name: 'demo-user 在 github.com 上的操作' }).click();
-  await page.getByRole('menuitem', { name: /Reconnect with a new token/ }).click();
+  await page.getByRole('menuitem', { name: /使用新令牌重新连接/ }).click();
   await expect(page.getByRole('menu')).toBeHidden();
   const token = dialog.getByPlaceholder('粘贴令牌');
   await expect(token).toBeVisible();
   await expect(token).toBeFocused();
-  await expect(dialog.getByText('Reconnect demo-user @ github.com')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Reconnect', exact: true })).toBeVisible();
-  await expect(dialog.getByText('detected from the token')).toBeHidden();
+  await expect(dialog.getByText('重新连接 demo-user @ github.com')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '重新连接', exact: true })).toBeVisible();
+  await expect(dialog.getByText('从令牌中检测到')).toBeHidden();
   await expect
     .poll(() =>
       dialog.locator('input').evaluateAll((els) =>
@@ -99,9 +99,9 @@ test('reconnecting an account opens the token form with the account prefilled', 
   await expect(token).toBeHidden();
   await dialog.getByRole('button', { name: '添加账户' }).click();
   await expect(dialog.getByText('添加账户', { exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Connect', exact: true })).toBeVisible();
-  await expect(dialog.getByPlaceholder('optional')).toBeEnabled();
-  await expect(dialog.getByText('detected from the token')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '连接', exact: true })).toBeVisible();
+  await expect(dialog.getByPlaceholder('可选')).toBeEnabled();
+  await expect(dialog.getByText('从令牌中检测到')).toBeVisible();
 });
 
 test('a file history row can open the full commit in the graph', async ({ page }) => {
@@ -1730,9 +1730,9 @@ test('an unpushed commit message can be edited in place and a pushed one asks be
   await inspector.getByRole('button', { name: '编辑提交消息' }).click();
   await inspector.getByLabel('提交摘要').fill('refactor(core): extract lane allocator, reworded');
   await inspector.getByRole('button', { name: '保存消息' }).click();
-  const rewrite = page.getByRole('dialog').filter({ hasText: 'Rewrite a pushed commit?' });
+  const rewrite = page.getByRole('dialog').filter({ hasText: '重写已推送的提交？' });
   await expect(rewrite).toBeVisible();
-  await expect(rewrite.getByText('force push')).toBeVisible();
+  await expect(rewrite.getByText('强制推送')).toBeVisible();
   await rewrite.getByRole('button', { name: '取消' }).click();
   await expect(rewrite).toHaveCount(0);
   await expect(inspector.getByLabel('提交摘要')).toHaveValue('refactor(core): extract lane allocator, reworded');
@@ -1783,7 +1783,7 @@ test('the GitHub account form offers fine-grained and classic token pages', asyn
   await dialog.getByRole('button', { name: 'Authentication', exact: true }).click();
   await dialog.getByRole('button', { name: '添加账户' }).click();
   await expect(dialog.getByPlaceholder('粘贴令牌')).toBeVisible();
-  await expect(dialog.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', /settings\/tokens\/new/);
+  await expect(dialog.getByRole('link', { name: '前往创建' })).toHaveAttribute('href', /settings\/tokens\/new/);
   await expect(dialog.getByRole('link', { name: 'fine-grained token' })).toHaveAttribute(
     'href',
     'https://github.com/settings/personal-access-tokens/new',
@@ -2091,13 +2091,13 @@ test('file history jumps between changes with N and P like the diff view', async
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByText('palette-seed.sql').first().click();
   await page.locator('section[aria-label^="文件差异："]').getByRole('button', { name: '文件历史' }).click();
-  const history = page.locator('section[aria-label="History of src/data/palette-seed.sql"]');
+  const history = page.locator('section[aria-label="src/data/palette-seed.sql 的历史"]');
   await expect(history).toBeVisible();
-  await expect(history.getByRole('button', { name: 'Next change' })).toHaveCount(0);
+  await expect(history.getByRole('button', { name: '下一个更改' })).toHaveCount(0);
 
   await history.locator('[data-working-copy-row]').click();
-  await expect(history.getByRole('button', { name: 'Next change' })).toBeVisible();
-  await expect(history.getByText('1 change', { exact: true })).toBeVisible();
+  await expect(history.getByRole('button', { name: '下一个更改' })).toBeVisible();
+  await expect(history.getByText('1 处改动', { exact: true })).toBeVisible();
   const scroller = history.locator('[data-history-diff-scroller]');
   const scrollTop = () => scroller.evaluate((el) => el.scrollTop);
   await expect.poll(() => scroller.evaluate((el) => el.scrollHeight > el.clientHeight * 3)).toBe(true);
@@ -2118,7 +2118,7 @@ test('file history jumps between changes with N and P like the diff view', async
     el.scrollTop = 0;
   });
   await expect.poll(scrollTop).toBe(0);
-  await history.getByRole('button', { name: 'Next change' }).click();
+  await history.getByRole('button', { name: '下一个更改' }).click();
   await expect.poll(scrollTop).toBe(atChange);
 });
 
@@ -2130,21 +2130,21 @@ test('ignore whitespace hides an indent-only change and turns staging off', asyn
   const diff = page.locator('section[aria-label="文件差异：src/indent.txt"]');
   await expect(diff).toBeVisible();
   await expect(diff.getByText('+1', { exact: true })).toBeVisible();
-  await expect(diff.getByRole('button', { name: 'Stage hunk' })).toBeVisible();
+  await expect(diff.getByRole('button', { name: '暂存代码块' })).toBeVisible();
 
-  await diff.getByRole('button', { name: 'View options' }).click();
-  await page.getByRole('menuitemcheckbox', { name: 'Ignore whitespace' }).click();
+  await diff.getByRole('button', { name: '视图选项' }).click();
+  await page.getByRole('menuitemcheckbox', { name: '忽略空白字符' }).click();
   await expect(diff.getByText('+0', { exact: true })).toBeVisible();
-  await expect(diff.getByText('Only whitespace changed in this file')).toBeVisible();
-  await expect(diff.getByRole('button', { name: 'Stage hunk' })).toHaveCount(0);
-  await diff.getByRole('button', { name: 'View options' }).click();
-  await expect(page.getByRole('menu').getByText('not the patch git would apply')).toBeVisible();
+  await expect(diff.getByText('此文件仅有空白字符更改')).toBeVisible();
+  await expect(diff.getByRole('button', { name: '暂存代码块' })).toHaveCount(0);
+  await diff.getByRole('button', { name: '视图选项' }).click();
+  await expect(page.getByRole('menu').getByText('不是 Git 会实际应用的补丁')).toBeVisible();
 
   await page.keyboard.press('Escape');
   await page.getByText('ipc.ts', { exact: true }).first().click();
   const token = page.locator('section[aria-label="文件差异：src/core/ipc.ts"]');
   await expect(token.getByText('+16', { exact: true })).toBeVisible();
-  await expect(token.getByRole('button', { name: 'Stage hunk' })).toHaveCount(0);
+  await expect(token.getByRole('button', { name: '暂存代码块' })).toHaveCount(0);
 });
 
 test('tabs switch with mod+digit and a custom chord assigned from the tab menu', async ({ page }) => {
@@ -2165,10 +2165,10 @@ test('tabs switch with mod+digit and a custom chord assigned from the tab menu',
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
 
   await tabs.nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Keyboard shortcut…' }).click();
-  const capture = page.getByRole('textbox', { name: 'Shortcut keys' });
+  await page.getByRole('menuitem', { name: '键盘快捷键…' }).click();
+  const capture = page.getByRole('textbox', { name: '快捷键' });
   await expect(capture).toBeFocused();
-  const save = page.getByRole('button', { name: 'Save' });
+  const save = page.getByRole('button', { name: '保存' });
   await page.keyboard.press('t');
   await expect(capture).toHaveAttribute('data-shortcut-problem', 'no_modifier');
   await expect(save).toBeDisabled();
@@ -2185,10 +2185,10 @@ test('tabs switch with mod+digit and a custom chord assigned from the tab menu',
 
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Shortcuts', exact: true }).click();
+  await dialog.getByRole('button', { name: '快捷键', exact: true }).click();
   await expect(dialog.locator('[data-repo-shortcuts]')).toContainText('temple-ui');
-  await dialog.getByRole('button', { name: 'Remove the shortcut for temple-ui' }).click();
-  await expect(dialog.getByText('No repository shortcuts yet')).toBeVisible();
+  await dialog.getByRole('button', { name: '移除 temple-ui 的快捷键' }).click();
+  await expect(dialog.getByText('暂无仓库快捷键')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(tabs.nth(1).locator('[data-tab-shortcut]')).toHaveCount(0);
 });
@@ -2197,11 +2197,11 @@ test('force push from the push menu asks first', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Push options' }).click();
-  await page.getByRole('menuitem', { name: 'Force push' }).click();
-  const dialog = page.getByRole('dialog').filter({ hasText: 'Force push?' });
+  await page.getByRole('button', { name: '推送选项' }).click();
+  await page.getByRole('menuitem', { name: '强制推送' }).click();
+  const dialog = page.getByRole('dialog').filter({ hasText: '强制推送？' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(/origin\/main will be replaced/)).toBeVisible();
+  await expect(dialog.getByText(/origin\/main 将被本地的/)).toBeVisible();
   await dialog.getByRole('button', { name: '取消' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText('Push (force) done')).toHaveCount(0);

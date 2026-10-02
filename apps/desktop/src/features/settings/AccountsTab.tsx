@@ -378,8 +378,8 @@ export function AccountsTab() {
       setToken('');
       setUsername('');
       closeForm();
-      if (isVerified) toast.success(`${wasReconnect ? '已重新连接' : 'Connected'} ${cleanHost} as ${finalUsername}`);
-      else toast.warning(`Saved ${cleanHost} as ${finalUsername} — token not verified`);
+      if (isVerified) toast.success(`已${wasReconnect ? '重新连接' : '连接'} ${cleanHost}（用户：${finalUsername}）`);
+      else toast.warning(`已保存 ${cleanHost}（用户：${finalUsername}）——令牌未验证`);
       const added = updated.find((a) => a.host === cleanHost && a.username === finalUsername);
       if (added) void runChecks([added]);
     } catch (error) {
@@ -509,7 +509,7 @@ export function AccountsTab() {
                         reconnect(account);
                       }}
                     >
-                      <RefreshCw /> Reconnect with a new token…
+                      <RefreshCw /> 使用新令牌重新连接…
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem destructive onClick={() => void confirmRemove(account)}>
@@ -568,7 +568,7 @@ export function AccountsTab() {
                 }
               >
                 <Input
-                  placeholder={provider === 'bitbucket' ? 'you@company.com' : 'optional'}
+                  placeholder={provider === 'bitbucket' ? 'you@company.com' : '可选'}
                   value={username}
                   disabled={reconnecting !== null && username.trim() !== ''}
                   onChange={(e) => setUsername(e.target.value)}
@@ -614,7 +614,7 @@ export function AccountsTab() {
                 )}
                 <Button size="sm" onClick={() => void connect()} disabled={busy || !token.trim() || !host.trim()}>
                   {busy ? <Spinner className="text-primary-foreground" /> : null}
-                  {reconnecting ? '重新连接' : 'Connect'}
+                  {reconnecting ? '重新连接' : '连接'}
                 </Button>
               </span>
             </div>
