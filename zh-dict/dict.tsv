@@ -1312,3 +1312,30 @@ ui	Reconnected	已重新连接		whole
 ui	Install Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, OpenCode, Antigravity CLI or Cursor CLI, then scan again.	安装 Claude Code、GitHub Copilot CLI、Codex CLI、Gemini CLI、OpenCode、Antigravity CLI 或 Cursor CLI，然后重新扫描。
 ui	Uses an AI CLI already installed on this machine — Claude Code, GitHub Copilot CLI, Codex, Gemini CLI, OpenCode, Antigravity or Cursor CLI — with its own login and quota. No API key needed.	使用本机已安装的 AI CLI 工具——Claude Code、GitHub Copilot CLI、Codex、Gemini CLI、OpenCode、Antigravity 或 Cursor CLI——享有其自身登录态与配额，无需 API 密钥。
 core	Cursor IDE built-in agent CLI	Cursor 编辑器内置终端 Agent CLI
+ui	Edit group	编辑分组
+ui	New group…	新建分组…
+ui	New group	新建分组		whole
+ui	Rename the group or pick another colour. Its repositories stay where they are.	重命名分组或选择其他颜色。其中的仓库将保留在原位。
+ui	Groups keep related repositories together on the welcome page and in the repository menu.	分组可在欢迎页面和仓库菜单中将相关仓库组织在一起。
+ui	A group with this name already exists	已存在同名分组
+ui	Frontend, Work, Personal…	前端, 工作, 个人…
+ui	Group colour	分组颜色
+ui	Colour	颜色		whole
+ui	Create group	创建分组
+ui	Move to group	移动到分组
+ui	Add to group	添加到分组
+ui	Remove from group	从分组中移除
+ui	Ungroup…	解散分组…		whole
+ui	Ungroup	解散分组		whole
+ui	Open all in tabs	在标签页中全部打开
+ui	Close its tabs	关闭其标签页
+ui	Collapse other groups	折叠其他分组
+ui	Expand all groups	展开所有分组
+ui	Collapse all groups	折叠所有分组
+ui	Expand its tabs	展开其标签页
+ui	Collapse its tabs	折叠其标签页
+ui	Open the rest in tabs	在标签页中打开剩余仓库
+ui	All open tabs	所有已打开的标签页
+ui	Repository groups	仓库分组
+ui	Drag a repository here, or move one from its menu.	拖动仓库至此，或通过其菜单移动。
+ui	Scroll diff horizontally	水平滚动差异

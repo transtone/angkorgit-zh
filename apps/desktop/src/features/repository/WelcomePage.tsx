@@ -605,7 +605,7 @@ export function WelcomePage() {
                 )
               }
             >
-              <FolderOpen /> Open all in tabs
+              <FolderOpen /> 在标签页中全部打开
               <DropdownMenuShortcut>{groupMenu.repos.length}</DropdownMenuShortcut>
             </DropdownMenuItem>
             {(() => {
@@ -620,7 +620,7 @@ export function WelcomePage() {
                     )
                   }
                 >
-                  <X /> Close its tabs
+                  <X /> 关闭其标签页
                   <DropdownMenuShortcut>{openCount}</DropdownMenuShortcut>
                 </DropdownMenuItem>
               );
@@ -630,21 +630,21 @@ export function WelcomePage() {
               disabled={groups.findIndex((g) => g.id === groupMenu.group.id) === 0}
               onClick={() => moveGroupBy(groupMenu.group, -1)}
             >
-              <ArrowUp /> Move up
+              <ArrowUp /> 上移
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={groups.findIndex((g) => g.id === groupMenu.group.id) === groups.length - 1}
               onClick={() => moveGroupBy(groupMenu.group, 1)}
             >
-              <ArrowDown /> Move down
+              <ArrowDown /> 下移
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => openDialog('repoGroup', { groupId: groupMenu.group.id, repoPath: null })}>
-              <Pencil /> Edit group…
+              <Pencil /> 编辑分组…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onClick={() => void deleteRepoGroup(groupMenu.group, groupMenu.repos.length)}>
-              <Ungroup /> {groupMenu.repos.length > 0 ? 'Ungroup…' : 'Ungroup'}
+              <Ungroup /> {groupMenu.repos.length > 0 ? '解散分组…' : '解散分组'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

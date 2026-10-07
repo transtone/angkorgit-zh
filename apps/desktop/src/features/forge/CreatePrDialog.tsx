@@ -122,10 +122,10 @@ export function CreatePrDialog() {
     try {
       await ensureRepoProfile(repo.path);
       const outcome = await ipc.push(repo.path, sourceName, false, false, true, head.name);
-      toast.success(outcome.message || `Pushed ${head.name} to ${sourceName}`);
+      toast.success(outcome.message || `已将 ${head.name} 推送至 ${sourceName}`);
       await useRepo.getState().refresh();
     } catch (err) {
-      setError(`Could not push ${head.name}: ${(err as { message?: string }).message ?? err}`);
+      setError(`无法推送 ${head.name}：${(err as { message?: string }).message ?? err}`);
     } finally {
       setPushing(false);
     }
@@ -464,7 +464,7 @@ export function CreatePrDialog() {
           {notPushed && (
             <DialogNote tone="attention">
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>This branch has not been pushed yet, so {provider.label} cannot see it. Your title and description stay put.</span>
+                <span>该分支尚未推送，因此 {provider.label} 无法看到它。输入的标题与说明将保留。</span>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -473,15 +473,14 @@ export function CreatePrDialog() {
                   onClick={() => void pushBranch()}
                 >
                   {pushing && <Spinner className="size-3" />}
-                  Push {head?.name ?? 'branch'} to {sourceName}
+                  推送 {head?.name ?? '分支'} 至 {sourceName}
                 </Button>
               </span>
             </DialogNote>
           )}
           {!notPushed && unpushed > 0 && (
             <DialogNote tone="attention">
-              {unpushed} commit{unpushed === 1 ? '' : 's'} on this branch {unpushed === 1 ? 'is' : 'are'} not
-              pushed yet and will not be part of the {noun}.
+              {unpushed} 个提交尚未推送，不会包含在此{noun}中。
             </DialogNote>
           )}
           {error && <p className="text-xs text-danger [overflow-wrap:anywhere]">{error}</p>}

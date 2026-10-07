@@ -43,7 +43,6 @@ import {
   closeRepoGroup,
   deleteRepoGroup,
   openRepoGroup,
-  plural,
   repoGroupColor,
 } from '@/features/repository/groups';
 import { GroupDot, RepoGroupSubmenu } from '@/features/repository/RepoGroupMenu';
@@ -317,8 +316,8 @@ export function RepoTabs() {
                 type="button"
                 data-tab-group={group.id}
                 aria-expanded={!collapsed}
-                aria-label={`${group.name}, ${plural(cluster.tabs.length, 'tab')}`}
-                title={`${group.name} · ${plural(cluster.tabs.length, 'tab')} · click to ${collapsed ? 'expand' : 'collapse'}`}
+                aria-label={`${group.name}，${cluster.tabs.length} 个标签页`}
+                title={`${group.name} · ${cluster.tabs.length} 个标签页 · 点击${collapsed ? '展开' : '折叠'}`}
                 className={cn(
                   'flex h-8 max-w-36 shrink-0 items-center gap-1.5 rounded-t-md px-2.5 text-[11px] font-semibold leading-none transition-opacity hover:opacity-75',
                   dropZone === zone && 'ring-1 ring-inset ring-primary/70',

@@ -29,8 +29,8 @@ export async function openRepoGroup(group: RepoGroup, paths: readonly string[], 
   if (present.length === 0) {
     toast.error(
       paths.length === 0
-        ? `${group.name} has no repositories yet`
-        : `None of the folders in ${group.name} exist any more`,
+        ? `${group.name} 暂无仓库`
+        : `${group.name} 中的文件夹均已不存在`,
     );
     return;
   }
@@ -42,13 +42,13 @@ export async function openRepoGroup(group: RepoGroup, paths: readonly string[], 
       await useRepo.getState().open(present[0]);
     } catch (error) {
       ui.closeRepoTab(present[0]);
-      toast.error(`Could not open ${present[0].split('/').pop()}: ${(error as { message?: string }).message ?? error}`);
+      toast.error(`无法打开 ${present[0].split('/').pop()}：${(error as { message?: string }).message ?? error}`);
       return;
     }
   }
   ensureRepoRoute?.();
-  toast.success(`${group.name}: ${plural(present.length, 'repository')} open in tabs`, {
-    description: missing > 0 ? `${plural(missing, 'folder')} no longer exist and stayed closed.` : undefined,
+  toast.success(`${group.name}：已在标签页中打开 ${present.length} 个仓库`, {
+    description: missing > 0 ? `${missing} 个文件夹已不存在，未予打开。` : undefined,
   });
 }
 
@@ -56,20 +56,20 @@ export function closeRepoGroup(group: RepoGroup, paths: readonly string[]): void
   const open = useUi.getState().repoTabs.filter((tab) => paths.includes(tab));
   if (open.length === 0) return;
   closeRepoTabs(open);
-  toast.success(`Closed ${plural(open.length, 'tab')} from ${group.name}`);
+  toast.success(`已关闭来自 ${group.name} 的 ${open.length} 个标签页`);
 }
 
 export async function deleteRepoGroup(group: RepoGroup, repoCount: number): Promise<boolean> {
   if (repoCount > 0) {
     const ok = await confirmDialog({
-      title: `Ungroup “${group.name}”?`,
-      description: `The group goes away. Its ${plural(repoCount, 'repository')} stay in your recent list and any open tabs stay open.`,
-      confirmLabel: 'Ungroup',
+      title: `解散分组“${group.name}”？`,
+      description: `该分组将被移除。其中的 ${repoCount} 个仓库仍会保留在最近列表中，已打开的标签页也将保持打开。`,
+      confirmLabel: '解散分组',
       destructive: true,
     });
     if (!ok) return false;
   }
   useSettings.getState().removeRepoGroup(group.id);
-  toast.success(`${group.name} ungrouped`);
+  toast.success(`已解散分组 ${group.name}`);
   return true;
 }

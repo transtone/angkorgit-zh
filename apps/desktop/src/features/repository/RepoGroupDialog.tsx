@@ -14,7 +14,6 @@ import {
 } from '@angkorgit/design-system';
 import {
   REPO_GROUP_COLORS,
-  REPO_GROUP_COLOR_NAMES,
   groupRepos,
   nextRepoGroupColor,
   repoGroupNameProblem,
@@ -25,6 +24,8 @@ import { useRepo } from './store';
 import { Field } from '@/features/settings/SettingCard';
 import { useSettings } from '@/features/settings/store';
 import { useUi, type RepoGroupPreset } from '@/features/ui/store';
+
+const REPO_GROUP_COLOR_LABELS = ['橙色', '蓝色', '绿色', '紫色', '红色', '蓝绿', '琥珀', '粉红'] as const;
 
 export function RepoGroupDialog() {
   const dialog = useUi((s) => s.dialog);
@@ -68,7 +69,7 @@ export function RepoGroupDialog() {
       updateRepoGroup(existing.id, { name: trimmed, color });
     } else {
       addRepoGroup(trimmed, color, preset.repoPath ? [preset.repoPath] : []);
-      toast.success(repoName ? `${repoName} added to ${trimmed}` : `Group ${trimmed} created`);
+      toast.success(repoName ? `已将 ${repoName} 添加到 ${trimmed}` : `已创建分组 ${trimmed}`);
     }
     closeDialog();
   };
@@ -83,20 +84,20 @@ export function RepoGroupDialog() {
     <Dialog open={open} onOpenChange={(o) => !o && closeDialog()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{existing ? 'Edit group' : 'New group'}</DialogTitle>
+          <DialogTitle>{existing ? '编辑分组' : '新建分组'}</DialogTitle>
           <DialogDescription>
             {existing
-              ? 'Rename the group or pick another colour. Its repositories stay where they are.'
+              ? '重命名分组或选择其他颜色。其中的仓库将保留在原位。'
               : repoName
-                ? <>Groups keep related repositories together. <span className="font-medium text-foreground">{repoName}</span> moves into this one, and others can join from their menu.</>
-                : 'Groups keep related repositories together on the welcome page and in the repository menu.'}
+                ? <>分组可将相关仓库组织在一起。<span className="font-medium text-foreground">{repoName}</span> 将移入此分组，其他仓库也可通过各自的菜单加入。</>
+                : '分组可在欢迎页面和仓库菜单中将相关仓库组织在一起。'}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <Field
-            label="Name"
+            label="名称"
             hint={
-              problem === 'taken' ? <span className="text-danger">A group with this name already exists</span> : undefined
+              problem === 'taken' ? <span className="text-danger">已存在同名分组</span> : undefined
             }
           >
             <Input
@@ -109,14 +110,14 @@ export function RepoGroupDialog() {
                   save();
                 }
               }}
-              placeholder="Frontend, Work, Personal…"
+              placeholder="前端, 工作, 个人…"
               aria-invalid={problem === 'taken' || undefined}
               data-group-name
             />
           </Field>
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted">Colour</span>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Group colour">
+            <span className="text-xs font-medium text-muted">颜色</span>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="分组颜色">
               {Array.from({ length: REPO_GROUP_COLORS }, (_, index) => {
                 const selected = index === color;
                 return (
@@ -125,7 +126,7 @@ export function RepoGroupDialog() {
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    aria-label={REPO_GROUP_COLOR_NAMES[index]}
+                    aria-label={REPO_GROUP_COLOR_LABELS[index]}
                     onClick={() => setColor(index)}
                     className={cn(
                       'flex size-7 items-center justify-center rounded-full transition-transform',
@@ -144,14 +145,14 @@ export function RepoGroupDialog() {
         <DialogFooter>
           {existing && (
             <Button variant="ghost" className="mr-auto text-danger hover:text-danger" onClick={() => void remove()}>
-              Ungroup
+              解散分组
             </Button>
           )}
           <Button variant="ghost" onClick={closeDialog}>
-            Cancel
+            取消
           </Button>
           <Button disabled={!canSave} onClick={save}>
-            {existing ? 'Save' : 'Create group'}
+            {existing ? '保存' : '创建分组'}
           </Button>
         </DialogFooter>
       </DialogContent>

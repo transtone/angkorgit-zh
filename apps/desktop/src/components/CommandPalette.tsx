@@ -50,7 +50,7 @@ import { openInEditor, preferredEditor, useEditors } from '@/features/settings/e
 import { useUndo } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
 import { chordLabels, forgeNoun, groupRepos, parseChordId, pickForgeRemote, remoteWebUrl, repoGroupIdFor } from '@angkorgit/core';
-import { closeRepoGroup, openRepoGroup, plural } from '@/features/repository/groups';
+import { closeRepoGroup, openRepoGroup } from '@/features/repository/groups';
 import { currentPullRequestUrl, isMac, modKey } from '@/shared/utils';
 
 export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }) {
@@ -474,7 +474,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         )}
 
         {groupSections.length > 0 && (
-          <Command.Group heading="Repository groups">
+          <Command.Group heading="仓库分组">
             {groupSections.map((section) => {
               const paths = section.repos.map((r) => r.path);
               const openCount = paths.filter((p) => repoTabs.includes(p)).length;
@@ -482,9 +482,9 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
                 <PaletteItem
                   key={`open:${section.group.id}`}
                   icon={<Folders />}
-                  label={`Open all in ${section.group.name}`}
-                  detail={plural(paths.length, 'repository')}
-                  keywords={[section.group.name, 'group', 'tabs']}
+                  label={`打开 ${section.group.name} 中的全部仓库`}
+                  detail={`${paths.length} 个仓库`}
+                  keywords={[section.group.name, 'group', '分组', 'tabs', '标签页']}
                   onSelect={() => {
                     close();
                     void openRepoGroup(section.group, paths);
@@ -494,9 +494,9 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
                   <PaletteItem
                     key={`close:${section.group.id}`}
                     icon={<Folders />}
-                    label={`Close all in ${section.group.name}`}
-                    detail={`${openCount} open`}
-                    keywords={[section.group.name, 'group', 'tabs']}
+                    label={`关闭 ${section.group.name} 中的全部仓库`}
+                    detail={`${openCount} 个已打开`}
+                    keywords={[section.group.name, 'group', '分组', 'tabs', '标签页']}
                     onSelect={() => {
                       close();
                       closeRepoGroup(section.group, paths);

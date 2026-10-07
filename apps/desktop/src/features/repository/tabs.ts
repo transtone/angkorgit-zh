@@ -8,7 +8,7 @@ export async function activateTab(path: string): Promise<void> {
   try {
     await useRepo.getState().open(path);
   } catch (error) {
-    toast.error(`Could not open: ${(error as { message?: string }).message ?? error}`);
+    toast.error(`无法打开：${(error as { message?: string }).message ?? error}`);
     useUi.getState().closeRepoTab(path);
     killTerminalSession(path);
   }

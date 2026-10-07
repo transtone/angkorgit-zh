@@ -415,7 +415,7 @@ function HorizontalScrollbar({ scrollbarRef }: { scrollbarRef: React.RefObject<H
     >
       <div
         ref={scrollbarRef}
-        aria-label="Scroll diff horizontally"
+        aria-label="水平滚动差异"
         tabIndex={0}
         onKeyDown={(event) => {
           if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) event.stopPropagation();

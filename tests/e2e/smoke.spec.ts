@@ -2222,8 +2222,8 @@ test('dragging a diff selection past the right edge pans the long lines and exte
   await page.getByText('angkorgit', { exact: true }).first().click();
   await page.getByText('palette-seed.sql').first().click();
   await expect(page.getByText('temple gold').first()).toBeVisible();
-  const diff = page.locator('section[aria-label^="Diff for"]');
-  await diff.getByRole('button', { name: 'Inline diff', exact: true }).click();
+  const diff = page.locator('section[aria-label^="文件差异："]');
+  await diff.getByRole('button', { name: '内联 diff', exact: true }).click();
   const pane = diff.locator('[data-diff-pane]').first();
   const layer = pane.locator('[data-diff-layer]');
   await expect(layer).toHaveAttribute('style', /translateX\(0px\)|translateX\(-0px\)/);
@@ -2256,7 +2256,7 @@ test('dragging a diff selection past the right edge pans the long lines and exte
   await page.waitForTimeout(120);
   expect(await layer.evaluate((el) => Math.abs(parseFloat(/translateX\((-?[\d.]+)px\)/.exec((el as HTMLElement).style.transform)?.[1] ?? '0')))).toBe(panned);
   await page.mouse.up();
-  expect(await diff.getByLabel('Scroll diff horizontally').evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
+  expect(await diff.getByLabel('水平滚动差异').evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
 });
 
 test('long diff lines have a sticky horizontal scrollbar and support Shift+wheel', async ({ page }) => {
@@ -2265,11 +2265,11 @@ test('long diff lines have a sticky horizontal scrollbar and support Shift+wheel
   await page.getByText('angkorgit', { exact: true }).first().click();
   await page.getByText('palette-seed.sql').first().click();
   await expect(page.getByText('temple gold').first()).toBeVisible();
-  const diff = page.locator('section[aria-label^="Diff for"]');
-  const scrollbar = diff.getByLabel('Scroll diff horizontally');
+  const diff = page.locator('section[aria-label^="文件差异："]');
+  const scrollbar = diff.getByLabel('水平滚动差异');
   const scroller = diff.locator('div.overflow-y-auto');
 
-  for (const view of ['Inline diff', 'Side-by-side diff']) {
+  for (const view of ['内联 diff', '并排 diff']) {
     await diff.getByRole('button', { name: view, exact: true }).click();
     await expect(scrollbar).toBeVisible();
     expect(await scrollbar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(100);
@@ -2298,8 +2298,8 @@ test('long diff lines have a sticky horizontal scrollbar and support Shift+wheel
     expect(topBar!.y).toBeGreaterThan(viewport!.y + viewport!.height - 20);
   }
 
-  await diff.getByRole('button', { name: 'View options', exact: true }).click();
-  await page.getByRole('menuitemcheckbox', { name: 'Wrap long lines' }).click();
+  await diff.getByRole('button', { name: '视图选项', exact: true }).click();
+  await page.getByRole('menuitemcheckbox', { name: '自动换行' }).click();
   await expect(scrollbar).toHaveCount(0);
 });
 
@@ -2309,9 +2309,9 @@ test('a trackpad pan moves the long-line diff by the whole gesture without stepp
   await page.getByText('angkorgit', { exact: true }).first().click();
   await page.getByText('palette-seed.sql').first().click();
   await expect(page.getByText('temple gold').first()).toBeVisible();
-  const diff = page.locator('section[aria-label^="Diff for"]');
-  await diff.getByRole('button', { name: 'Inline diff', exact: true }).click();
-  await expect(diff.getByLabel('Scroll diff horizontally')).toBeVisible();
+  const diff = page.locator('section[aria-label^="文件差异："]');
+  await diff.getByRole('button', { name: '内联 diff', exact: true }).click();
+  await expect(diff.getByLabel('水平滚动差异')).toBeVisible();
 
   const steps = await diff.locator('[data-diff-pane]').first().evaluate(async (pane) => {
     const layer = pane.querySelector('[data-diff-layer]') as HTMLElement;
@@ -2329,7 +2329,7 @@ test('a trackpad pan moves the long-line diff by the whole gesture without stepp
   });
   expect(steps.filter((step) => step < 0)).toEqual([]);
   expect(steps.reduce((sum, step) => sum + step, 0)).toBeCloseTo(72, 0);
-  const engine = diff.getByLabel('Scroll diff horizontally');
+  const engine = diff.getByLabel('水平滚动差异');
   await expect.poll(() => engine.evaluate((el) => el.scrollLeft)).toBeGreaterThan(70);
 
   const bar = diff.locator('[data-diff-scrollbar]');
@@ -2358,13 +2358,13 @@ test('the code diff opened from a selected commit scrolls horizontally in both v
   await page.getByText('feat(graph): virtualize commit rows').first().click();
   const inspector = page.getByRole('complementary', { name: '检查器' });
   await inspector.getByText('CommitGraph.tsx', { exact: true }).click();
-  const diff = page.locator('section[aria-label="Diff for src/features/graph/CommitGraph.tsx"]');
+  const diff = page.locator('section[aria-label="文件差异：src/features/graph/CommitGraph.tsx"]');
   await expect(inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows', exact: true })).toBeVisible();
-  await expect(diff.getByRole('button', { name: 'Stage file', exact: true })).toHaveCount(0);
+  await expect(diff.getByRole('button', { name: '暂存文件', exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 800, height: 900 });
-  const scrollbar = diff.getByLabel('Scroll diff horizontally');
+  const scrollbar = diff.getByLabel('水平滚动差异');
 
-  for (const view of ['Inline diff', 'Side-by-side diff']) {
+  for (const view of ['内联 diff', '并排 diff']) {
     await diff.getByRole('button', { name: view, exact: true }).click();
     await expect(scrollbar).toBeVisible();
     expect(await scrollbar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(100);
@@ -2384,28 +2384,28 @@ test('the code diff opened from a selected commit scrolls horizontally in both v
 
 test('repositories can be grouped on the welcome page and a group opens as tabs', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Recent repositories')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('最近仓库')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-group-header]')).toHaveCount(0);
 
   const temple = page.locator('[data-recent-row="/Users/demo/projects/temple-ui"]');
   await temple.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Add to group' }).hover();
-  await page.getByRole('menuitem', { name: 'New group…' }).click();
+  await page.getByRole('menuitem', { name: '添加到分组' }).hover();
+  await page.getByRole('menuitem', { name: '新建分组…' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'New group' })).toBeVisible();
-  const name = dialog.getByLabel('Name');
+  await expect(dialog.getByRole('heading', { name: '新建分组' })).toBeVisible();
+  const name = dialog.getByLabel('名称');
   await expect(name).toBeFocused();
-  const create = dialog.getByRole('button', { name: 'Create group' });
+  const create = dialog.getByRole('button', { name: '创建分组' });
   await expect(create).toBeDisabled();
-  await name.fill('Frontend');
-  await dialog.getByRole('radio', { name: 'Teal' }).click();
+  await name.fill('前端');
+  await dialog.getByRole('radio', { name: '蓝绿' }).click();
   await create.click();
   await expect(dialog).toBeHidden();
 
-  const frontend = page.locator('[data-group-header]', { hasText: 'Frontend' });
+  const frontend = page.locator('[data-group-header]', { hasText: '前端' });
   await expect(frontend).toBeVisible();
   await expect(frontend.getByText('1', { exact: true })).toBeVisible();
-  const other = page.locator('[data-group-header]', { hasText: 'Other' });
+  const other = page.locator('[data-group-header]', { hasText: '其他' });
   await expect(other.getByText('3', { exact: true })).toBeVisible();
 
   const angkor = page.locator('[data-recent-row="/Users/demo/projects/angkorgit"]');
@@ -2415,65 +2415,65 @@ test('repositories can be grouped on the welcome page and a group opens as tabs'
 
   const billing = page.locator('[data-recent-row="/Users/demo/work/billing-service"]');
   await billing.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Add to group' }).hover();
-  await page.getByRole('menuitem', { name: 'New group…' }).click();
-  await dialog.getByLabel('Name').fill('frontend');
-  await expect(dialog.getByText('A group with this name already exists')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Create group' })).toBeDisabled();
-  await dialog.getByLabel('Name').fill('Backend');
-  await dialog.getByLabel('Name').press('Enter');
+  await page.getByRole('menuitem', { name: '添加到分组' }).hover();
+  await page.getByRole('menuitem', { name: '新建分组…' }).click();
+  await dialog.getByLabel('名称').fill('前端');
+  await expect(dialog.getByText('已存在同名分组')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '创建分组' })).toBeDisabled();
+  await dialog.getByLabel('名称').fill('后端');
+  await dialog.getByLabel('名称').press('Enter');
   await expect(dialog).toBeHidden();
-  const backend = page.locator('[data-group-header]', { hasText: 'Backend' });
+  const backend = page.locator('[data-group-header]', { hasText: '后端' });
   await expect(backend.getByText('1', { exact: true })).toBeVisible();
   const headers = page.locator('[data-group-header]');
-  await expect(headers.nth(0)).toContainText('Frontend');
+  await expect(headers.nth(0)).toContainText('前端');
   await backend.click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: 'Move down' })).toBeDisabled();
-  await page.getByRole('menuitem', { name: 'Move up' }).click();
-  await expect(headers.nth(0)).toContainText('Backend');
+  await expect(page.getByRole('menuitem', { name: '下移' })).toBeDisabled();
+  await page.getByRole('menuitem', { name: '上移' }).click();
+  await expect(headers.nth(0)).toContainText('后端');
   await backend.click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: 'Move up' })).toBeDisabled();
-  await page.getByRole('menuitem', { name: 'Move down' }).click();
-  await expect(headers.nth(0)).toContainText('Frontend');
+  await expect(page.getByRole('menuitem', { name: '上移' })).toBeDisabled();
+  await page.getByRole('menuitem', { name: '下移' }).click();
+  await expect(headers.nth(0)).toContainText('前端');
   await backend.dragTo(frontend, { targetPosition: { x: 200, y: 3 } });
-  await expect(headers.nth(0)).toContainText('Backend');
+  await expect(headers.nth(0)).toContainText('后端');
   await frontend.dragTo(backend, { targetPosition: { x: 200, y: 3 } });
-  await expect(headers.nth(0)).toContainText('Frontend');
+  await expect(headers.nth(0)).toContainText('前端');
 
-  await backend.getByRole('button', { name: 'Backend', exact: true }).click();
+  await backend.getByRole('button', { name: '后端', exact: true }).click();
   await expect(billing).toBeHidden();
-  await backend.getByRole('button', { name: 'Backend', exact: true }).click();
+  await backend.getByRole('button', { name: '后端', exact: true }).click();
   await expect(billing).toBeVisible();
 
-  await page.getByLabel('Search recent repositories').fill('front');
+  await page.getByLabel('搜索最近仓库').fill('前');
   await expect(page.locator('[data-group-header]')).toHaveCount(0);
   await expect(page.locator('[data-recent-row]')).toHaveCount(2);
-  await page.getByLabel('Search recent repositories').fill('');
+  await page.getByLabel('搜索最近仓库').fill('');
   await expect(page.locator('[data-group-header]')).toHaveCount(3);
 
   await frontend.hover();
-  await frontend.getByRole('button', { name: 'Frontend group actions' }).click();
-  await page.getByRole('menuitem', { name: 'Open all in tabs' }).click();
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await frontend.getByRole('button', { name: '前端 分组操作' }).click();
+  await page.getByRole('menuitem', { name: '在标签页中全部打开' }).click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const tabs = page.getByRole('tab');
   await expect(tabs).toHaveCount(2);
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
-  await expect(tabs.nth(0)).toHaveAttribute('title', /· Frontend/);
+  await expect(tabs.nth(0)).toHaveAttribute('title', /· 前端/);
 
   await tabs.nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Move to group' }).hover();
-  await page.getByRole('menuitem', { name: 'Backend' }).click();
-  await expect(tabs.nth(1)).toHaveAttribute('title', /· Backend/);
+  await page.getByRole('menuitem', { name: '移动到分组' }).hover();
+  await page.getByRole('menuitem', { name: '后端' }).click();
+  await expect(tabs.nth(1)).toHaveAttribute('title', /· 后端/);
   const clusters = page.locator('[data-tab-cluster]');
   await expect(clusters).toHaveCount(2);
   await expect(clusters.nth(0)).toContainText('angkorgit');
   await expect(clusters.nth(1)).toContainText('temple-ui');
   const frontendChip = clusters.nth(0).locator('[data-tab-group]');
   const backendChip = clusters.nth(1).locator('[data-tab-group]');
-  await expect(frontendChip).toHaveText('Frontend');
+  await expect(frontendChip).toHaveText('前端');
   await backendChip.click();
   await expect(tabs).toHaveCount(1);
-  await expect(backendChip).toHaveText('Backend1');
+  await expect(backendChip).toHaveText('后端1');
   await frontendChip.click();
   await expect(tabs).toHaveCount(1);
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
@@ -2486,24 +2486,24 @@ test('repositories can be grouped on the welcome page and a group opens as tabs'
   await expect(page.locator('[data-tab-separator]')).toHaveCount(0);
   await expect(page.locator('[data-tab-overflow]')).toHaveCount(0);
   await backendChip.click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: 'Close its tabs' })).toContainText('1');
-  await page.getByRole('menuitem', { name: 'Collapse other groups' }).click();
-  await expect(frontendChip).toHaveText('Frontend1');
+  await expect(page.getByRole('menuitem', { name: '关闭其标签页' })).toContainText('1');
+  await page.getByRole('menuitem', { name: '折叠其他分组' }).click();
+  await expect(frontendChip).toHaveText('前端1');
   await expect(tabs).toHaveCount(1);
   await page.keyboard.press('ControlOrMeta+1');
   await expect(tabs).toHaveCount(1);
   await expect(page.locator('[data-tab-path="/Users/demo/projects/angkorgit"]')).toHaveAttribute('aria-selected', 'true');
   await frontendChip.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Expand all groups' }).click();
+  await page.getByRole('menuitem', { name: '展开所有分组' }).click();
   await expect(tabs).toHaveCount(2);
   await backendChip.dragTo(clusters.nth(0), { targetPosition: { x: 4, y: 20 } });
-  await expect(clusters.nth(0)).toContainText('Backend');
-  await expect(clusters.nth(1)).toContainText('Frontend');
+  await expect(clusters.nth(0)).toContainText('后端');
+  await expect(clusters.nth(1)).toContainText('前端');
   await expect(tabs.nth(0)).toHaveAttribute('title', /temple-ui/);
   await page.keyboard.press('ControlOrMeta+1');
   await expect(page.locator('[data-tab-path="/Users/demo/projects/temple-ui"]')).toHaveAttribute('aria-selected', 'true');
   await page.locator('[data-tab-cluster]').nth(1).locator('[data-tab-group]').dragTo(clusters.nth(0), { targetPosition: { x: 4, y: 20 } });
-  await expect(clusters.nth(0)).toContainText('Frontend');
+  await expect(clusters.nth(0)).toContainText('前端');
   await page.keyboard.press('ControlOrMeta+1');
   await expect(page.locator('[data-tab-path="/Users/demo/projects/angkorgit"]')).toHaveAttribute('aria-selected', 'true');
   await page.setViewportSize({ width: 380, height: 900 });
@@ -2511,32 +2511,32 @@ test('repositories can be grouped on the welcome page and a group opens as tabs'
   await expect(overflow).toBeVisible();
   await overflow.click();
   const overflowMenu = page.getByRole('menu');
-  await expect(overflowMenu.getByText('Frontend', { exact: true })).toBeVisible();
+  await expect(overflowMenu.getByText('前端', { exact: true })).toBeVisible();
   await overflowMenu.getByRole('menuitem', { name: 'temple-ui' }).click();
   await expect(page.locator('[data-tab-path="/Users/demo/projects/temple-ui"]')).toHaveAttribute('aria-selected', 'true');
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(overflow).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Switch repository' }).click();
+  await page.getByRole('button', { name: '切换仓库' }).click();
   const menu = page.getByRole('menu');
-  await expect(menu.locator('[data-switcher-group="Frontend"]')).toContainText('angkorgit');
-  await expect(menu.locator('[data-switcher-group="Backend"]')).toContainText('temple-ui');
-  await expect(menu.locator('[data-switcher-group="Other"]')).toContainText('api-gateway');
+  await expect(menu.locator('[data-switcher-group="前端"]')).toContainText('angkorgit');
+  await expect(menu.locator('[data-switcher-group="后端"]')).toContainText('temple-ui');
+  await expect(menu.locator('[data-switcher-group="其他"]')).toContainText('api-gateway');
   await page.keyboard.press('Escape');
 
   await page.keyboard.press('ControlOrMeta+k');
-  await page.locator('[cmdk-input]').fill('backend');
-  await expect(page.getByRole('option', { name: /Open all in Backend/ })).toContainText('2 repositories');
-  await page.getByRole('option', { name: /Close all in Backend/ }).click();
+  await page.locator('[cmdk-input]').fill('后端');
+  await expect(page.getByRole('option', { name: /打开 后端 中的全部仓库/ })).toContainText('2 个仓库');
+  await page.getByRole('option', { name: /关闭 后端 中的全部仓库/ }).click();
   await expect(tabs).toHaveCount(1);
-  await expect(page.getByPlaceholder('Search commits…')).toBeVisible();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Home', exact: true }).click();
-  await expect(page.getByText('Recent repositories')).toBeVisible();
+  await page.getByRole('button', { name: '首页', exact: true }).click();
+  await expect(page.getByText('最近仓库')).toBeVisible();
   await frontend.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Ungroup…' }).click();
-  await expect(page.getByRole('heading', { name: 'Ungroup “Frontend”?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Ungroup', exact: true }).click();
+  await page.getByRole('menuitem', { name: '解散分组…' }).click();
+  await expect(page.getByRole('heading', { name: '解散分组“前端”?' })).toBeVisible();
+  await page.getByRole('button', { name: '解散分组', exact: true }).click();
   await expect(frontend).toBeHidden();
   await expect(page.locator('[data-recent-row="/Users/demo/projects/angkorgit"]')).toBeVisible();
   await expect(backend.getByText('2', { exact: true })).toBeVisible();

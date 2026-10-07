@@ -52,13 +52,13 @@ export function RepoGroupSubmenu({ path }: { path: string }) {
   const move = (group: RepoGroup) => {
     if (group.id === currentId) return;
     setRepoGroup(path, group.id);
-    toast.success(`${repoDisplayName(path, recents)} moved to ${group.name}`);
+    toast.success(`已将 ${repoDisplayName(path, recents)} 移动到 ${group.name}`);
   };
 
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
-        <Folders /> {currentId ? 'Move to group' : 'Add to group'}
+        <Folders /> {currentId ? '移动到分组' : '添加到分组'}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="max-w-72">
         {groups.map((group) => (
@@ -69,13 +69,13 @@ export function RepoGroupSubmenu({ path }: { path: string }) {
         ))}
         {groups.length > 0 && <DropdownMenuSeparator />}
         <DropdownMenuItem onClick={() => openDialog('repoGroup', { groupId: null, repoPath: path })}>
-          <Plus /> New group…
+          <Plus /> 新建分组…
         </DropdownMenuItem>
         {direct && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setRepoGroup(path, null)}>
-              <FolderMinus /> Remove from group
+              <FolderMinus /> 从分组中移除
             </DropdownMenuItem>
           </>
         )}
