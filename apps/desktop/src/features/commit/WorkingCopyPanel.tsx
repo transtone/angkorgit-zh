@@ -1341,6 +1341,7 @@ export function WorkingCopyPanel() {
                 }}
                 placeholder={amend ? '新摘要（留空保持当前）' : '摘要'}
                 aria-label="提交摘要"
+                autoCapitalize="off"
                 spellCheck
                 className={cn(
                   'h-9 min-w-0 flex-1 bg-transparent pl-3 text-sm font-medium text-foreground outline-none',
@@ -1389,6 +1390,8 @@ export function WorkingCopyPanel() {
               }}
               placeholder="说明改了什么、为什么"
               aria-label="提交说明"
+              autoCapitalize="off"
+              spellCheck
               className={cn(
                 'min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:ring-0 focus-visible:border-0',
                 commitBoxHeight === null ? 'max-h-[260px]' : 'max-h-[600px] overflow-y-auto',

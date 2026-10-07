@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
+import { imageMimeFor, type DiffHunk, type DiffLine, type FileDiff } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
 import { useUi } from '@/features/ui/store';
 import { languageOf } from '@/shared/highlight';
@@ -159,7 +159,7 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
 }
 
 function ImageDiff({ diff }: { diff: FileDiff }) {
-  const mime = diff.path.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
+  const mime = imageMimeFor(diff.path) ?? 'application/octet-stream';
   return (
     <div className="flex gap-4 p-4">
       {diff.oldImage && (
