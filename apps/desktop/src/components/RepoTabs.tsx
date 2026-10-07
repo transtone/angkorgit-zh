@@ -413,7 +413,7 @@ export function RepoTabs() {
                   <DropdownMenuShortcut>{unopened}</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => closeRepoGroup(group, paths)}>
-                  <X /> 关闭该分组标签页
+                  <X /> 关闭其标签页
                   <DropdownMenuShortcut>{openCount}</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

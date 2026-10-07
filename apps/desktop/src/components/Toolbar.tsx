@@ -172,7 +172,7 @@ function RepoSwitcher() {
                     </div>
                   )),
                 grouped.ungrouped.length > 0 && (
-                  <div key="ungrouped" data-switcher-group="Other">
+                  <div key="ungrouped" data-switcher-group="其他">
                     <DropdownMenuLabel>其他</DropdownMenuLabel>
                     {grouped.ungrouped.map(renderRecent)}
                   </div>

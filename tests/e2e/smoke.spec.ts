@@ -486,6 +486,7 @@ test('text selection in a diff survives the right-click copy menu', async ({ pag
   await page.getByText('angkorgit', { exact: true }).first().click();
   await page.getByText('palette-seed.sql').first().click();
   await page.waitForSelector('[data-diff-layer]', { timeout: 10_000 });
+  await expect(page.locator('[data-diff-layer] > div').nth(5)).toBeVisible();
 
   const selectRows = () =>
     page.evaluate(() => {
@@ -502,6 +503,7 @@ test('text selection in a diff survives the right-click copy menu', async ({ pag
   const row = page.locator('[data-diff-layer] > div').nth(3);
 
   await selectRows();
+  await expect.poll(selectionLength).toBeGreaterThan(0);
   await row.click({ button: 'right', position: { x: 60, y: 8 } });
   const copyLine = page.getByRole('menuitem', { name: '复制行' });
   await expect(copyLine).toBeVisible();
@@ -2249,10 +2251,10 @@ test('dragging a diff selection past the right edge pans the long lines and exte
   await expect
     .poll(() => layer.evaluate((el) => Math.abs(parseFloat(/translateX\((-?[\d.]+)px\)/.exec((el as HTMLElement).style.transform)?.[1] ?? '0'))))
     .toBeGreaterThan(60);
-  const panned = await layer.evaluate((el) => Math.abs(parseFloat(/translateX\((-?[\d.]+)px\)/.exec((el as HTMLElement).style.transform)?.[1] ?? '0')));
   const selected = await page.evaluate(() => window.getSelection()?.toString() ?? '');
   expect(selected.length).toBeGreaterThan(40);
   await page.mouse.move(start.x + 100, start.y, { steps: 2 });
+  const panned = await layer.evaluate((el) => Math.abs(parseFloat(/translateX\((-?[\d.]+)px\)/.exec((el as HTMLElement).style.transform)?.[1] ?? '0')));
   await page.waitForTimeout(120);
   expect(await layer.evaluate((el) => Math.abs(parseFloat(/translateX\((-?[\d.]+)px\)/.exec((el as HTMLElement).style.transform)?.[1] ?? '0')))).toBe(panned);
   await page.mouse.up();
@@ -2506,7 +2508,7 @@ test('repositories can be grouped on the welcome page and a group opens as tabs'
   await expect(clusters.nth(0)).toContainText('前端');
   await page.keyboard.press('ControlOrMeta+1');
   await expect(page.locator('[data-tab-path="/Users/demo/projects/angkorgit"]')).toHaveAttribute('aria-selected', 'true');
-  await page.setViewportSize({ width: 380, height: 900 });
+  await page.setViewportSize({ width: 340, height: 900 });
   const overflow = page.locator('[data-tab-overflow]');
   await expect(overflow).toBeVisible();
   await overflow.click();
@@ -2535,7 +2537,7 @@ test('repositories can be grouped on the welcome page and a group opens as tabs'
   await expect(page.getByText('最近仓库')).toBeVisible();
   await frontend.click({ button: 'right' });
   await page.getByRole('menuitem', { name: '解散分组…' }).click();
-  await expect(page.getByRole('heading', { name: '解散分组“前端”?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '解散分组“前端”？' })).toBeVisible();
   await page.getByRole('button', { name: '解散分组', exact: true }).click();
   await expect(frontend).toBeHidden();
   await expect(page.locator('[data-recent-row="/Users/demo/projects/angkorgit"]')).toBeVisible();

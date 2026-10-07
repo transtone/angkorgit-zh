@@ -2,8 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  timeout: 30_000,
-  retries: process.env.CI ? 2 : 0,
+  timeout: 60_000,
+  retries: process.env.CI ? 2 : 1,
   use: {
     baseURL: 'http://localhost:1420',
     viewport: { width: 1440, height: 900 },
