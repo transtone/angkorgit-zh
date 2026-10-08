@@ -930,28 +930,28 @@ test('欢迎页标记缺失的文件夹并可用键盘打开仓库', async ({ pa
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
 });
 
-test('scanning a folder lists its repositories and adds the picked ones to recents', async ({ page }) => {
+test('扫描文件夹列出其中的仓库，并把勾选的加入最近列表', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('最近仓库')).toBeVisible({ timeout: 10_000 });
   await page.evaluate(() => {
     window.prompt = () => '/Users/demo/projects';
   });
-  await page.getByRole('button', { name: 'Scan a folder for repositories' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add repositories from a folder' });
-  await expect(dialog.locator('[data-scan-summary]')).toHaveText('Found 4 · 2 already in recents');
-  await expect(dialog.getByText('In recents', { exact: true })).toHaveCount(2);
-  await expect(dialog.getByLabel('Add angkorgit')).toBeDisabled();
-  const add = dialog.getByRole('button', { name: 'Add 2 repositories' });
+  await page.getByRole('button', { name: '扫描文件夹查找仓库' }).click();
+  const dialog = page.getByRole('dialog', { name: '从文件夹添加仓库' });
+  await expect(dialog.locator('[data-scan-summary]')).toHaveText('找到 4 · 2 个已在最近列表');
+  await expect(dialog.getByText('最近列表中', { exact: true })).toHaveCount(2);
+  await expect(dialog.getByLabel('添加 angkorgit')).toBeDisabled();
+  const add = dialog.getByRole('button', { name: '添加 2 个仓库' });
   await expect(add).toBeEnabled();
-  await dialog.getByLabel('Add lane-colors').click();
-  await dialog.getByRole('button', { name: 'Add 1 repository' }).click();
+  await dialog.getByLabel('添加 lane-colors').click();
+  await dialog.getByRole('button', { name: '添加 1 个仓库' }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByText('Added 1 repository')).toBeVisible();
+  await expect(page.getByText('已添加 1 个仓库')).toBeVisible();
   await expect(page.getByText('~/projects/tools/release-kit')).toBeVisible();
   await expect(page.getByText('lane-colors', { exact: true })).toHaveCount(0);
 });
 
-test('tabs close when their folder is gone and same-named repositories show their parent folder', async ({ page }) => {
+test('文件夹消失时关闭对应标签页，同名仓库标签显示上级目录', async ({ page }) => {
   await page.addInitScript(() => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');
@@ -969,7 +969,7 @@ test('tabs close when their folder is gone and same-named repositories show thei
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Closed the api-gateway tab: its folder no longer exists')).toBeVisible();
+  await expect(page.getByText('已关闭 api-gateway 标签页：其文件夹已不存在')).toBeVisible();
   const tabs = page.getByRole('tab');
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('[data-tab-path="/Users/demo/work/api-gateway"]')).toHaveCount(0);
@@ -978,12 +978,12 @@ test('tabs close when their folder is gone and same-named repositories show thei
   await expect(page.locator('[data-tab-path="/Users/demo/projects/temple-ui"] [data-tab-hint]')).toHaveCount(0);
 });
 
-test('mod+p searches recent repositories and opens or switches to their tab, mod+t opens a new tab', async ({ page }) => {
+test('mod+p 搜索最近仓库并打开或切换其标签页，mod+t 打开新标签页', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('最近仓库')).toBeVisible({ timeout: 10_000 });
   await page.keyboard.press('ControlOrMeta+p');
   const switcher = page.locator('[data-repo-switcher]');
-  const input = page.getByPlaceholder('搜索最近仓库 by name or path…');
+  const input = page.getByPlaceholder('按名称或路径搜索最近仓库…');
   await expect(input).toBeVisible();
   await expect(input).toBeFocused();
   await expect(switcher.locator('[data-repo-path]')).toHaveCount(4);
@@ -997,14 +997,14 @@ test('mod+p searches recent repositories and opens or switches to their tab, mod
   await expect(page.getByRole('tab', { selected: true })).toContainText('temple-ui');
 
   await page.keyboard.press('ControlOrMeta+p');
-  await expect(switcher.locator('[data-repo-path="/Users/demo/projects/temple-ui"] [data-repo-tab-state]')).toHaveText('Current');
+  await expect(switcher.locator('[data-repo-path="/Users/demo/projects/temple-ui"] [data-repo-tab-state]')).toHaveText('当前仓库');
   await input.fill('angkor');
   await page.keyboard.press('Enter');
   await expect(tabs).toHaveCount(2);
   await expect(page.getByRole('tab', { selected: true })).toContainText('angkorgit');
 
   await page.keyboard.press('ControlOrMeta+p');
-  await expect(switcher.locator('[data-repo-path="/Users/demo/projects/temple-ui"] [data-repo-tab-state]')).toHaveText('Open tab');
+  await expect(switcher.locator('[data-repo-path="/Users/demo/projects/temple-ui"] [data-repo-tab-state]')).toHaveText('已打开标签页');
   await input.fill('temple');
   await page.keyboard.press('Enter');
   await expect(tabs).toHaveCount(2);
@@ -1023,13 +1023,13 @@ test('mod+p searches recent repositories and opens or switches to their tab, mod
   await expect(page.getByRole('tab', { selected: true })).toContainText('sandbox');
 });
 
-test('the all files layout stacks every commit file and follows the file list', async ({ page }) => {
+test('“全部文件”布局堆叠显示提交的每个文件并跟随文件列表', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').nth(2).click();
-  await page.getByLabel('Commit files').getByRole('button', { name: /GraphRow\.tsx/ }).click();
-  await page.getByRole('button', { name: 'Show all files' }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /GraphRow\.tsx/ }).click();
+  await page.getByRole('button', { name: '显示全部文件' }).click();
   const view = page.locator('[data-all-changes]');
   await expect(view).toBeVisible();
   const sections = view.locator('[data-file-path]');
@@ -1045,11 +1045,11 @@ test('the all files layout stacks every commit file and follows the file list', 
   await expect.poll(() => topOf('src/features/graph/GraphRow.tsx')).toBeLessThan(16);
   await expect(view.getByText('2 of 5')).toBeVisible();
 
-  await page.getByLabel('Commit files').getByRole('button', { name: /Architecture\.md/ }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /Architecture\.md/ }).click();
   await expect.poll(() => topOf('docs/Architecture.md')).toBeLessThan(16);
   await expect(view.getByText('4 of 5')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Side-by-side diff' }).click();
+  await page.getByRole('button', { name: '并排 diff' }).click();
   await expect(view.locator('[data-file-diff] div.w-1\\/2').first()).toBeVisible();
   await page.getByRole('button', { name: '内联 diff' }).click();
 
@@ -1060,15 +1060,15 @@ test('the all files layout stacks every commit file and follows the file list', 
   await page.mouse.wheel(0, 1);
   await expect(page.locator('[data-active-file]')).toContainText('CommitGraph.tsx');
 
-  await view.getByRole('button', { name: 'Collapse src/features/graph/store.ts' }).click();
+  await view.getByRole('button', { name: '折叠 src/features/graph/store.ts' }).click();
   await expect(view.locator('[data-file-path="src/features/graph/store.ts"]')).toHaveAttribute('data-file-section', 'collapsed');
   await expect(view.locator('[data-file-path="src/features/graph/store.ts"] [data-file-diff]')).toHaveCount(0);
-  await view.getByRole('button', { name: 'Collapse all files' }).click();
+  await view.getByRole('button', { name: '折叠全部文件' }).click();
   await expect(view.locator('[data-file-section="open"]')).toHaveCount(0);
-  await view.getByRole('button', { name: 'Expand all files' }).click();
+  await view.getByRole('button', { name: '展开全部文件' }).click();
   await expect(view.locator('[data-file-section="collapsed"]')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Show one file' }).click();
+  await page.getByRole('button', { name: '显示单文件' }).click();
   await expect(view).toBeHidden();
   await expect(page.locator('section[aria-label^="文件差异："]')).toBeVisible();
   await page.reload();
@@ -1079,13 +1079,13 @@ test('the all files layout stacks every commit file and follows the file list', 
   await expect(view).toBeHidden();
 });
 
-test('clicking a file in the inspector still jumps to it after scrolling reached it once', async ({ page }) => {
+test('滚动到某文件后，点击检查器中的文件仍会跳转到它', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').nth(2).click();
-  await page.getByLabel('Commit files').getByRole('button', { name: /CommitGraph\.tsx/ }).click();
-  await page.getByRole('button', { name: 'Show all files' }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /CommitGraph\.tsx/ }).click();
+  await page.getByRole('button', { name: '显示全部文件' }).click();
   const view = page.locator('[data-all-changes]');
   const scroller = view.locator('[data-all-changes-scroller]');
   await expect(view.locator('[data-file-diff]').first()).toBeVisible();
@@ -1102,9 +1102,9 @@ test('clicking a file in the inspector still jumps to it after scrolling reached
     el.scrollTop = target.offsetTop;
   });
   await expect(view.getByText('4 of 5')).toBeVisible();
-  await page.getByLabel('Commit files').getByRole('button', { name: /GraphRow\.tsx/ }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /GraphRow\.tsx/ }).click();
   await expect.poll(() => topOf('src/features/graph/GraphRow.tsx')).toBeLessThan(16);
-  await page.getByLabel('Commit files').getByRole('button', { name: /Architecture\.md/ }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /Architecture\.md/ }).click();
   await expect.poll(() => topOf('docs/Architecture.md')).toBeLessThan(16);
   await expect(view.getByText('4 of 5')).toBeVisible();
 
@@ -1114,12 +1114,12 @@ test('clicking a file in the inspector still jumps to it after scrolling reached
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible();
 });
 
-test('after a click into a file diff, ← closes it and returns to the graph', async ({ page }) => {
+test('点击文件 diff 后按 ← 关闭并返回提交图', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').nth(2).click();
-  await page.getByLabel('Commit files').getByRole('button', { name: /CommitGraph\.tsx/ }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /CommitGraph\.tsx/ }).click();
   const diff = page.locator('section[aria-label^="文件差异："]');
   await expect(diff).toBeVisible();
   const scroller = diff.locator('div.overflow-y-auto').first();
@@ -1131,7 +1131,7 @@ test('after a click into a file diff, ← closes it and returns to the graph', a
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible();
 });
 
-test('a stash file never offers the all files layout, even when it is the remembered one', async ({ page }) => {
+test('暂存文件不提供“全部文件”布局，即使记住的是该布局', async ({ page }) => {
   await page.addInitScript(() => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');
@@ -1142,16 +1142,16 @@ test('a stash file never offers the all files layout, even when it is the rememb
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('feat(graph): virtualize commit rows').first()).toBeVisible();
   await page.getByText('WIP on main: experiment with lane colors').first().click();
-  const inspector = page.getByRole('complementary', { name: 'Inspector' });
-  await expect(inspector.getByText('This is a stash.', { exact: false })).toBeVisible();
+  const inspector = page.getByRole('complementary', { name: '检查器' });
+  await expect(inspector.getByText('这是一个暂存。', { exact: false })).toBeVisible();
   await inspector.getByText('GraphRow.tsx', { exact: true }).click();
   await expect(page.locator('section[aria-label^="文件差异："]')).toBeVisible();
   await expect(page.locator('[data-all-changes]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Show all files' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '显示全部文件' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
   await page.getByRole('row').nth(2).click();
-  await page.getByLabel('Commit files').getByRole('button', { name: /GraphRow\.tsx/ }).click();
+  await page.getByLabel('提交文件').getByRole('button', { name: /GraphRow\.tsx/ }).click();
   await expect(page.locator('[data-all-changes]')).toBeVisible();
 });
 

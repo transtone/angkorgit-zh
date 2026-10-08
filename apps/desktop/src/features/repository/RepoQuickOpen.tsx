@@ -101,12 +101,12 @@ export function RepoQuickOpen() {
       <Command.Input
         value={search}
         onValueChange={setSearch}
-        placeholder="搜索最近仓库 by name or path…"
+        placeholder="按名称或路径搜索最近仓库…"
         className="h-11 w-full border-b border-border-subtle bg-transparent px-4 text-sm text-foreground outline-none placeholder:text-faint"
       />
       <Command.List className="max-h-96 overflow-y-auto p-1.5" data-repo-switcher>
         <Command.Empty className="px-3 py-8 text-center text-sm text-faint">
-          {recents.length === 0 ? '还没有最近仓库。' : `No repositories match “${search.trim()}”.`}
+          {recents.length === 0 ? '还没有最近仓库。' : `没有仓库匹配“${search.trim()}”。`}
         </Command.Empty>
         {results.map((recent) => {
           const gone = missing.has(recent.path);
@@ -161,18 +161,18 @@ export function RepoQuickOpen() {
       </Command.List>
       <div className="flex items-center gap-4 border-t border-border-subtle px-3 py-1.5 text-[10px] text-faint">
         <span className="flex items-center gap-1">
-          <Kbd>↑↓</Kbd> move
+          <Kbd>↑↓</Kbd> 选择
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>⏎</Kbd> open or switch to its tab
+          <Kbd>⏎</Kbd> 打开或切换到其标签页
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>esc</Kbd> close
+          <Kbd>esc</Kbd> 关闭
         </span>
         <span className="ml-auto">
           {results.length < recents.length && search.trim()
-            ? `${results.length} of ${recents.length}`
-            : `${recents.length} repositories`}
+            ? `${results.length} / ${recents.length}`
+            : `${recents.length} 个仓库`}
         </span>
       </div>
     </Command.Dialog>

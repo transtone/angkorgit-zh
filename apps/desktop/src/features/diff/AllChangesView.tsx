@@ -316,7 +316,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-      aria-label={`All changes in ${oid.slice(0, 8)}`}
+      aria-label={`${oid.slice(0, 8)} 的全部改动`}
       data-all-changes
     >
       <div className="flex h-10 shrink-0 items-center gap-2 overflow-hidden whitespace-nowrap border-b border-border-subtle bg-surface px-3">
@@ -337,7 +337,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
         </Badge>
         {files && (
           <span className="shrink-0 text-xs text-muted">
-            {files.length === 1 ? '1 file' : `${files.length} files`}{' '}
+            {files.length === 1 ? '1 个文件' : `${files.length} 个文件`}{' '}
             <span className="text-success">+{totals.additions}</span>{' '}
             <span className="text-danger">−{totals.deletions}</span>
           </span>
@@ -403,7 +403,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
       <div ref={scrollRef} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-6" data-all-changes-scroller>
         {filesError ? (
           <p className="py-16 text-center text-sm text-danger [overflow-wrap:anywhere]">
-            Could not list the changed files: {filesError}
+            无法列出改动的文件：{filesError}
           </p>
         ) : !files ? (
           <div className="flex h-full items-center justify-center">
@@ -438,7 +438,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={isCollapsed ? `Expand ${file.path}` : `Collapse ${file.path}`}
+                    aria-label={isCollapsed ? `展开 ${file.path}` : `折叠 ${file.path}`}
                     aria-expanded={!isCollapsed}
                     onClick={() => toggle(file.path)}
                   >
@@ -451,7 +451,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                     <span className="max-w-full shrink-0 truncate font-medium">{basename(file.path)}</span>
                     <DirName path={file.path} className="text-[11px]" />
                     {file.oldPath && file.oldPath !== file.path && (
-                      <span className="shrink-0 truncate text-[11px] text-faint">from {file.oldPath}</span>
+                      <span className="shrink-0 truncate text-[11px] text-faint">来自 {file.oldPath}</span>
                     )}
                   </span>
                   {file.additions > 0 && <span className="shrink-0 font-mono text-[11px] text-success">+{file.additions}</span>}
@@ -460,7 +460,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Open ${file.path} in file view`}
+                      aria-label={`在单文件视图打开 ${file.path}`}
                       onClick={() => openInFileView(file)}
                     >
                       <FileText className="size-3.5" />
@@ -471,10 +471,10 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                   isLarge(file) && (
                     <div className="flex items-center gap-3 rounded-b-lg border-t border-border-subtle px-4 py-3 text-xs text-muted">
                       <span className="flex-1">
-                        Large diff, {changedLines(file).toLocaleString()} changed lines. Collapsed so the page stays fast.
+                        大型 diff，共 {changedLines(file).toLocaleString()} 行改动。已折叠以保持页面流畅。
                       </span>
                       <Button variant="secondary" size="sm" onClick={() => toggle(file.path)}>
-                        Show diff
+                        显示 diff
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openInFileView(file)}>
                         在单文件视图打开

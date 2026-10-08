@@ -527,7 +527,7 @@ export function WelcomePage() {
                       <FolderOpen className="size-3.5" /> 打开
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => void startRepositoryScan()}>
-                      <FolderSearch className="size-3.5" /> Scan
+                      <FolderSearch className="size-3.5" /> 扫描
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => openDialog('clone')}>
                       <GitBranchPlus className="size-3.5" /> 克隆

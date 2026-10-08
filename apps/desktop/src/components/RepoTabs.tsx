@@ -100,8 +100,8 @@ export function RepoTabs() {
         const names = gone.map((path) => path.split(/[\\/]/).filter(Boolean).pop() ?? path);
         toast.info(
           gone.length === 1
-            ? `Closed the ${names[0]} tab: its folder no longer exists`
-            : `Closed ${gone.length} tabs whose folders no longer exist`,
+            ? `已关闭 ${names[0]} 标签页：其文件夹已不存在`
+            : `已关闭 ${gone.length} 个文件夹已不存在的标签页`,
           { description: gone.join('\n') },
         );
       })

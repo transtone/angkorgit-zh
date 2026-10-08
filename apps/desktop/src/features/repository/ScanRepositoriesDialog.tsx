@@ -115,10 +115,10 @@ export function ScanRepositoriesDialog() {
     try {
       await ipc.addRecents(paths);
       await loadRecents();
-      toast.success(paths.length === 1 ? '已添加 1 个仓库' : `Added ${paths.length} repositories`);
+      toast.success(paths.length === 1 ? '已添加 1 个仓库' : `已添加 ${paths.length} 个仓库`);
       closeDialog();
     } catch (e) {
-      toast.error(`Could not add repositories: ${(e as { message?: string }).message ?? e}`);
+      toast.error(`无法添加仓库：${(e as { message?: string }).message ?? e}`);
       setAdding(false);
     }
   };
@@ -131,8 +131,8 @@ export function ScanRepositoriesDialog() {
         <DialogHeader>
           <DialogTitle>从文件夹添加仓库</DialogTitle>
           <DialogDescription>
-            Looks through every folder, including inside other repositories, and skips hidden and
-            dependency folders such as node_modules.
+            遍历每一个文件夹（包括其他仓库内部的文件夹），并跳过隐藏文件夹和
+            node_modules 之类的依赖文件夹。
           </DialogDescription>
         </DialogHeader>
 
@@ -142,7 +142,7 @@ export function ScanRepositoriesDialog() {
             {shortenHome(root)}
           </span>
           <Button variant="secondary" size="sm" onClick={() => void changeRoot()} disabled={adding}>
-            Change…
+            更换文件夹…
           </Button>
         </div>
 
@@ -150,7 +150,7 @@ export function ScanRepositoriesDialog() {
           <p className="text-sm text-danger [overflow-wrap:anywhere]">{error}</p>
         ) : !scan ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted" data-scan-busy>
-            <Spinner className="size-4 text-primary" /> Scanning…
+            <Spinner className="size-4 text-primary" /> 正在扫描…
           </div>
         ) : found.length === 0 ? (
           <SettingEmpty
@@ -162,9 +162,9 @@ export function ScanRepositoriesDialog() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs text-muted">
               <span data-scan-summary>
-                Found {found.length}
+                找到 {found.length}
                 {scan.truncated ? '+' : ''}
-                {found.length - fresh.length > 0 && ` · ${found.length - fresh.length} already in recents`}
+                {found.length - fresh.length > 0 && ` · ${found.length - fresh.length} 个已在最近列表`}
               </span>
               {fresh.length > 0 && (
                 <Button
@@ -194,7 +194,7 @@ export function ScanRepositoriesDialog() {
                       checked={already || selected.has(repo.path)}
                       disabled={already}
                       onCheckedChange={() => toggle(repo.path)}
-                      aria-label={`Add ${repo.name}`}
+                      aria-label={`添加 ${repo.name}`}
                     />
                     <span className="flex size-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
                       {repo.isWorktree ? <FolderTree className="size-3.5" /> : <FolderGit2 className="size-3.5" />}
@@ -212,7 +212,7 @@ export function ScanRepositoriesDialog() {
             </div>
             {scan.truncated && (
               <p className="text-xs text-muted">
-                The scan stopped at {found.length} repositories. Pick a narrower folder to see the rest.
+                扫描在 {found.length} 个仓库处停止。请选择一个范围更小的文件夹以查看其余仓库。
               </p>
             )}
           </div>
@@ -224,7 +224,7 @@ export function ScanRepositoriesDialog() {
           </Button>
           <Button autoFocus onClick={() => void add()} disabled={pickedCount === 0 || adding}>
             {adding ? <Spinner className="text-primary-foreground" /> : null}
-            {pickedCount === 1 ? '添加 1 个仓库' : `Add ${pickedCount} repositories`}
+            {pickedCount === 1 ? '添加 1 个仓库' : `添加 ${pickedCount} 个仓库`}
           </Button>
         </DialogFooter>
       </DialogContent>
