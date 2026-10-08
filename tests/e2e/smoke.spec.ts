@@ -532,7 +532,7 @@ test('提交操作按钮保持在较窄的工作副本面板内', async ({ page 
   const panel = await inspector.boundingBox();
   expect(panel).not.toBeNull();
 
-  for (const name of ['Review', /Commit \d+ files?/] as const) {
+  for (const name of ['审查', /提交 ?\d+ 个文件/] as const) {
     const button = inspector.getByRole('button', { name, exact: true });
     await expect(button).toBeVisible();
     const box = await button.boundingBox();
@@ -839,7 +839,7 @@ test('文件夹树视图可一次性折叠和展开所有文件夹', async ({ pa
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: '文件夹树' }).click();
   await expect(page.getByText('ipc.ts', { exact: true }).first()).toBeVisible();
-  const changesHeader = page.locator('div', { has: page.getByText(/^Changes/) }).filter({ has: page.getByRole('button', { name: '全部暂存' }) }).last();
+  const changesHeader = page.locator('div', { has: page.getByText(/^更改/) }).filter({ has: page.getByRole('button', { name: '全部暂存' }) }).last();
   await changesHeader.getByRole('button', { name: '折叠全部文件夹' }).click();
   await expect(page.getByText('ipc.ts', { exact: true })).toBeHidden();
   await changesHeader.getByRole('button', { name: '展开全部文件夹' }).click();
@@ -1256,16 +1256,16 @@ test('branch menus offer a fast-forward entry next to merge, disabled when the c
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByText('develop', { exact: true }).click({ button: 'right' });
   const sidebarMenu = page.getByRole('menu');
-  await expect(sidebarMenu.getByRole('menuitem', { name: 'Merge into current' })).toBeEnabled();
-  const sidebarFf = sidebarMenu.getByRole('menuitem', { name: 'Fast-forward current to this' });
+  await expect(sidebarMenu.getByRole('menuitem', { name: '合并到当前分支' })).toBeEnabled();
+  const sidebarFf = sidebarMenu.getByRole('menuitem', { name: '将当前分支快进到此处' });
   await expect(sidebarFf).toBeVisible();
   await expect(sidebarFf).toHaveAttribute('aria-disabled', 'true');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
   await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
   const graphMenu = page.getByRole('menu');
-  await expect(graphMenu.getByRole('menuitem', { name: 'Merge into current branch' })).toBeEnabled();
-  const graphFf = graphMenu.getByRole('menuitem', { name: 'Fast-forward current branch to this' });
+  await expect(graphMenu.getByRole('menuitem', { name: '合并到当前分支' })).toBeEnabled();
+  const graphFf = graphMenu.getByRole('menuitem', { name: '将当前分支快进到此处' });
   await expect(graphFf).toBeVisible();
   await expect(graphFf).toHaveAttribute('aria-disabled', 'true');
 });
@@ -1443,10 +1443,10 @@ test('the working copy filter narrows both lists and shows counts', async ({ pag
   await filter.fill('graph');
   await expect(page.getByText('CommitGraph.tsx', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('ipc.ts', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('No changes match the filter.')).toBeVisible();
+  await expect(page.getByText('没有文件符合过滤条件。')).toBeVisible();
   const staged = demoStatus.files.filter((file) => file.staged);
   const stagedShown = filterFiles(staged, (file) => file.path, 'graph');
-  await expect(page.getByText(/^Staged/).locator('..')).toContainText(
+  await expect(page.getByText(/^已暂存/).locator('..')).toContainText(
     `${stagedShown.length} of ${staged.length}`,
   );
 
@@ -1541,12 +1541,9 @@ test('staged files can be discarded from the row, the menu and the header', asyn
   await expect(page.getByRole('menuitem', { name: /丢弃更改/ })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button', { name: 'Discard all staged changes' }).click();
+  await page.getByRole('button', { name: '全部丢弃已暂存的更改' }).click();
   const stagedCount = demoStatus.files.filter((file) => file.staged).length;
-  const stagedNoun = stagedCount === 1 ? 'change' : 'changes';
-  await expect(
-    dialog.getByText(`Discard all ${stagedCount} staged ${stagedNoun}?`),
-  ).toBeVisible();
+  await expect(dialog.getByText(`全部丢弃 ${stagedCount} 个已暂存更改？`)).toBeVisible();
   await dialog.getByRole('button', { name: '取消' }).click();
 });
 
@@ -1632,9 +1629,9 @@ test('settings can install the command line tool', async ({ page }) => {
   await expect(dialog.getByText('Command line tool')).toBeVisible();
   await expect(dialog.getByText('angkorgit open [path]')).toBeVisible();
   await expect(dialog.getByText(/angkorgit clone \[-b branch\]/)).toBeVisible();
-  await dialog.getByRole('button', { name: 'Install', exact: true }).click();
+  await dialog.getByRole('button', { name: '安装', exact: true }).click();
   await expect(dialog.getByText('/usr/local/bin/angkorgit')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Uninstall', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '卸载', exact: true })).toBeVisible();
 });
 
 test('settings lists detected editors and the toolbar opens in the chosen one', async ({ page }) => {
@@ -1646,7 +1643,7 @@ test('settings lists detected editors and the toolbar opens in the chosen one', 
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Git', exact: true }).click();
-  await expect(dialog.getByText('External editor')).toBeVisible();
+  await expect(dialog.getByText('外部编辑器')).toBeVisible();
   const zed = dialog.getByRole('button', { name: /^Zed/ });
   await expect(zed).toBeVisible();
   await zed.click();
@@ -1792,7 +1789,7 @@ test('the diff header opens blame inside file history with authors per hunk', as
   await page.locator('section[aria-label^="文件差异："]').getByRole('button', { name: 'Blame' }).click();
   const history = page.locator('section[aria-label$="的历史"]');
   await expect(history).toBeVisible();
-  await expect(history.getByRole('button', { name: 'Blame view' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(history.getByRole('button', { name: '溯源视图' })).toHaveAttribute('aria-pressed', 'true');
   await expect(history.locator('[data-working-copy-row]')).toHaveClass(/border-l-primary/);
   const pane = history.locator('[data-blame-pane]');
   await expect(pane.locator('[data-blame-line="1"]')).toBeVisible();
@@ -1809,7 +1806,7 @@ test('the diff header opens blame inside file history with authors per hunk', as
   await expect(page.getByRole('menuitem', { name: 'Blame at this commit' })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await history.getByRole('button', { name: 'Diff view' }).click();
+  await history.getByRole('button', { name: '差异视图' }).click();
   await expect(history.locator('[data-blame-pane]')).toHaveCount(0);
   await expect(history.getByRole('button', { name: '内联 diff' })).toBeVisible();
 
@@ -1865,7 +1862,7 @@ test('the terminal focuses on open and reopen and offers its right-click actions
   await expect(host.locator('.xterm-helper-textarea')).toBeFocused();
   await page.keyboard.type('first-open');
   await expect(host.locator('.xterm-rows')).toContainText('first-open');
-  await page.getByRole('button', { name: 'Close terminal' }).click();
+  await page.getByRole('button', { name: '关闭终端' }).click();
   await expect(host).toBeHidden();
   await page.getByRole('button', { name: '切换终端' }).click();
   await expect(host.locator('.xterm-helper-textarea')).toBeFocused();
@@ -2188,7 +2185,7 @@ test('the All files view shows the whole working tree with changed files still a
 
   await page.getByRole('button', { name: '扁平文件列表' }).click();
   await expect(inspector.getByText('README.md')).toHaveCount(0);
-  await expect(inspector.getByText(/^Changes/)).toBeVisible();
+  await expect(inspector.getByText(/^更改/)).toBeVisible();
 });
 
 test('dragging a diff selection past the bottom edge keeps growing it and copies every line', async ({ page }) => {
@@ -2384,10 +2381,10 @@ test('ignore whitespace hides an indent-only change and turns staging off', asyn
   await diff.getByRole('button', { name: '视图选项' }).click();
   await page.getByRole('menuitemcheckbox', { name: '忽略空白字符' }).click();
   await expect(diff.getByText('+0', { exact: true })).toBeVisible();
-  await expect(diff.getByText('Only whitespace changes found')).toBeVisible();
-  await expect(diff.getByRole('button', { name: 'Stage hunk' })).toHaveCount(0);
-  await diff.getByRole('button', { name: 'View options' }).click();
-  await expect(page.getByRole('menu').getByText('not the patch git would apply')).toBeVisible();
+  await expect(diff.getByText('仅发现空白字符更改')).toBeVisible();
+  await expect(diff.getByRole('button', { name: '暂存代码块' })).toHaveCount(0);
+  await diff.getByRole('button', { name: '视图选项' }).click();
+  await expect(page.getByRole('menu').getByText('不是 Git 会实际应用的补丁')).toBeVisible();
 
   await page.keyboard.press('Escape');
   await page.getByText('ipc.ts', { exact: true }).first().click();

@@ -1019,7 +1019,7 @@ export function WorkingCopyPanel() {
           <>
         <div className="mb-1 flex items-center justify-between px-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Changes {countLabel(unstagedFiles.length, allUnstaged.length)}
+            更改 {countLabel(unstagedFiles.length, allUnstaged.length)}
           </span>
           {allUnstaged.length > 0 && (
             <span className="flex items-center">
@@ -1082,7 +1082,7 @@ export function WorkingCopyPanel() {
           className="mb-1 mt-3 flex items-center justify-between border-t border-border-subtle px-2 pt-3"
         >
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Staged {countLabel(stagedFiles.length, allStaged.length)}
+            已暂存 {countLabel(stagedFiles.length, allStaged.length)}
           </span>
           {allStaged.length > 0 && (
             <span className="flex items-center">

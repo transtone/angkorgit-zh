@@ -917,7 +917,7 @@ export function CommitDetails({
       >
         <p className="mb-1 flex items-center justify-between gap-2 border-b border-border-subtle px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted">
           <span className="shrink-0">
-            Files
+            文件
             {!loading && !error && (
               <span className="ml-1 text-faint">
                 {allMode && tree ? (

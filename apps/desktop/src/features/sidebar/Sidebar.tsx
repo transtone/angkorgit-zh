@@ -1582,7 +1582,7 @@ export function Sidebar() {
                 })
               }
             >
-              <GitMerge /> Merge into current
+              <GitMerge /> 合并到当前分支
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={branchMenu.branch.isHead || branchMenuFf !== true}
@@ -1592,7 +1592,7 @@ export function Sidebar() {
                 })
               }
             >
-              <FastForward /> Fast-forward current to this
+              <FastForward /> 将当前分支快进到此处
             </DropdownMenuItem>
             {!branchMenu.branch.isRemote && (
               <DropdownMenuItem

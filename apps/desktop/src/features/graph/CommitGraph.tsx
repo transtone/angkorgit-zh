@@ -663,7 +663,7 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <GitMerge /> Merge into current branch
+                  <GitMerge /> 合并到当前分支
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={refMenuFf !== true}
@@ -674,7 +674,7 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <FastForward /> Fast-forward current branch to this
+                  <FastForward /> 将当前分支快进到此处
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>

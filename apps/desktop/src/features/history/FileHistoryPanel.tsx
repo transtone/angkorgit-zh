@@ -259,21 +259,21 @@ export function FileHistoryPanel({ file }: { file: string }) {
             size="sm"
             className={cn('h-6 px-2', pane === 'diff' && 'bg-surface-raised text-foreground')}
             aria-pressed={pane === 'diff'}
-            aria-label="Diff view"
+            aria-label="差异视图"
             onClick={() => setPane('diff')}
           >
-            Diff
+            差异
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className={cn('h-6 px-2', pane === 'blame' && 'bg-surface-raised text-foreground')}
             aria-pressed={pane === 'blame'}
-            aria-label="Blame view"
+            aria-label="溯源视图"
             onClick={() => setPane('blame')}
           >
             <UserRoundSearch className="size-3.5" />
-            Blame
+            溯源
           </Button>
         </div>
         {pane === 'diff' && (

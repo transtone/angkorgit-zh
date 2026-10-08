@@ -605,16 +605,16 @@ function CliToolCard() {
 
   return (
     <SettingCard
-      title="Command line tool"
-      description="Open or clone a repository from the terminal as angkorgit or the short akg. Run akg --help for the full usage."
+      title="命令行工具"
+      description="在终端中以 angkorgit 或简写 akg 打开、克隆仓库。运行 akg --help 查看完整用法。"
       action={
         status ? (
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => void uninstall()}>
-            Uninstall
+            卸载
           </Button>
         ) : (
           <Button size="sm" disabled={busy} onClick={() => void install()}>
-            Install
+            安装
           </Button>
         )
       }
@@ -648,7 +648,7 @@ function EditorCard() {
 
   return (
     <SettingCard
-      title="External editor"
+      title="外部编辑器"
       description="Open the repository or a file in an editor installed on this machine, from the toolbar, the palette and the file menus."
       action={
         <Button variant="ghost" size="sm" onClick={() => void rescan()} disabled={loading}>
