@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type DiffViewMode = 'inline' | 'split';
+export type DiffLayout = 'file' | 'all';
 
 export type FileView = 'list' | 'tree' | 'all';
 
@@ -34,6 +35,7 @@ export type DialogKind =
   | 'createWorktree'
   | 'repoShortcut'
   | 'repoGroup'
+  | 'scanRepositories'
   | null;
 
 export interface CenterDiffTarget {
@@ -42,6 +44,7 @@ export interface CenterDiffTarget {
   oid?: string;
   oldPath?: string | null;
   unchanged?: boolean;
+  stash?: boolean;
 }
 
 export interface InteractiveRebasePreset {
@@ -74,6 +77,10 @@ export interface ClonePreset {
   branch?: string;
 }
 
+export interface ScanRepositoriesPreset {
+  scanRoot: string;
+}
+
 export interface RepoShortcutPreset {
   repoPath: string;
 }
@@ -97,6 +104,7 @@ export type DialogContext =
   | ClonePreset
   | RepoShortcutPreset
   | RepoGroupPreset
+  | ScanRepositoriesPreset
   | null;
 
 interface UiState {
@@ -104,9 +112,11 @@ interface UiState {
   sidebarHiddenForDiff: boolean;
   terminalOpen: boolean;
   paletteOpen: boolean;
+  repoSwitcherOpen: boolean;
   dialog: DialogKind;
   dialogContext: DialogContext;
   diffView: DiffViewMode;
+  diffLayout: DiffLayout;
   wordDiff: boolean;
   ignoreWhitespace: boolean;
   fullFileDiff: boolean;
@@ -138,9 +148,11 @@ interface UiState {
   setSidebarOpen: (open: boolean) => void;
   toggleTerminal: () => void;
   setPaletteOpen: (open: boolean) => void;
+  setRepoSwitcherOpen: (open: boolean) => void;
   openDialog: (dialog: DialogKind, context?: DialogContext) => void;
   closeDialog: () => void;
   setDiffView: (mode: DiffViewMode) => void;
+  setDiffLayout: (layout: DiffLayout) => void;
   setWordDiff: (on: boolean) => void;
   setIgnoreWhitespace: (on: boolean) => void;
   setFullFileDiff: (on: boolean) => void;
@@ -200,9 +212,11 @@ export const useUi = create<UiState>()(
   sidebarHiddenForDiff: false,
   terminalOpen: false,
   paletteOpen: false,
+  repoSwitcherOpen: false,
   dialog: null,
   dialogContext: null,
   diffView: 'inline',
+  diffLayout: 'file',
   wordDiff: true,
   ignoreWhitespace: false,
   fullFileDiff: false,
@@ -238,7 +252,10 @@ export const useUi = create<UiState>()(
     ),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
-  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setPaletteOpen: (paletteOpen) =>
+    set((s) => ({ paletteOpen, repoSwitcherOpen: paletteOpen ? false : s.repoSwitcherOpen })),
+  setRepoSwitcherOpen: (repoSwitcherOpen) =>
+    set((s) => ({ repoSwitcherOpen, paletteOpen: repoSwitcherOpen ? false : s.paletteOpen })),
   openDialog: (dialog, context = null) => {
     captureDialogFocus();
     set({ dialog, dialogContext: context });
@@ -248,6 +265,7 @@ export const useUi = create<UiState>()(
     restoreDialogFocus();
   },
   setDiffView: (diffView) => set({ diffView }),
+  setDiffLayout: (diffLayout) => set({ diffLayout }),
   setWordDiff: (wordDiff) => set({ wordDiff }),
   setIgnoreWhitespace: (ignoreWhitespace) => set({ ignoreWhitespace }),
   setFullFileDiff: (fullFileDiff) => set({ fullFileDiff }),
@@ -345,6 +363,7 @@ export const useUi = create<UiState>()(
       partialize: (state) => ({
         sidebarOpen: state.sidebarOpen,
         diffView: state.diffView,
+        diffLayout: state.diffLayout,
         wordDiff: state.wordDiff,
         ignoreWhitespace: state.ignoreWhitespace,
         fullFileDiff: state.fullFileDiff,

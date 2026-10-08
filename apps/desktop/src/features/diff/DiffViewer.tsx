@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
+import { FileText, ImageOff } from 'lucide-react';
 import { imageMimeFor, type DiffHunk, type DiffLine, type FileDiff } from '@angkorgit/core';
-import { cn } from '@angkorgit/design-system';
+import { cn, PaneEmpty } from '@angkorgit/design-system';
 import { useUi } from '@/features/ui/store';
 import { languageOf } from '@/shared/highlight';
 import { CodeLine, gutter, lineBg, pairHunkLines, prepareLineStates, wrapUnavailable, type SearchRanges } from './diffShared';
@@ -12,6 +13,7 @@ interface HunkProps {
   useWordDiff: boolean;
   actions?: React.ReactNode;
   search?: SearchRanges;
+  wrap?: boolean;
 }
 
 function searchTint(line: DiffLine | null, search?: SearchRanges): React.CSSProperties | undefined {
@@ -35,7 +37,7 @@ function HunkHeader({ hunk, actions }: { hunk: DiffHunk; actions?: React.ReactNo
   );
 }
 
-function WrappedInlineHunk({ hunk, language, useWordDiff, actions, search }: HunkProps) {
+function WrappedInlineHunk({ hunk, language, useWordDiff, actions, search, wrap = true }: HunkProps) {
   const pairs = useMemo(() => pairHunkLines(hunk), [hunk]);
   const counterpart = useMemo(() => {
     const map = new Map();
@@ -80,7 +82,7 @@ function WrappedInlineHunk({ hunk, language, useWordDiff, actions, search }: Hun
               language={language}
               useWordDiff={useWordDiff}
               side={line.kind === 'deletion' ? 'old' : 'new'}
-              wrap
+              wrap={wrap}
             />
           </div>
         </div>
@@ -159,6 +161,15 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
 }
 
 function ImageDiff({ diff }: { diff: FileDiff }) {
+  if (!diff.oldImage && !diff.newImage) {
+    return (
+      <PaneEmpty
+        icon={<ImageOff />}
+        title="Image unavailable"
+        description="The contents could not be loaded."
+      />
+    );
+  }
   const mime = imageMimeFor(diff.path) ?? 'application/octet-stream';
   return (
     <div className="flex gap-4 p-4">
@@ -174,9 +185,6 @@ function ImageDiff({ diff }: { diff: FileDiff }) {
           <figcaption className="mt-2 text-xs text-success">变更后</figcaption>
         </figure>
       )}
-      {!diff.oldImage && !diff.newImage && (
-        <p className="w-full py-8 text-center text-sm text-faint">图片内容不可用</p>
-      )}
     </div>
   );
 }
@@ -187,14 +195,14 @@ export function DiffViewer({
   hunkActions,
   onLineContextMenu,
   search,
-  emptyLabel = '无更改',
+  stacked = false,
 }: {
   diff: FileDiff;
   scrollRef?: React.RefObject<HTMLDivElement>;
   hunkActions?: (hunkIndex: number) => React.ReactNode;
   onLineContextMenu?: (event: React.MouseEvent, info: LineMenuInfo) => void;
   search?: SearchRanges;
-  emptyLabel?: string;
+  stacked?: boolean;
 }) {
   const diffView = useUi((s) => s.diffView);
   const useWord = useUi((s) => s.wordDiff);
@@ -202,22 +210,34 @@ export function DiffViewer({
   const language = useMemo(() => languageOf(diff.path), [diff.path]);
   prepareLineStates(diff, language);
   const split = diffView === 'split';
-  const wrap = wrapLines && !wrapUnavailable(diff);
+  const wrap = stacked ? wrapLines || split : wrapLines && !wrapUnavailable(diff);
 
   const flatRows = useMemo(
-    () => (!wrap && scrollRef ? flattenDiff(diff, split) : []),
-    [diff, split, wrap, scrollRef],
+    () => (!wrap && scrollRef && !stacked ? flattenDiff(diff, split) : []),
+    [diff, split, wrap, scrollRef, stacked],
   );
 
   if (diff.isImage) return <ImageDiff diff={diff} />;
   if (diff.isBinary) {
-    return <p className="py-8 text-center text-sm text-faint">二进制文件——无文本 diff</p>;
+    return (
+      <PaneEmpty
+        icon={<FileText />}
+        title="Binary file"
+        description="There is no text diff for this file."
+      />
+    );
   }
   if (diff.hunks.length === 0) {
-    return <p className="py-8 text-center text-sm text-faint">{emptyLabel}</p>;
+    return (
+      <PaneEmpty
+        icon={<FileText />}
+        title="No changes"
+        description="This revision matches the previous one."
+      />
+    );
   }
 
-  if (!wrap && scrollRef) {
+  if (!wrap && scrollRef && !stacked) {
     const props = {
       rows: flatRows,
       language,
@@ -231,7 +251,7 @@ export function DiffViewer({
   }
 
   return (
-    <div>
+    <div className={cn(!wrap && 'min-w-max')}>
       {diff.hunks.map((hunk, i) => {
         const props: HunkProps = {
           hunk,
@@ -239,6 +259,7 @@ export function DiffViewer({
           useWordDiff: useWord,
           actions: hunkActions?.(i),
           search,
+          wrap,
         };
         return split ? <WrappedSplitHunk key={i} {...props} /> : <WrappedInlineHunk key={i} {...props} />;
       })}

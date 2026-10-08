@@ -38,8 +38,8 @@ export function useShortcuts(shortcuts: Shortcut[]): void {
         const hasModifier = shortcut.combo.includes('mod+') || shortcut.combo.includes('alt+');
         if (shortcut.skipInInput && inEditable(event)) continue;
         if (!hasModifier && !shortcut.allowInInput && inEditable(event)) continue;
-        event.preventDefault();
         shortcut.handler(event);
+        event.preventDefault();
         return;
       }
     };

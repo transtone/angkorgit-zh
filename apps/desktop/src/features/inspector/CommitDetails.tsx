@@ -10,6 +10,7 @@ import {
   Copy,
   ExternalLink,
   File as FileIcon,
+  FileText,
   FolderOpen,
   History,
   Monitor,
@@ -42,6 +43,7 @@ import {
   DropdownMenuTrigger,
   Hint,
   Logo,
+  PaneEmpty,
   Textarea,
   cn,
 } from '@angkorgit/design-system';
@@ -57,7 +59,7 @@ import { useSettings } from '@/features/settings/store';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { AiResultPanel } from '@/features/ai/AiResultPanel';
-import { ChangeMark } from '@/components/ChangeMark';
+import { ChangeMark, statusMeta } from '@/components/ChangeMark';
 import { DirName } from '@/components/DirName';
 import { EXPLAIN_WAIT_MESSAGES, REVIEW_WAIT_MESSAGES } from '@/features/ai/waitMessages';
 import { commitReviewKeyFor, explainKeyFor, useAiWork } from '@/features/ai/workStore';
@@ -84,15 +86,6 @@ type ChangeKind = CommitFileInfo['status'];
 const VIRTUAL_FILE_THRESHOLD = 200;
 const FILE_ROW_HEIGHT = 34;
 
-const statusMeta: Record<
-  CommitFileInfo['status'],
-  { label: string; mark: string; className: string; tone: 'info' | 'success' | 'danger' | 'primary' }
-> = {
-  modified: { label: '已修改', mark: 'M', className: 'text-info', tone: 'info' },
-  new: { label: '新增', mark: 'A', className: 'text-success', tone: 'success' },
-  deleted: { label: '已删除', mark: 'D', className: 'text-danger', tone: 'danger' },
-  renamed: { label: '重命名', mark: 'R', className: 'text-primary', tone: 'primary' },
-};
 
 function ChangeFilter({
   diffs,
@@ -410,7 +403,7 @@ export function CommitDetails({
     (index: number) => {
       const d = shownDiffs[index];
       if (!d) return;
-      openCenterDiff({ path: d.path, oid: d.sourceOid ?? commit.oid, oldPath: d.oldPath });
+      openCenterDiff({ path: d.path, oid: d.sourceOid ?? commit.oid, oldPath: d.oldPath, stash: !!stash });
       requestAnimationFrame(() => {
         filesRef.current?.querySelector('[data-active-file]')?.scrollIntoView({ block: 'nearest' });
       });
@@ -542,7 +535,7 @@ export function CommitDetails({
               return;
             }
             if (active) closeCenterDiff();
-            else openCenterDiff({ path: diff.path, oid: diffOid, oldPath: diff.oldPath });
+            else openCenterDiff({ path: diff.path, oid: diffOid, oldPath: diff.oldPath, stash: !!stash });
           }}
         >
           <ChangeMark tone={meta?.tone ?? 'neutral'} title={meta?.label}>
@@ -1038,9 +1031,15 @@ export function CommitDetails({
               ))}
             </div>
           ) : shownEntries.length === 0 ? (
-            <p className="px-2 py-1.5 text-xs text-faint">
-              {filtering ? '没有文件符合过滤条件。' : '此提交没有文件。'}
-            </p>
+            filtering ? (
+              <p className="px-2 py-1.5 text-xs text-faint">No files match the filter.</p>
+            ) : (
+              <PaneEmpty
+                icon={<FileText />}
+                title="No files"
+                description="This commit did not change any files."
+              />
+            )
           ) : (
             <FileTree
               items={shownEntries}

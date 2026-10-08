@@ -1,22 +1,21 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Columns2, Copy, FileText, History, Info, Minus, Plus, Rows3, SearchCheck, SlidersHorizontal, Space, Sparkles, TextSelect, Trash2, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, FileText, History, Minus, Plus, SearchCheck, Space, Sparkles, TextSelect, Trash2, UserRoundSearch, X } from 'lucide-react';
 import type { CommitFileInfo, FileDiff } from '@angkorgit/core';
 import { aiCapabilities, hasCommittedHistory, hasReviewableText, hashText, locateDiffLine, patchTextOf, PROJECT_REVIEW_FILE } from '@angkorgit/core';
 import {
   Badge,
   Button,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Hint,
   Kbd,
   Logo,
+  PaneEmpty,
   Separator,
   Spinner,
   cn,
@@ -40,6 +39,7 @@ import { useDiffSelectAll } from './diffCopy';
 import { diffSelectionText } from './diffSelection';
 import { changeBlocks, DiffMinimap, scrollToFraction } from './DiffMinimap';
 import { ChangeNavButtons, useChangeJump } from './changeNav';
+import { DiffLayoutToggle, DiffViewControls, MenuNote } from './DiffViewControls';
 
 const LOCATE_HIGHLIGHT_MS = 2500;
 const COMPACT_HEADER_WIDTH = 960;
@@ -67,15 +67,6 @@ function fileAiIcon(kind: FileAiKind, className: string) {
   return kind === 'review' ? <SearchCheck className={className} /> : <Sparkles className={className} />;
 }
 
-function MenuNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mx-1 mb-0.5 mt-1 flex items-start gap-2 rounded-md bg-surface-raised px-2 py-1.5 text-[11px] leading-snug text-muted">
-      <Info className="mt-px size-3.5 shrink-0 text-faint" />
-      <span>{children}</span>
-    </div>
-  );
-}
-
 export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const repo = useRepo((s) => s.repo);
   const status = useRepo((s) => s.status);
@@ -86,15 +77,9 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const openFileHistory = useUi((s) => s.openFileHistory);
   const openBlame = useUi((s) => s.openBlame);
   const diffView = useUi((s) => s.diffView);
-  const setDiffView = useUi((s) => s.setDiffView);
-  const wordDiff = useUi((s) => s.wordDiff);
-  const setWordDiff = useUi((s) => s.setWordDiff);
   const ignoreWhitespace = useUi((s) => s.ignoreWhitespace);
-  const setIgnoreWhitespace = useUi((s) => s.setIgnoreWhitespace);
   const fullFileDiff = useUi((s) => s.fullFileDiff);
-  const setFullFileDiff = useUi((s) => s.setFullFileDiff);
   const wrapLines = useUi((s) => s.wrapLines);
-  const setWrapLines = useUi((s) => s.setWrapLines);
   const [diff, setDiff] = useState<FileDiff | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -122,6 +107,14 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
 
   const path = repo?.path ?? '';
   const isWorkingCopy = target.oid === undefined;
+  const blankText = !!diff && !diff.isBinary && !diff.isImage && diff.hunks.length === 0;
+  const whitespaceOnly = ignoreWhitespace && !target.unchanged && blankText;
+  const emptyFile =
+    !!diff &&
+    !!target.unchanged &&
+    !diff.isBinary &&
+    !diff.isImage &&
+    diff.hunks.every((hunk) => hunk.lines.length === 0);
   const aiKey = fileAiKeyFor(path, target);
   const aiResult = useAiWork((s) => s.fileAi[aiKey] ?? null);
   const aiBusyKind = useAiWork((s) => s.fileAiBusy[aiKey] ?? null);
@@ -145,7 +138,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         result.deletions === 0 &&
         !result.isBinary &&
         !result.isImage;
-      return untouched ? null : result;
+      return untouched && !ignore ? null : result;
     }
     return ipc.diffFile(path, target.path, target.staged ?? false, contextLines, ignore);
   };
@@ -483,75 +476,19 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </span>
         )}
         <Separator orientation="vertical" className="mx-1 h-4" />
-        <Hint label="内联 diff">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="内联 diff"
-            className={cn(diffView === 'inline' && 'bg-surface-raised text-foreground')}
-            onClick={() => setDiffView('inline')}
-          >
-            <Rows3 className="size-3.5" />
-          </Button>
-        </Hint>
-        <Hint label="并排 diff">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="并排 diff"
-            className={cn(diffView === 'split' && 'bg-surface-raised text-foreground')}
-            onClick={() => setDiffView('split')}
-          >
-            <Columns2 className="size-3.5" />
-          </Button>
-        </Hint>
-        <DropdownMenu>
-          <Hint
-            label={
-              ignoreWhitespace
-                ? '视图选项。已忽略空白字符，代码块与单行暂存已停用：当前显示的块不是 Git 会实际应用的补丁。'
-                : '视图选项'
-            }
-          >
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="视图选项"
-                className={cn((wordDiff || wrapLines || fullFileDiff || ignoreWhitespace) && 'text-primary')}
-              >
-                <SlidersHorizontal className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-          </Hint>
-          <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuLabel>视图选项</DropdownMenuLabel>
-            <DropdownMenuCheckboxItem icon={<WholeWord />} checked={wordDiff} onCheckedChange={(v) => setWordDiff(v === true)}>
-              词级 diff
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem icon={<Space />} checked={ignoreWhitespace} onCheckedChange={(v) => setIgnoreWhitespace(v === true)}>
-              忽略空白字符
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              icon={<WrapText />}
-              checked={wrapLines}
-              disabled={!!textDiff && wrapUnavailable(textDiff)}
-              onCheckedChange={(v) => setWrapLines(v === true)}
-            >
-              自动换行
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem icon={<FileText />} checked={fullFileDiff} onCheckedChange={(v) => setFullFileDiff(v === true)}>
-              显示整个文件
-            </DropdownMenuCheckboxItem>
-            {ignoreWhitespace && (
-              <MenuNote>暂存已停用：当前显示的块不是 Git 会实际应用的补丁。</MenuNote>
-            )}
-            {textDiff && wrapUnavailable(textDiff) && (
-              <MenuNote>大文件下保持关闭换行以保证滚动流畅。</MenuNote>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Hint label="文件历史">
+        {target.oid && !target.unchanged && !target.stash && <DiffLayoutToggle />}
+        <DiffViewControls
+          wrapDisabled={!!textDiff && wrapUnavailable(textDiff)}
+          notes={
+            <>
+              {ignoreWhitespace && <MenuNote>Staging is off: these hunks are not the patch git would apply.</MenuNote>}
+              {textDiff && wrapUnavailable(textDiff) && (
+                <MenuNote>Wrapping stays off for large files so scrolling keeps up.</MenuNote>
+              )}
+            </>
+          }
+        />
+        <Hint label="File history">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -721,18 +658,23 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                 重试
               </Button>
             </div>
-          ) : diff &&
-            target.unchanged &&
-            !diff.isBinary &&
-            !diff.isImage &&
-            diff.hunks.every((h) => h.lines.length === 0) ? (
-            <p className="py-16 text-center text-sm text-faint">This file is empty.</p>
+          ) : emptyFile ? (
+            <PaneEmpty icon={<FileText />} title="This file is empty" description="There is nothing to compare." />
+          ) : whitespaceOnly ? (
+            <PaneEmpty
+              icon={<Space />}
+              title="Only whitespace changes found"
+              description={
+                isWorkingCopy && target.staged
+                  ? 'These whitespace changes are staged and will be committed. Turn off Ignore whitespace to unstage them.'
+                  : 'Line and hunk stage are off while whitespace is hidden.'
+              }
+            />
           ) : diff ? (
             <DiffViewer
             diff={diff}
             scrollRef={scrollRef}
             search={highlight}
-            emptyLabel={ignoreWhitespace ? '此文件仅有空白字符更改' : undefined}
             onLineContextMenu={(e, info) => {
               e.preventDefault();
               setLineMenu({
@@ -775,12 +717,16 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             }
             />
           ) : (
-            <p className="py-16 text-center text-sm text-faint">
-              没有可显示的 diff——更改可能已被暂存或已解决。
-            </p>
+            <PaneEmpty
+              icon={<FileText />}
+              title="No diff to show"
+              description="The change may already be staged or resolved."
+            />
           )}
         </div>
-        {diff && !loading && <DiffMinimap diff={diff} view={diffView} scrollRef={scrollRef} />}
+        {diff && !loading && !whitespaceOnly && !emptyFile && (
+          <DiffMinimap diff={diff} view={diffView} scrollRef={scrollRef} />
+        )}
       </div>
 
       {lineMenu && (

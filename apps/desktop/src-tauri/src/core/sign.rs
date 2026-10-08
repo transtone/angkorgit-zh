@@ -196,7 +196,7 @@ fn sign_with_ssh(config: &SigningConfig, content: &str) -> AppResult<String> {
         file
     };
 
-    let buffer_file = temp_file(".buf");
+    let buffer_file = temp_file("");
     std::fs::write(&buffer_file, content)?;
     let mut sig_name = buffer_file.clone().into_os_string();
     sig_name.push(".sig");

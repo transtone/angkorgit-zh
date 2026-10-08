@@ -18,6 +18,7 @@ import {
   Copy,
   FolderGit2,
   FolderOpen,
+  FolderSearch,
   FolderTree,
   GitBranchPlus,
   MoreHorizontal,
@@ -44,6 +45,7 @@ import {
   Input,
   Kbd,
   Logo,
+  PaneEmpty,
   Spinner,
   TemplePattern,
   cn,
@@ -58,6 +60,7 @@ import { RepoShortcutDialog } from './RepoShortcutDialog';
 import { RepoGroupDialog } from './RepoGroupDialog';
 import { GroupDot, GroupTile, RepoGroupSubmenu } from './RepoGroupMenu';
 import { closeRepoGroup, deleteRepoGroup, openRepoGroup } from './groups';
+import { ScanRepositoriesDialog, startRepositoryScan } from './ScanRepositoriesDialog';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { SettingEmpty } from '@/features/settings/SettingCard';
 import { isMac, shortenHome, timeAgo } from '@/shared/utils';
@@ -500,17 +503,31 @@ export function WelcomePage() {
               </div>
               </>
             )}
+            <Hint label="Scan a folder for repositories">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className={cn(recents.length === 0 && 'ml-auto')}
+                onClick={() => void startRepositoryScan()}
+                aria-label="Scan a folder for repositories"
+              >
+                <FolderSearch className="size-3.5" />
+              </Button>
+            </Hint>
           </div>
           <div className={cn('overflow-y-auto p-2', hasGroups ? 'max-h-96' : 'max-h-72')}>
             {recents.length === 0 ? (
               <SettingEmpty
                 icon={<FolderGit2 className="size-4" />}
-                title="还没有仓库"
-                description="打开一个已有 .git 目录的文件夹，或从 URL 克隆一个。你打开的所有内容都会显示在这里。"
+                title="No repositories yet"
+                description="Open a folder that already has a .git directory, scan a folder full of them, or clone one from a URL. Everything you open shows up here."
                 action={
                   <span className="flex gap-2">
                     <Button variant="secondary" size="sm" onClick={browse}>
                       <FolderOpen className="size-3.5" /> 打开
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => void startRepositoryScan()}>
+                      <FolderSearch className="size-3.5" /> Scan
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => openDialog('clone')}>
                       <GitBranchPlus className="size-3.5" /> 克隆
@@ -520,7 +537,11 @@ export function WelcomePage() {
               />
             ) : searching ? (
               filtered.length === 0 ? (
-                <p className="px-3 py-8 text-center text-sm text-faint">未找到匹配“{query.trim()}”的仓库。</p>
+                <PaneEmpty
+                  icon={<Search />}
+                  title="No repositories"
+                  description={`Nothing matches “${query.trim()}”.`}
+                />
               ) : (
                 filtered.map((repo) => renderRow(repo, false))
               )
@@ -654,6 +675,7 @@ export function WelcomePage() {
       <SettingsDialog />
       <RepoShortcutDialog />
       <RepoGroupDialog />
+      <ScanRepositoriesDialog />
     </motion.div>
   );
 }

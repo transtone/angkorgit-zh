@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Check,
@@ -33,10 +33,12 @@ import {
   parseChordId,
   repoGroupIdFor,
   tabClusters,
+  tabLabels,
   type RepoGroup,
   type RepoGroupDropPosition,
 } from '@angkorgit/core';
-import { pickDirectory } from '@/core/ipc';
+import { ipc } from '@/core/ipc';
+import { openRepositoryInNewTab } from '@/features/repository/useRepoShortcuts';
 import { useRepo } from '@/features/repository/store';
 import { activateTab, closeRepoTabs } from '@/features/repository/tabs';
 import {
@@ -48,7 +50,7 @@ import {
 import { GroupDot, RepoGroupSubmenu } from '@/features/repository/RepoGroupMenu';
 import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
-import { isMac } from '@/shared/utils';
+import { isMac, modKey } from '@/shared/utils';
 
 const DRAG_TYPE = 'text/angkorgit-repo-tab';
 const GROUP_DRAG_TYPE = 'text/angkorgit-repo-group';
@@ -81,6 +83,34 @@ export function RepoTabs() {
   const groupIdOf = (path: string) => repoGroupIdFor(path, groupOf, worktreeMains);
 
   const activePath = repo?.path ?? null;
+  const tabsKey = tabs.join('\n');
+
+  useEffect(() => {
+    const paths = tabsKey ? tabsKey.split('\n') : [];
+    if (paths.length === 0) return;
+    let cancelled = false;
+    void ipc
+      .pathsExist(paths)
+      .then((flags) => {
+        if (cancelled) return;
+        const current = useRepo.getState().repo?.path;
+        const gone = paths.filter((path, i) => !flags[i] && path !== current);
+        if (gone.length === 0) return;
+        closeRepoTabs(gone);
+        const names = gone.map((path) => path.split(/[\\/]/).filter(Boolean).pop() ?? path);
+        toast.info(
+          gone.length === 1
+            ? `Closed the ${names[0]} tab: its folder no longer exists`
+            : `Closed ${gone.length} tabs whose folders no longer exist`,
+          { description: gone.join('\n') },
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [tabsKey]);
+
   useEffect(() => {
     const strip = stripRef.current;
     if (!strip || !activePath) return;
@@ -107,21 +137,10 @@ export function RepoTabs() {
   const expandAll = () => setTabGroupsCollapsed(Object.fromEntries(groupIds.map((id) => [id, false])));
   const anyCollapsed = groupIds.some((id) => tabGroupsCollapsed[id]);
 
-  const addNew = () => {
-    void (async () => {
-      const dir = await pickDirectory('打开仓库');
-      if (!dir) return;
-      try {
-        await useRepo.getState().open(dir);
-      } catch (error) {
-        toast.error(
-          `无法打开仓库：${(error as { message?: string }).message ?? error}`,
-        );
-      }
-    })();
-  };
+  const addNew = () => void openRepositoryInNewTab(() => undefined);
 
-  const label = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+  const labels = useMemo(() => tabLabels(tabs), [tabs]);
+  const label = (path: string) => labels.get(path)?.name ?? path;
   const shortcutFor = (path: string) => {
     const chord = shortcuts[path] ? parseChordId(shortcuts[path]) : null;
     return chord ? chordText(chord, isMac) : null;
@@ -212,7 +231,7 @@ export function RepoTabs() {
           if (e.button === 1) close(path); // middle-click closes
         }}
         className={cn(
-          'group flex h-8 min-w-0 max-w-44 shrink-0 cursor-default items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-xs',
+          'group flex h-8 min-w-0 max-w-56 shrink-0 cursor-default items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-xs',
           active
             ? 'border-border-subtle bg-background text-foreground'
             : 'border-transparent text-muted hover:bg-surface-raised hover:text-foreground',
@@ -226,7 +245,18 @@ export function RepoTabs() {
             aria-label="工作树"
           />
         )}
-        <span className="min-w-0 truncate">{label(path)}</span>
+        <span className={cn('min-w-0 truncate', labels.get(path)?.hint && 'max-w-full shrink-0')}>
+          {label(path)}
+        </span>
+        {labels.get(path)?.hint && (
+          <span
+            dir="rtl"
+            className={cn('min-w-0 truncate text-left text-[10px]', active ? 'text-muted' : 'text-faint')}
+            data-tab-hint
+          >
+            <bdi>{labels.get(path)?.hint}</bdi>
+          </span>
+        )}
         {shortcutFor(path) && (
           <span
             className={cn(
@@ -480,7 +510,7 @@ export function RepoTabs() {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      <Hint label="打开另一个仓库">
+      <Hint label={`Open another repository (${modKey()}T)`}>
         <Button
           variant="ghost"
           size="icon-sm"

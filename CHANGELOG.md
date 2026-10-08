@@ -6,6 +6,47 @@
 
 ## [未发布]
 
+### Added
+- **Scan a folder for repositories.** The folder-search button in the Recent
+  repositories header (and Scan in the empty state) picks a folder, walks every folder
+  under it for Git repositories, including submodules and repositories nested inside
+  others, skipping hidden and dependency folders such as node_modules, and lists what it
+  found with checkboxes. Repositories already in
+  recents are marked, and Add puts the picked ones into the list without opening them.
+- **Same-named tabs tell you which is which.** When two open repositories share a
+  folder name, such as a fork and the original or two clones, each tab adds the
+  nearest parent folder that sets it apart (“payments · shared-services”).
+- **Every file of a commit on one page.** The diff header of a commit file gains a
+  File / All files switch. All files stacks every changed file in one scrolling page,
+  GitLab-style: a sticky header per file with its status, folder and line counts, a
+  collapse arrow, Collapse all, and a button back to the single-file view. Inline or
+  side by side and the view options apply to every file at once. Diffs load as they
+  scroll into view, files over 1,500 changed lines start collapsed, clicking a file in
+  the commit's file list scrolls to it, scrolling moves the file list's highlight, and
+  [ / ] step between files. The choice is remembered.
+- **⌘P switches repositories.** A search box over every recent repository, matching
+  name or path, with the current repository and open tabs marked. Enter switches to the
+  repository's tab when it is already open and opens a new tab otherwise; it works from
+  the welcome page too. ⌘K stays the command palette (⌘P used to open it as well).
+- **⌘T opens a repository in a new tab**, the same as the + button at the end of the
+  tab strip.
+
+### Fixed
+- Opening the terminal now focuses its input immediately, so typing works without
+  clicking inside it first.
+- A tab whose folder was moved or deleted no longer lingers next to the repository's
+  new location. The tab strip checks its folders and closes the ones that are gone,
+  with a note naming them.
+- Clicking into a file diff and pressing ← closes it again, and → steps to the next
+  change. The window-level arrow shortcuts never fired: the shortcut hook marked the
+  key event as handled before the diff panel checked it, so only the file list's own
+  keys worked.
+
+### Changed
+- **Empty panes use one panel.** Diff blanks, a file with no history, an empty graph, a commit with no files, a welcome search with no matches, and an empty rebase plan use a centered panel (icon, title, one line) instead of a faint sentence. A staged whitespace-only file says those changes are still staged.
+- Recent repositories keep up to 1,000 entries instead of 30, so a scanned folder of
+  projects is not cut short.
+
 ## [0.21.1] — 2026-10-04
 
 A patch for the horizontal scrollbar that 0.21.0 introduced. On macOS it halved every

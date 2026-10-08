@@ -13,6 +13,7 @@ import type {
   HttpResponse,
   RecentRepository,
   RepositoryInfo,
+  RepositoryScan,
   StashInfo,
   StatusSummary,
   TagInfo,
@@ -111,6 +112,9 @@ export function demoRepoAt(path: string): RepositoryInfo {
 export const DEMO_LESS_PATH = 'styles/theme.less';
 export const DEMO_DOCKERFILE_PATH = 'Dockerfile';
 export const DEMO_INDENT_PATH = 'src/indent.txt';
+export const DEMO_INDENT_STAGED_PATH = 'src/indent-staged.txt';
+export const DEMO_BINARY_PATH = 'assets/logo.bin';
+export const DEMO_IMAGE_PATH = 'assets/preview.png';
 
 export const demoRecents: RecentRepository[] = [
   { path: '/Users/demo/projects/angkorgit', name: 'angkorgit', lastOpenedAt: 1754200000 },
@@ -118,6 +122,25 @@ export const demoRecents: RecentRepository[] = [
   { path: '/Users/demo/work/api-gateway', name: 'api-gateway', lastOpenedAt: 1753900000 },
   { path: '/Users/demo/work/billing-service', name: 'billing-service', lastOpenedAt: 1753800000 },
 ];
+
+export function demoAddRecents(paths: string[]): RecentRepository[] {
+  const at = Math.floor(Date.now() / 1000);
+  const kept = demoRecents.filter((r) => !paths.includes(r.path));
+  const added = paths.map((path) => ({ path, name: path.split('/').pop() ?? path, lastOpenedAt: at }));
+  demoRecents.splice(0, demoRecents.length, ...added, ...kept);
+  return demoRecents;
+}
+
+export async function demoScan(root: string): Promise<RepositoryScan> {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const base = root.replace(/\/+$/, '');
+  const repositories = ['angkorgit', 'temple-ui', 'tools/release-kit', 'sandbox/lane-colors'].map((rel) => ({
+    path: `${base}/${rel}`,
+    name: rel.split('/').pop() ?? rel,
+    isWorktree: rel === 'sandbox/lane-colors',
+  }));
+  return { repositories, truncated: false };
+}
 
 export const demoFonts = [
   { family: 'Fira Code', monospaced: true },
@@ -195,6 +218,9 @@ export const demoStatus: StatusSummary = {
     { path: DEMO_LESS_PATH, origPath: null, staged: null, unstaged: 'modified' },
     { path: DEMO_DOCKERFILE_PATH, origPath: null, staged: null, unstaged: 'untracked' },
     { path: DEMO_INDENT_PATH, origPath: null, staged: null, unstaged: 'modified' },
+    { path: DEMO_INDENT_STAGED_PATH, origPath: null, staged: 'modified', unstaged: null },
+    { path: DEMO_BINARY_PATH, origPath: null, staged: null, unstaged: 'modified' },
+    { path: DEMO_IMAGE_PATH, origPath: null, staged: null, unstaged: 'modified' },
   ],
   branch: 'main',
   ahead: 2,
@@ -464,8 +490,25 @@ function demoStatusDiff(
   };
 }
 
+function demoBlankDiff(path: string, kind: 'binary' | 'image'): FileDiff {
+  return {
+    path,
+    oldPath: null,
+    status: 'modified',
+    isBinary: kind === 'binary',
+    isImage: kind === 'image',
+    oldImage: null,
+    newImage: null,
+    additions: 0,
+    deletions: 0,
+    hunks: [],
+  };
+}
+
 export function demoFileDiffFor(path: string, ignoreWhitespace = false): FileDiff {
-  if (path === DEMO_INDENT_PATH) {
+  if (path === DEMO_BINARY_PATH) return demoBlankDiff(path, 'binary');
+  if (path === DEMO_IMAGE_PATH) return demoBlankDiff(path, 'image');
+  if (path === DEMO_INDENT_PATH || path === DEMO_INDENT_STAGED_PATH) {
     const diff = demoStatusDiff(path, 'modified', [
       [' ', 'one'],
       ['-', '  two'],

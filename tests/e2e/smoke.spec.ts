@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { filterFiles } from '../../packages/core/src/git/fileFilter';
+import { demoStatus } from '../../apps/desktop/src/core/demo';
 
 test('启动画面淡入欢迎屏幕', async ({ page }) => {
   await page.goto('/');
@@ -530,8 +532,8 @@ test('提交操作按钮保持在较窄的工作副本面板内', async ({ page 
   const panel = await inspector.boundingBox();
   expect(panel).not.toBeNull();
 
-  for (const name of ['审查', /提交 \d+ 个文件/] as const) {
-    const button = inspector.getByRole('button', { name });
+  for (const name of ['Review', /Commit \d+ files?/] as const) {
+    const button = inspector.getByRole('button', { name, exact: true });
     await expect(button).toBeVisible();
     const box = await button.boundingBox();
     expect(box).not.toBeNull();
@@ -928,7 +930,232 @@ test('欢迎页标记缺失的文件夹并可用键盘打开仓库', async ({ pa
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
 });
 
-test('冲突解决器在两侧和结果中都显示行号', async ({ page }) => {
+test('scanning a folder lists its repositories and adds the picked ones to recents', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Recent repositories')).toBeVisible({ timeout: 10_000 });
+  await page.evaluate(() => {
+    window.prompt = () => '/Users/demo/projects';
+  });
+  await page.getByRole('button', { name: 'Scan a folder for repositories' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add repositories from a folder' });
+  await expect(dialog.locator('[data-scan-summary]')).toHaveText('Found 4 · 2 already in recents');
+  await expect(dialog.getByText('In recents', { exact: true })).toHaveCount(2);
+  await expect(dialog.getByLabel('Add angkorgit')).toBeDisabled();
+  const add = dialog.getByRole('button', { name: 'Add 2 repositories' });
+  await expect(add).toBeEnabled();
+  await dialog.getByLabel('Add lane-colors').click();
+  await dialog.getByRole('button', { name: 'Add 1 repository' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Added 1 repository')).toBeVisible();
+  await expect(page.getByText('~/projects/tools/release-kit')).toBeVisible();
+  await expect(page.getByText('lane-colors', { exact: true })).toHaveCount(0);
+});
+
+test('tabs close when their folder is gone and same-named repositories show their parent folder', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(
+      'angkorgit-ui',
+      JSON.stringify({
+        state: {
+          repoTabs: ['/Users/demo/work/api-gateway', '/Users/demo/forks/angkorgit', '/Users/demo/projects/temple-ui'],
+          worktreeTabs: [],
+        },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Closed the api-gateway tab: its folder no longer exists')).toBeVisible();
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(3);
+  await expect(page.locator('[data-tab-path="/Users/demo/work/api-gateway"]')).toHaveCount(0);
+  await expect(page.locator('[data-tab-path="/Users/demo/forks/angkorgit"] [data-tab-hint]')).toHaveText('forks');
+  await expect(page.locator('[data-tab-path="/Users/demo/projects/angkorgit"] [data-tab-hint]')).toHaveText('projects');
+  await expect(page.locator('[data-tab-path="/Users/demo/projects/temple-ui"] [data-tab-hint]')).toHaveCount(0);
+});
+
+test('mod+p searches recent repositories and opens or switches to their tab, mod+t opens a new tab', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Recent repositories')).toBeVisible({ timeout: 10_000 });
+  await page.keyboard.press('ControlOrMeta+p');
+  const switcher = page.locator('[data-repo-switcher]');
+  const input = page.getByPlaceholder('Search recent repositories by name or path…');
+  await expect(input).toBeVisible();
+  await expect(input).toBeFocused();
+  await expect(switcher.locator('[data-repo-path]')).toHaveCount(4);
+  await input.fill('temple');
+  await expect(switcher.locator('[data-repo-path]')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(input).toBeHidden();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(1);
+  await expect(page.getByRole('tab', { selected: true })).toContainText('temple-ui');
+
+  await page.keyboard.press('ControlOrMeta+p');
+  await expect(switcher.locator('[data-repo-path="/Users/demo/projects/temple-ui"] [data-repo-tab-state]')).toHaveText('Current');
+  await input.fill('angkor');
+  await page.keyboard.press('Enter');
+  await expect(tabs).toHaveCount(2);
+  await expect(page.getByRole('tab', { selected: true })).toContainText('angkorgit');
+
+  await page.keyboard.press('ControlOrMeta+p');
+  await expect(switcher.locator('[data-repo-path="/Users/demo/projects/temple-ui"] [data-repo-tab-state]')).toHaveText('Open tab');
+  await input.fill('temple');
+  await page.keyboard.press('Enter');
+  await expect(tabs).toHaveCount(2);
+  await expect(page.getByRole('tab', { selected: true })).toContainText('temple-ui');
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByPlaceholder('Type a command or branch name…')).toBeVisible();
+  await expect(input).toBeHidden();
+  await page.keyboard.press('Escape');
+
+  await page.evaluate(() => {
+    window.prompt = () => '/Users/demo/forks/sandbox';
+  });
+  await page.keyboard.press('ControlOrMeta+t');
+  await expect(tabs).toHaveCount(3);
+  await expect(page.getByRole('tab', { selected: true })).toContainText('sandbox');
+});
+
+test('the all files layout stacks every commit file and follows the file list', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('row').nth(2).click();
+  await page.getByLabel('Commit files').getByRole('button', { name: /GraphRow\.tsx/ }).click();
+  await page.getByRole('button', { name: 'Show all files' }).click();
+  const view = page.locator('[data-all-changes]');
+  await expect(view).toBeVisible();
+  const sections = view.locator('[data-file-path]');
+  await expect(sections).toHaveCount(5);
+  await expect(view.locator('[data-file-diff]').first()).toBeVisible();
+  const scroller = view.locator('[data-all-changes-scroller]');
+  const topOf = async (path: string) => {
+    const box = await view.locator(`[data-file-path="${path}"]`).boundingBox();
+    const root = await scroller.boundingBox();
+    if (!box || !root) throw new Error('geometry missing');
+    return box.y - root.y;
+  };
+  await expect.poll(() => topOf('src/features/graph/GraphRow.tsx')).toBeLessThan(16);
+  await expect(view.getByText('2 of 5')).toBeVisible();
+
+  await page.getByLabel('Commit files').getByRole('button', { name: /Architecture\.md/ }).click();
+  await expect.poll(() => topOf('docs/Architecture.md')).toBeLessThan(16);
+  await expect(view.getByText('4 of 5')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Side-by-side diff' }).click();
+  await expect(view.locator('[data-file-diff] div.w-1\\/2').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Inline diff' }).click();
+
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  await scroller.hover();
+  await page.mouse.wheel(0, 1);
+  await expect(page.locator('[data-active-file]')).toContainText('CommitGraph.tsx');
+
+  await view.getByRole('button', { name: 'Collapse src/features/graph/store.ts' }).click();
+  await expect(view.locator('[data-file-path="src/features/graph/store.ts"]')).toHaveAttribute('data-file-section', 'collapsed');
+  await expect(view.locator('[data-file-path="src/features/graph/store.ts"] [data-file-diff]')).toHaveCount(0);
+  await view.getByRole('button', { name: 'Collapse all files' }).click();
+  await expect(view.locator('[data-file-section="open"]')).toHaveCount(0);
+  await view.getByRole('button', { name: 'Expand all files' }).click();
+  await expect(view.locator('[data-file-section="collapsed"]')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Show one file' }).click();
+  await expect(view).toBeHidden();
+  await expect(page.locator('section[aria-label^="Diff for"]')).toBeVisible();
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await page.getByRole('row').nth(2).click();
+  await page.getByRole('button', { name: /GraphRow\.tsx/ }).first().click();
+  await expect(page.locator('section[aria-label^="Diff for"]')).toBeVisible();
+  await expect(view).toBeHidden();
+});
+
+test('clicking a file in the inspector still jumps to it after scrolling reached it once', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('row').nth(2).click();
+  await page.getByLabel('Commit files').getByRole('button', { name: /CommitGraph\.tsx/ }).click();
+  await page.getByRole('button', { name: 'Show all files' }).click();
+  const view = page.locator('[data-all-changes]');
+  const scroller = view.locator('[data-all-changes-scroller]');
+  await expect(view.locator('[data-file-diff]').first()).toBeVisible();
+  const topOf = async (path: string) => {
+    const box = await view.locator(`[data-file-path="${path}"]`).boundingBox();
+    const root = await scroller.boundingBox();
+    if (!box || !root) throw new Error('geometry missing');
+    return box.y - root.y;
+  };
+  await scroller.hover();
+  await page.mouse.wheel(0, 1);
+  await scroller.evaluate((el) => {
+    const target = el.querySelector('[data-file-path="docs/Architecture.md"]') as HTMLElement;
+    el.scrollTop = target.offsetTop;
+  });
+  await expect(view.getByText('4 of 5')).toBeVisible();
+  await page.getByLabel('Commit files').getByRole('button', { name: /GraphRow\.tsx/ }).click();
+  await expect.poll(() => topOf('src/features/graph/GraphRow.tsx')).toBeLessThan(16);
+  await page.getByLabel('Commit files').getByRole('button', { name: /Architecture\.md/ }).click();
+  await expect.poll(() => topOf('docs/Architecture.md')).toBeLessThan(16);
+  await expect(view.getByText('4 of 5')).toBeVisible();
+
+  await scroller.click({ position: { x: 20, y: 200 } });
+  await page.keyboard.press('ArrowLeft');
+  await expect(view).toBeHidden();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible();
+});
+
+test('after a click into a file diff, ← closes it and returns to the graph', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('row').nth(2).click();
+  await page.getByLabel('Commit files').getByRole('button', { name: /CommitGraph\.tsx/ }).click();
+  const diff = page.locator('section[aria-label^="Diff for"]');
+  await expect(diff).toBeVisible();
+  const scroller = diff.locator('div.overflow-y-auto').first();
+  await expect(scroller.locator('[data-diff-row]').first()).toBeVisible();
+  await scroller.locator('[data-diff-row]').first().click();
+  await expect(page.locator('body')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(diff).toBeHidden();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible();
+});
+
+test('a stash file never offers the all files layout, even when it is the remembered one', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('angkorgit-ui', JSON.stringify({ state: { diffLayout: 'all' }, version: 0 }));
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('feat(graph): virtualize commit rows').first()).toBeVisible();
+  await page.getByText('WIP on main: experiment with lane colors').first().click();
+  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  await expect(inspector.getByText('This is a stash.', { exact: false })).toBeVisible();
+  await inspector.getByText('GraphRow.tsx', { exact: true }).click();
+  await expect(page.locator('section[aria-label^="Diff for"]')).toBeVisible();
+  await expect(page.locator('[data-all-changes]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Show all files' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('row').nth(2).click();
+  await page.getByLabel('Commit files').getByRole('button', { name: /GraphRow\.tsx/ }).click();
+  await expect(page.locator('[data-all-changes]')).toBeVisible();
+});
+
+test('conflict resolver shows line numbers in both sides and the result', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
@@ -1216,8 +1443,12 @@ test('the working copy filter narrows both lists and shows counts', async ({ pag
   await filter.fill('graph');
   await expect(page.getByText('CommitGraph.tsx', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('ipc.ts', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('没有匹配过滤条件的更改。')).toBeVisible();
-  await expect(page.getByText(/^Staged/).locator('..')).toContainText('1 of 2');
+  await expect(page.getByText('No changes match the filter.')).toBeVisible();
+  const staged = demoStatus.files.filter((file) => file.staged);
+  const stagedShown = filterFiles(staged, (file) => file.path, 'graph');
+  await expect(page.getByText(/^Staged/).locator('..')).toContainText(
+    `${stagedShown.length} of ${staged.length}`,
+  );
 
   await page.getByRole('button', { name: '清除过滤条件' }).click();
   await expect(filter).toHaveValue('');
@@ -1310,9 +1541,13 @@ test('staged files can be discarded from the row, the menu and the header', asyn
   await expect(page.getByRole('menuitem', { name: /丢弃更改/ })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button', { name: '全部丢弃已暂存的更改' }).click();
-  await expect(dialog.getByText('全部丢弃 2 个已暂存更改？')).toBeVisible();
-  await dialog.getByRole('button', { name: '取消' }).click();
+  await page.getByRole('button', { name: 'Discard all staged changes' }).click();
+  const stagedCount = demoStatus.files.filter((file) => file.staged).length;
+  const stagedNoun = stagedCount === 1 ? 'change' : 'changes';
+  await expect(
+    dialog.getByText(`Discard all ${stagedCount} staged ${stagedNoun}?`),
+  ).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
 });
 
 test('the sidebar comes back after a relaunch that happened with a diff open', async ({ page }) => {
@@ -1606,8 +1841,9 @@ test('the remotes section offers Add remote and opens the add dialog', async ({ 
   const remotesSection = page.locator('[data-sidebar-section-header]').filter({
     has: page.getByRole('button', { name: /^远端/ }),
   });
-  await remotesSection.hover();
-  await remotesSection.getByRole('button', { name: '添加远端', exact: true }).click();
+  const addRemote = remotesSection.getByRole('button', { name: 'Add remote', exact: true });
+  await addRemote.focus();
+  await addRemote.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: '添加远端' })).toBeVisible();
   await expect(dialog.getByPlaceholder('upstream')).toBeVisible();
@@ -1619,13 +1855,22 @@ test('the remotes section offers Add remote and opens the add dialog', async ({ 
   await expect(dialog).toBeHidden();
 });
 
-test('the terminal answers right-click with copy, paste, select all and clear', async ({ page }) => {
+test('the terminal focuses on open and reopen and offers its right-click actions', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: '切换终端' }).click();
   const host = page.locator('.terminal-host');
   await expect(host).toBeVisible();
+  await expect(host.locator('.xterm-helper-textarea')).toBeFocused();
+  await page.keyboard.type('first-open');
+  await expect(host.locator('.xterm-rows')).toContainText('first-open');
+  await page.getByRole('button', { name: 'Close terminal' }).click();
+  await expect(host).toBeHidden();
+  await page.getByRole('button', { name: 'Toggle terminal' }).click();
+  await expect(host.locator('.xterm-helper-textarea')).toBeFocused();
+  await page.keyboard.type('-reopened');
+  await expect(host.locator('.xterm-rows')).toContainText('first-open-reopened');
   await host.click({ button: 'right' });
   const menu = page.getByRole('menu');
   await expect(menu.getByRole('menuitem', { name: '复制' })).toBeDisabled();
@@ -1929,8 +2174,8 @@ test('the All files view shows the whole working tree with changed files still a
   const inspector = page.getByRole('complementary', { name: '检查器' });
   await expect(inspector.getByText('README.md')).toHaveCount(0);
 
-  await page.getByRole('button', { name: '全部文件' }).click();
-  await expect(inspector.getByText('9 changed')).toBeVisible();
+  await page.getByRole('button', { name: 'All files' }).click();
+  await expect(inspector.getByText('12 changed')).toBeVisible();
   await expect(inspector.getByText('README.md')).toBeVisible();
   await expect(inspector.getByLabel('暂存 src/core/ipc.ts')).toBeVisible();
   await expect(inspector.getByLabel('取消暂存 src/features/graph/CommitGraph.tsx')).toBeVisible();
@@ -2139,10 +2384,10 @@ test('ignore whitespace hides an indent-only change and turns staging off', asyn
   await diff.getByRole('button', { name: '视图选项' }).click();
   await page.getByRole('menuitemcheckbox', { name: '忽略空白字符' }).click();
   await expect(diff.getByText('+0', { exact: true })).toBeVisible();
-  await expect(diff.getByText('此文件仅有空白字符更改')).toBeVisible();
-  await expect(diff.getByRole('button', { name: '暂存代码块' })).toHaveCount(0);
-  await diff.getByRole('button', { name: '视图选项' }).click();
-  await expect(page.getByRole('menu').getByText('不是 Git 会实际应用的补丁')).toBeVisible();
+  await expect(diff.getByText('Only whitespace changes found')).toBeVisible();
+  await expect(diff.getByRole('button', { name: 'Stage hunk' })).toHaveCount(0);
+  await diff.getByRole('button', { name: 'View options' }).click();
+  await expect(page.getByRole('menu').getByText('not the patch git would apply')).toBeVisible();
 
   await page.keyboard.press('Escape');
   await page.getByText('ipc.ts', { exact: true }).first().click();
