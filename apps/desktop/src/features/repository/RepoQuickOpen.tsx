@@ -76,7 +76,7 @@ export function RepoQuickOpen() {
 
   const choose = (path: string) => {
     if (missing.has(path)) {
-      toast.error('This folder no longer exists. Remove it from recents on the welcome page.');
+      toast.error('此文件夹已不存在。请在欢迎页面从最近列表中移除它。');
       return;
     }
     setOpen(false);
@@ -106,7 +106,7 @@ export function RepoQuickOpen() {
       />
       <Command.List className="max-h-96 overflow-y-auto p-1.5" data-repo-switcher>
         <Command.Empty className="px-3 py-8 text-center text-sm text-faint">
-          {recents.length === 0 ? 'No recent repositories yet.' : `No repositories match “${search.trim()}”.`}
+          {recents.length === 0 ? '还没有最近仓库。' : `No repositories match “${search.trim()}”.`}
         </Command.Empty>
         {results.map((recent) => {
           const gone = missing.has(recent.path);
@@ -145,7 +145,7 @@ export function RepoQuickOpen() {
                   className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary"
                   data-repo-tab-state={isCurrent ? 'current' : 'open'}
                 >
-                  {isCurrent ? 'Current' : 'Open tab'}
+                  {isCurrent ? '当前仓库' : '已打开标签页'}
                 </span>
               )}
               {chord && (

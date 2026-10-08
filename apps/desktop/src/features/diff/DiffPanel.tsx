@@ -659,15 +659,15 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               </Button>
             </div>
           ) : emptyFile ? (
-            <PaneEmpty icon={<FileText />} title="This file is empty" description="There is nothing to compare." />
+            <PaneEmpty icon={<FileText />} title="此文件为空" description="没有可比较的内容。" />
           ) : whitespaceOnly ? (
             <PaneEmpty
               icon={<Space />}
-              title="Only whitespace changes found"
+              title="仅发现空白字符更改"
               description={
                 isWorkingCopy && target.staged
                   ? 'These whitespace changes are staged and will be committed. Turn off 忽略空白字符 to unstage them.'
-                  : 'Line and hunk stage are off while whitespace is hidden.'
+                  : '隐藏空白字符时，代码块与单行暂存已停用。'
               }
             />
           ) : diff ? (
@@ -719,8 +719,8 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           ) : (
             <PaneEmpty
               icon={<FileText />}
-              title="No diff to show"
-              description="The change may already be staged or resolved."
+              title="没有可显示的 diff"
+              description="该更改可能已被暂存或解决。"
             />
           )}
         </div>

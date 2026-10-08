@@ -201,8 +201,8 @@ export function InteractiveRebaseDialog() {
               <PaneEmpty
                 className="min-h-40"
                 icon={<GitCommitHorizontal />}
-                title="No commits to rebase"
-                description="Nothing sits above this point."
+                title="没有可变基的提交"
+                description="此位置之上没有提交。"
               />
             )}
             {rows.map((row) => (

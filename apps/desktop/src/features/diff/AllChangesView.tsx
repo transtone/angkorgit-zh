@@ -323,7 +323,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
         <Hint
           label={
             <span className="flex items-center gap-1">
-              Back to graph <Kbd>Esc</Kbd>
+              返回提交图 <Kbd>Esc</Kbd>
             </span>
           }
         >
@@ -331,7 +331,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
             <X className="size-4" />
           </Button>
         </Hint>
-        <span className="text-xs font-medium">Changes</span>
+        <span className="text-xs font-medium">全部改动</span>
         <Badge tone="neutral" className="font-mono">
           {oid.slice(0, 8)}
         </Badge>
@@ -347,15 +347,15 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
         <DiffViewControls
           notes={
             diffView === 'split' ? (
-              <MenuNote>Side-by-side always wraps on the all-files page so both halves stay aligned.</MenuNote>
+              <MenuNote>在“全部文件”页面中，并排视图始终自动换行，以保持左右两半对齐。</MenuNote>
             ) : undefined
           }
         />
-        <Hint label={allCollapsed ? 'Expand all files' : 'Collapse all files'}>
+        <Hint label={allCollapsed ? '展开全部文件' : '折叠全部文件'}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={allCollapsed ? 'Expand all files' : 'Collapse all files'}
+            aria-label={allCollapsed ? '展开全部文件' : '折叠全部文件'}
             disabled={!files || files.length === 0}
             onClick={toggleAll}
           >
@@ -410,7 +410,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
             <Spinner className="size-5" />
           </div>
         ) : files.length === 0 ? (
-          <p className="py-16 text-center text-sm text-faint">This commit changes no files.</p>
+          <p className="py-16 text-center text-sm text-faint">此提交没有改动任何文件。</p>
         ) : (
           files.map((file) => {
             const meta = statusMeta[file.status];
@@ -456,7 +456,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                   </span>
                   {file.additions > 0 && <span className="shrink-0 font-mono text-[11px] text-success">+{file.additions}</span>}
                   {file.deletions > 0 && <span className="shrink-0 font-mono text-[11px] text-danger">−{file.deletions}</span>}
-                  <Hint label="Open in file view">
+                  <Hint label="在单文件视图打开">
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -477,7 +477,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                         Show diff
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openInFileView(file)}>
-                        Open in file view
+                        在单文件视图打开
                       </Button>
                     </div>
                   )
@@ -487,7 +487,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                   </div>
                 ) : entry.error ? (
                   <div className="flex items-center gap-3 px-4 py-4 text-xs">
-                    <span className="flex-1 text-danger [overflow-wrap:anywhere]">Could not load this diff: {entry.error}</span>
+                    <span className="flex-1 text-danger [overflow-wrap:anywhere]">无法加载此 diff: {entry.error}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -506,7 +506,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                   </div>
                 ) : !entry.diff ? (
                   <p className="py-6 text-center text-xs text-faint">
-                    {ignoreWhitespace ? '此文件仅有空白字符更改' : 'No text changes'}
+                    {ignoreWhitespace ? '此文件仅有空白字符更改' : '没有文本更改'}
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-b-lg" data-file-diff>

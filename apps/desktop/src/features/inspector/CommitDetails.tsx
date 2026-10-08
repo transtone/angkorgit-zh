@@ -1036,8 +1036,8 @@ export function CommitDetails({
             ) : (
               <PaneEmpty
                 icon={<FileText />}
-                title="No files"
-                description="This commit did not change any files."
+                title="没有文件"
+                description="此提交没有改动任何文件。"
               />
             )
           ) : (

@@ -165,8 +165,8 @@ function ImageDiff({ diff }: { diff: FileDiff }) {
     return (
       <PaneEmpty
         icon={<ImageOff />}
-        title="Image unavailable"
-        description="The contents could not be loaded."
+        title="图片不可用"
+        description="无法加载内容。"
       />
     );
   }
@@ -222,8 +222,8 @@ export function DiffViewer({
     return (
       <PaneEmpty
         icon={<FileText />}
-        title="Binary file"
-        description="There is no text diff for this file."
+        title="二进制文件"
+        description="此文件没有文本 diff。"
       />
     );
   }
@@ -232,7 +232,7 @@ export function DiffViewer({
       <PaneEmpty
         icon={<FileText />}
         title="无更改"
-        description="This revision matches the previous one."
+        description="此版本与上一个相同。"
       />
     );
   }

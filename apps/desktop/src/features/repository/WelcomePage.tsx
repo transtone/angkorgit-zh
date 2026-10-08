@@ -503,13 +503,13 @@ export function WelcomePage() {
               </div>
               </>
             )}
-            <Hint label="Scan a folder for repositories">
+            <Hint label="扫描文件夹查找仓库">
               <Button
                 variant="ghost"
                 size="icon-sm"
                 className={cn(recents.length === 0 && 'ml-auto')}
                 onClick={() => void startRepositoryScan()}
-                aria-label="Scan a folder for repositories"
+                aria-label="扫描文件夹查找仓库"
               >
                 <FolderSearch className="size-3.5" />
               </Button>
@@ -520,7 +520,7 @@ export function WelcomePage() {
               <SettingEmpty
                 icon={<FolderGit2 className="size-4" />}
                 title="还没有仓库"
-                description="Open a folder that already has a .git directory, scan a folder full of them, or clone one from a URL. Everything you open shows up here."
+                description="打开一个已有 .git 目录的文件夹，扫描装满仓库的目录，或从 URL 克隆。你打开的一切都会显示在这里。"
                 action={
                   <span className="flex gap-2">
                     <Button variant="secondary" size="sm" onClick={browse}>
@@ -539,7 +539,7 @@ export function WelcomePage() {
               filtered.length === 0 ? (
                 <PaneEmpty
                   icon={<Search />}
-                  title="No repositories"
+                  title="没有仓库"
                   description={`Nothing matches “${query.trim()}”.`}
                 />
               ) : (

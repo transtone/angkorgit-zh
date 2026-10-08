@@ -539,11 +539,11 @@ export function CommitGraph() {
           ) : (
             <PaneEmpty
               icon={filtersActive ? <Filter /> : <GitCommitHorizontal />}
-              title={filtersActive ? 'No matching commits' : '还没有提交'}
+              title={filtersActive ? '没有匹配的提交' : '还没有提交'}
               description={
                 filtersActive
-                  ? 'Nothing matches the current filters.'
-                  : 'The first commit will appear here.'
+                  ? '没有符合当前筛选条件的提交。'
+                  : '第一个提交会显示在这里。'
               }
             >
               {filtersActive ? (

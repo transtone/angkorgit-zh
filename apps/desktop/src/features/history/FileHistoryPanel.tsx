@@ -354,8 +354,8 @@ export function FileHistoryPanel({ file }: { file: string }) {
           ) : commits.length === 0 ? (
             <PaneEmpty
               icon={<GitCommitHorizontal />}
-              title="No history"
-              description="No commits touch this file on the current branch."
+              title="没有历史记录"
+              description="当前分支上没有提交改动过此文件。"
             />
           ) : (
             <>

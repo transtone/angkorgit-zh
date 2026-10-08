@@ -37,7 +37,7 @@ function relativeTo(root: string, path: string): string {
 }
 
 export async function startRepositoryScan() {
-  const dir = await pickDirectory('Choose a folder to scan for repositories');
+  const dir = await pickDirectory('选择要扫描仓库的文件夹');
   if (dir) useUi.getState().openDialog('scanRepositories', { scanRoot: dir });
 }
 
@@ -104,7 +104,7 @@ export function ScanRepositoriesDialog() {
     });
 
   const changeRoot = async () => {
-    const dir = await pickDirectory('Choose a folder to scan for repositories');
+    const dir = await pickDirectory('选择要扫描仓库的文件夹');
     if (dir) setRoot(dir);
   };
 
@@ -115,7 +115,7 @@ export function ScanRepositoriesDialog() {
     try {
       await ipc.addRecents(paths);
       await loadRecents();
-      toast.success(paths.length === 1 ? 'Added 1 repository' : `Added ${paths.length} repositories`);
+      toast.success(paths.length === 1 ? '已添加 1 个仓库' : `Added ${paths.length} repositories`);
       closeDialog();
     } catch (e) {
       toast.error(`Could not add repositories: ${(e as { message?: string }).message ?? e}`);
@@ -129,7 +129,7 @@ export function ScanRepositoriesDialog() {
     <Dialog open={open} onOpenChange={(o) => !o && closeDialog()}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Add repositories from a folder</DialogTitle>
+          <DialogTitle>从文件夹添加仓库</DialogTitle>
           <DialogDescription>
             Looks through every folder, including inside other repositories, and skips hidden and
             dependency folders such as node_modules.
@@ -155,8 +155,8 @@ export function ScanRepositoriesDialog() {
         ) : found.length === 0 ? (
           <SettingEmpty
             icon={<FolderGit2 className="size-4" />}
-            title="No repositories found"
-            description="Nothing in this folder has a .git directory. Try a folder higher up, or pick another one."
+            title="未找到仓库"
+            description="此文件夹下没有 .git 目录。请尝试上一级文件夹，或换一个文件夹。"
           />
         ) : (
           <div className="flex flex-col gap-2">
@@ -173,7 +173,7 @@ export function ScanRepositoriesDialog() {
                   className="ml-auto h-6 px-2 text-xs"
                   onClick={() => setSelected(allPicked ? new Set() : new Set(fresh.map((r) => r.path)))}
                 >
-                  {allPicked ? 'Select none' : 'Select all'}
+                  {allPicked ? '全部取消选择' : '全选'}
                 </Button>
               )}
             </div>
@@ -203,7 +203,7 @@ export function ScanRepositoriesDialog() {
                     <DirName path={rel} className="font-mono text-[11px]" />
                     {already && (
                       <Badge className="ml-auto shrink-0">
-                        In recents
+                        最近列表中
                       </Badge>
                     )}
                   </label>
@@ -224,7 +224,7 @@ export function ScanRepositoriesDialog() {
           </Button>
           <Button autoFocus onClick={() => void add()} disabled={pickedCount === 0 || adding}>
             {adding ? <Spinner className="text-primary-foreground" /> : null}
-            {pickedCount === 1 ? 'Add 1 repository' : `Add ${pickedCount} repositories`}
+            {pickedCount === 1 ? '添加 1 个仓库' : `Add ${pickedCount} repositories`}
           </Button>
         </DialogFooter>
       </DialogContent>

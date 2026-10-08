@@ -24,12 +24,12 @@ export function DiffLayoutToggle() {
   const diffLayout = useUi((s) => s.diffLayout);
   const setDiffLayout = useUi((s) => s.setDiffLayout);
   return (
-    <div className="flex shrink-0 items-center rounded-md bg-surface-raised/60 p-0.5" role="group" aria-label="Diff layout">
-      <Hint label="One file at a time">
+    <div className="flex shrink-0 items-center rounded-md bg-surface-raised/60 p-0.5" role="group" aria-label="diff 布局">
+      <Hint label="每次显示一个文件">
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Show one file"
+          aria-label="显示单文件"
           aria-pressed={diffLayout === 'file'}
           className={cn('h-6 w-7', diffLayout === 'file' && 'bg-background text-foreground shadow-soft')}
           onClick={() => setDiffLayout('file')}
@@ -37,11 +37,11 @@ export function DiffLayoutToggle() {
           <FileText className="size-3.5" />
         </Button>
       </Hint>
-      <Hint label="Every changed file on one page">
+      <Hint label="所有改动文件在同一页">
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Show all files"
+          aria-label="显示全部文件"
           aria-pressed={diffLayout === 'all'}
           className={cn('h-6 w-7', diffLayout === 'all' && 'bg-background text-foreground shadow-soft')}
           onClick={() => setDiffLayout('all')}
