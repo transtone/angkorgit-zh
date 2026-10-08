@@ -1339,3 +1339,54 @@ ui	All open tabs	所有已打开的标签页
 ui	Repository groups	仓库分组
 ui	Drag a repository here, or move one from its menu.	拖动仓库至此，或通过其菜单移动。
 ui	Scroll diff horizontally	水平滚动差异
+ui	Choose a folder to scan for repositories	选择要扫描仓库的文件夹
+ui	Scan a folder for repositories	扫描文件夹查找仓库
+ui	Add repositories from a folder	从文件夹添加仓库
+ui	Nothing in this folder has a .git directory. Try a folder higher up, or pick another one.	此文件夹下没有 .git 目录。请尝试上一级文件夹，或换一个文件夹。
+ui	No repositories found	未找到仓库
+ui	Select none	全部取消选择
+ui	Add 1 repository	添加 1 个仓库
+ui	Added 1 repository	已添加 1 个仓库
+ui	This folder no longer exists. Remove it from recents on the welcome page.	此文件夹已不存在。请在欢迎页面从最近列表中移除它。
+ui	No recent repositories yet.	还没有最近仓库。
+ui	Open tab	已打开标签页
+ui	Current	当前仓库	isCurrent \? 'Current'
+ui	No repositories	没有仓库	title="No repositories"
+ui	Open a folder that already has a .git directory, scan a folder full of them, or clone one from a URL. Everything you open shows up here.	打开一个已有 .git 目录的文件夹，扫描装满仓库的目录，或从 URL 克隆。你打开的一切都会显示在这里。
+ui	Diff layout	diff 布局
+ui	One file at a time	每次显示一个文件
+ui	Every changed file on one page	所有改动文件在同一页
+ui	Show one file	显示单文件
+ui	Show all files	显示全部文件
+ui	Collapse all files	折叠全部文件
+ui	Expand all files	展开全部文件
+ui	Open in file view	在单文件视图打开
+ui	No text changes	没有文本更改
+ui	This commit changes no files.	此提交没有改动任何文件。
+ui	Could not load this diff	无法加载此 diff
+ui	Back to graph	返回提交图
+ui	Changes	全部改动	text-xs font-medium">Changes<
+ui	No matching commits	没有匹配的提交
+ui	No history	没有历史记录
+ui	No files	没有文件
+ui	This commit did not change any files.	此提交没有改动任何文件。
+ui	No commits to rebase	没有可变基的提交
+ui	Only whitespace changes found	仅发现空白字符更改
+ui	No diff to show	没有可显示的 diff
+ui	This file is empty	此文件为空
+ui	Binary file	二进制文件
+ui	Image unavailable	图片不可用
+ui	The contents could not be loaded.	无法加载内容。
+ui	There is no text diff for this file.	此文件没有文本 diff。
+ui	This revision matches the previous one.	此版本与上一个相同。
+ui	Side-by-side always wraps on the all-files page so both halves stay aligned.	在“全部文件”页面中，并排视图始终自动换行，以保持左右两半对齐。
+ui	Nothing matches the current filters.	没有符合当前筛选条件的提交。
+ui	The first commit will appear here.	第一个提交会显示在这里。
+ui	Nothing sits above this point.	此位置之上没有提交。
+ui	No commits touch this file on the current branch.	当前分支上没有提交改动过此文件。
+ui	Line and hunk stage are off while whitespace is hidden.	隐藏空白字符时，代码块与单行暂存已停用。
+ui	The change may already be staged or resolved.	该更改可能已被暂存或解决。
+ui	There is nothing to compare.	没有可比较的内容。
+ui,docs	Select all	全选	allPicked \? 'Select none' : 'Select all'
+ui	In recents	最近列表中
+ui	This is a stash.	这是一个暂存。
