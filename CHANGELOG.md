@@ -6,46 +6,48 @@
 
 ## [未发布]
 
-### Added
-- **Scan a folder for repositories.** The folder-search button in the Recent
-  repositories header (and Scan in the empty state) picks a folder, walks every folder
-  under it for Git repositories, including submodules and repositories nested inside
-  others, skipping hidden and dependency folders such as node_modules, and lists what it
-  found with checkboxes. Repositories already in
-  recents are marked, and Add puts the picked ones into the list without opening them.
-- **Same-named tabs tell you which is which.** When two open repositories share a
-  folder name, such as a fork and the original or two clones, each tab adds the
-  nearest parent folder that sets it apart (“payments · shared-services”).
-- **Every file of a commit on one page.** The diff header of a commit file gains a
-  File / All files switch. All files stacks every changed file in one scrolling page,
-  GitLab-style: a sticky header per file with its status, folder and line counts, a
-  collapse arrow, Collapse all, and a button back to the single-file view. Inline or
-  side by side and the view options apply to every file at once. Diffs load as they
-  scroll into view, files over 1,500 changed lines start collapsed, clicking a file in
-  the commit's file list scrolls to it, scrolling moves the file list's highlight, and
-  [ / ] step between files. The choice is remembered.
-- **⌘P switches repositories.** A search box over every recent repository, matching
-  name or path, with the current repository and open tabs marked. Enter switches to the
-  repository's tab when it is already open and opens a new tab otherwise; it works from
-  the welcome page too. ⌘K stays the command palette (⌘P used to open it as well).
-- **⌘T opens a repository in a new tab**, the same as the + button at the end of the
-  tab strip.
+## [0.22.0] — 2026-10-08
 
-### Fixed
-- Opening the terminal now focuses its input immediately, so typing works without
-  clicking inside it first.
-- A tab whose folder was moved or deleted no longer lingers next to the repository's
-  new location. The tab strip checks its folders and closes the ones that are gone,
-  with a note naming them.
-- Clicking into a file diff and pressing ← closes it again, and → steps to the next
-  change. The window-level arrow shortcuts never fired: the shortcut hook marked the
-  key event as handled before the diff panel checked it, so only the file list's own
-  keys worked.
+同步上游 v0.21.1 之后的开发版（`6bea2ca`…`498999b`）：仓库文件夹扫描、
+标签页清理与同名消歧、仓库快捷切换、单页查看一次提交的全部改动，以及
+统一空状态面板。全部界面文案已汉化。
 
-### Changed
-- **Empty panes use one panel.** Diff blanks, a file with no history, an empty graph, a commit with no files, a welcome search with no matches, and an empty rebase plan use a centered panel (icon, title, one line) instead of a faint sentence. A staged whitespace-only file says those changes are still staged.
-- Recent repositories keep up to 1,000 entries instead of 30, so a scanned folder of
-  projects is not cut short.
+### 新增
+- **扫描文件夹批量添加仓库。**「最近仓库」标题栏右侧的文件夹搜索按钮
+  （空状态下也有「扫描」）会递归遍历所选目录下的每一个文件夹查找 Git
+  仓库，包括子模块与嵌套在其他仓库内部的仓库，自动跳过隐藏目录和
+  `node_modules` 之类的依赖目录，并列出结果供勾选。已在最近列表中的仓库
+  会被标记，「添加」把勾选的那些加入列表而不打开它们。
+- **同名标签页一眼可辨。** 当两个已打开的仓库文件夹同名时（例如 fork 与
+  原版，或两份 clone），每个标签页会补上最近一级能区分它们的父级目录
+  （形如「payments · shared-services」）。
+- **一次提交的全部改动集中在一页。** 提交文件的 diff 顶部栏新增
+  「单文件 / 全部文件」切换。「全部文件」以 GitLab 式单页堆叠该提交的所有
+  改动文件：每个文件有吸顶标题（状态、目录与增删行数）、折叠箭头、
+  「全部折叠」，以及回到单文件视图的按钮。内联/并排与视图选项对所有文件
+  同时生效。diff 在滚动进入视口时才加载，超过 1500 行改动的文件默认折叠，
+  在提交的文件列表中点击某个文件会滚动到它，滚动时文件列表的高亮随之
+  移动，`[` / `]` 在文件间步进。该选择会被记住。
+- **`⌘P` 快速切换仓库。** 一个覆盖全部最近仓库的搜索框，按名称或路径匹配，
+  当前仓库与已打开的标签页均有标记。回车在仓库标签页已打开时切换过去，
+  否则新开一个标签页；在欢迎页同样可用。`⌘K` 仍是命令面板（`⌘P` 此前也
+  会打开它）。
+- **`⌘T` 在新标签页打开仓库**，与标签栏末尾的 + 按钮一致。
+
+### 修复
+- 打开终端后输入框立即获得焦点，无需先点击一下才能打字。
+- 文件夹被移动或删除的标签页不再残留在仓库的新位置旁边。标签栏会检查每个
+  标签页的文件夹并关闭已消失的那些，并提示被关闭的是哪些。
+- 在文件 diff 中点击后按 `←` 可以关闭它，按 `→` 可以步进到下一处改动。
+  这两个窗口级方向键快捷键此前从未生效：快捷键钩子在 diff 面板检查之前就把
+  键盘事件标记为已处理，因此只有文件列表自身的按键有效。
+
+### 变更
+- **空状态统一为一个面板。** diff 空白区、没有历史的文件、空提交图、
+  没有文件的提交、欢迎页搜索无结果、以及空的变基计划，都改为居中面板
+  （图标、标题、一行说明），而不是一行灰字。仅含空白字符改动的已暂存
+  文件会说明这些改动仍处于暂存状态。
+- 最近仓库上限由 30 条提升至 1000 条，扫描出的一整个项目目录不会被截断。
 
 ## [0.21.1] — 2026-10-04
 
