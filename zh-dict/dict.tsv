@@ -1390,3 +1390,5 @@ ui	There is nothing to compare.	没有可比较的内容。
 ui,docs	Select all	全选	allPicked \? 'Select none' : 'Select all'
 ui	In recents	最近列表中
 ui	This is a stash.	这是一个暂存。
+ui	These whitespace changes are staged and will be committed. Turn off 忽略空白字符 to unstage them.	这些空白字符更改已暂存，将会被提交。关闭“忽略空白字符”可取消暂存。
+ui	打开仓库 in a new tab	在新标签页中打开仓库
