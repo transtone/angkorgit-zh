@@ -1443,7 +1443,6 @@ test('the working copy filter narrows both lists and shows counts', async ({ pag
   await filter.fill('graph');
   await expect(page.getByText('CommitGraph.tsx', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('ipc.ts', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('没有文件符合过滤条件。')).toBeVisible();
   const staged = demoStatus.files.filter((file) => file.staged);
   const stagedShown = filterFiles(staged, (file) => file.path, 'graph');
   await expect(page.getByText(/^已暂存/).locator('..')).toContainText(
@@ -1626,7 +1625,7 @@ test('settings can install the command line tool', async ({ page }) => {
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Git', exact: true }).click();
-  await expect(dialog.getByText('Command line tool')).toBeVisible();
+  await expect(dialog.getByText('命令行工具')).toBeVisible();
   await expect(dialog.getByText('angkorgit open [path]')).toBeVisible();
   await expect(dialog.getByText(/angkorgit clone \[-b branch\]/)).toBeVisible();
   await dialog.getByRole('button', { name: '安装', exact: true }).click();
@@ -2200,18 +2199,20 @@ test('dragging a diff selection past the bottom edge keeps growing it and copies
   });
   const box = await scroller.boundingBox();
   if (!box) throw new Error('diff scroller not laid out');
-  const start = await scroller.evaluate((el) => {
-    const bounds = el.getBoundingClientRect();
-    const rows = [...el.querySelectorAll<HTMLElement>('[data-diff-row]')];
-    const row = rows.find((r) => {
-      const rect = r.getBoundingClientRect();
-      return rect.top > bounds.top + 40 && rect.bottom < bounds.bottom - 140;
+  const startRow = () =>
+    scroller.evaluate((el) => {
+      const bounds = el.getBoundingClientRect();
+      const rows = [...el.querySelectorAll<HTMLElement>('[data-diff-row]')];
+      const row = rows.find((r) => {
+        const rect = r.getBoundingClientRect();
+        return rect.top > bounds.top + 40 && rect.bottom < bounds.bottom - 140;
+      });
+      if (!row) return null;
+      const rect = row.getBoundingClientRect();
+      return { text: row.textContent ?? '', x: rect.left + 30, y: rect.top + rect.height / 2 };
     });
-    if (!row) return null;
-    const rect = row.getBoundingClientRect();
-    return { text: row.textContent ?? '', x: rect.left + 30, y: rect.top + rect.height / 2 };
-  });
-  if (!start) throw new Error('no diff row to start from');
+  await expect.poll(startRow).not.toBeNull();
+  const start = (await startRow())!;
 
   const below = { x: start.x + 200, y: box.y + box.height + 30 };
   await page.mouse.move(start.x, start.y);

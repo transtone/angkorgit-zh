@@ -167,8 +167,10 @@ describe('Chinese localization of the upstream collaboration update', () => {
     const diff = source('apps/desktop/src/features/diff/DiffPanel.tsx');
     expect(diff).toContain('审查更改');
     expect(diff).toContain('解释更改');
-    expect(diff).toContain('视图选项');
     expect(diff).not.toMatch(/Review changes|Explain changes|View options/);
+    const controls = source('apps/desktop/src/features/diff/DiffViewControls.tsx');
+    expect(controls).toContain('视图选项');
+    expect(controls).not.toMatch(/View options/);
   });
 
   it('localizes the tidied file lists and their empty states', () => {
