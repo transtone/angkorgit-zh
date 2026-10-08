@@ -42,8 +42,8 @@ export const statusMeta: Record<
   CommitFileInfo['status'],
   { label: string; mark: string; className: string; tone: 'info' | 'success' | 'danger' | 'primary' }
 > = {
-  modified: { label: 'modified', mark: 'M', className: 'text-info', tone: 'info' },
-  new: { label: 'added', mark: 'A', className: 'text-success', tone: 'success' },
-  deleted: { label: 'deleted', mark: 'D', className: 'text-danger', tone: 'danger' },
-  renamed: { label: 'renamed', mark: 'R', className: 'text-primary', tone: 'primary' },
+  modified: { label: '已修改', mark: 'M', className: 'text-info', tone: 'info' },
+  new: { label: '新增', mark: 'A', className: 'text-success', tone: 'success' },
+  deleted: { label: '已删除', mark: 'D', className: 'text-danger', tone: 'danger' },
+  renamed: { label: '重命名', mark: 'R', className: 'text-primary', tone: 'primary' },
 };

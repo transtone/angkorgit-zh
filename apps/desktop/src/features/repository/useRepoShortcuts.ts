@@ -24,13 +24,13 @@ export async function switchToRepo(path: string, ensureRepoRoute: () => void): P
 }
 
 export async function openRepositoryInNewTab(ensureRepoRoute: () => void): Promise<void> {
-  const dir = await pickDirectory('Open a repository in a new tab');
+  const dir = await pickDirectory('打开仓库 in a new tab');
   if (!dir) return;
   try {
     await useRepo.getState().open(dir);
     ensureRepoRoute();
   } catch (error) {
-    toast.error(`Could not open repository: ${(error as { message?: string }).message ?? error}`);
+    toast.error(`无法打开仓库：${(error as { message?: string }).message ?? error}`);
   }
 }
 

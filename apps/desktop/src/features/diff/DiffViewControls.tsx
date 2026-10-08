@@ -72,22 +72,22 @@ export function DiffViewControls({
   const setWrapLines = useUi((s) => s.setWrapLines);
   return (
     <>
-      <Hint label="Inline diff">
+      <Hint label="内联 diff">
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Inline diff"
+          aria-label="内联 diff"
           className={cn(diffView === 'inline' && 'bg-surface-raised text-foreground')}
           onClick={() => setDiffView('inline')}
         >
           <Rows3 className="size-3.5" />
         </Button>
       </Hint>
-      <Hint label="Side-by-side diff">
+      <Hint label="并排 diff">
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Side-by-side diff"
+          aria-label="并排 diff"
           className={cn(diffView === 'split' && 'bg-surface-raised text-foreground')}
           onClick={() => setDiffView('split')}
         >
@@ -98,15 +98,15 @@ export function DiffViewControls({
         <Hint
           label={
             ignoreWhitespace
-              ? 'View options. Whitespace is ignored, so hunk and line staging are off: these hunks are not the patch git would apply.'
-              : 'View options'
+              ? '视图选项。已忽略空白字符，代码块与单行暂存已停用：当前显示的块不是 Git 会实际应用的补丁。'
+              : '视图选项'
           }
         >
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="View options"
+              aria-label="视图选项"
               className={cn((wordDiff || wrapLines || fullFileDiff || ignoreWhitespace) && 'text-primary')}
             >
               <SlidersHorizontal className="size-3.5" />
@@ -114,12 +114,12 @@ export function DiffViewControls({
           </DropdownMenuTrigger>
         </Hint>
         <DropdownMenuContent align="end" className="w-60">
-          <DropdownMenuLabel>View options</DropdownMenuLabel>
+          <DropdownMenuLabel>视图选项</DropdownMenuLabel>
           <DropdownMenuCheckboxItem icon={<WholeWord />} checked={wordDiff} onCheckedChange={(v) => setWordDiff(v === true)}>
-            Word diff
+            词级 diff
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem icon={<Space />} checked={ignoreWhitespace} onCheckedChange={(v) => setIgnoreWhitespace(v === true)}>
-            Ignore whitespace
+            忽略空白字符
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             icon={<WrapText />}
@@ -127,10 +127,10 @@ export function DiffViewControls({
             disabled={wrapDisabled}
             onCheckedChange={(v) => setWrapLines(v === true)}
           >
-            Wrap long lines
+            自动换行
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem icon={<FileText />} checked={fullFileDiff} onCheckedChange={(v) => setFullFileDiff(v === true)}>
-            Show whole file
+            显示整个文件
           </DropdownMenuCheckboxItem>
           {notes}
         </DropdownMenuContent>

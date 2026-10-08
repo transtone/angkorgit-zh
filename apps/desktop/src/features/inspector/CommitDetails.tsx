@@ -1032,7 +1032,7 @@ export function CommitDetails({
             </div>
           ) : shownEntries.length === 0 ? (
             filtering ? (
-              <p className="px-2 py-1.5 text-xs text-faint">No files match the filter.</p>
+              <p className="px-2 py-1.5 text-xs text-faint">没有文件符合过滤条件。</p>
             ) : (
               <PaneEmpty
                 icon={<FileText />}

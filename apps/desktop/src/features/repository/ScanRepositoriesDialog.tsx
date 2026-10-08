@@ -220,7 +220,7 @@ export function ScanRepositoriesDialog() {
 
         <DialogFooter>
           <Button variant="ghost" onClick={closeDialog}>
-            Cancel
+            取消
           </Button>
           <Button autoFocus onClick={() => void add()} disabled={pickedCount === 0 || adding}>
             {adding ? <Spinner className="text-primary-foreground" /> : null}

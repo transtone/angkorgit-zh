@@ -94,14 +94,14 @@ export function RepoQuickOpen() {
     <Command.Dialog
       open={open}
       onOpenChange={setOpen}
-      label="Switch repository"
+      label="切换仓库"
       shouldFilter={false}
       className="fixed left-1/2 top-24 z-50 w-full max-w-xl -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-surface-overlay shadow-soft"
     >
       <Command.Input
         value={search}
         onValueChange={setSearch}
-        placeholder="Search recent repositories by name or path…"
+        placeholder="搜索最近仓库 by name or path…"
         className="h-11 w-full border-b border-border-subtle bg-transparent px-4 text-sm text-foreground outline-none placeholder:text-faint"
       />
       <Command.List className="max-h-96 overflow-y-auto p-1.5" data-repo-switcher>
@@ -137,7 +137,7 @@ export function RepoQuickOpen() {
               </span>
               {gone && (
                 <span className="flex shrink-0 items-center gap-1 text-[11px] text-danger">
-                  <AlertTriangle className="size-3" /> folder missing
+                  <AlertTriangle className="size-3" /> 文件夹缺失
                 </span>
               )}
               {!gone && (isCurrent || isTab) && (

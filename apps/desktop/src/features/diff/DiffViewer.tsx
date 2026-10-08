@@ -231,7 +231,7 @@ export function DiffViewer({
     return (
       <PaneEmpty
         icon={<FileText />}
-        title="No changes"
+        title="无更改"
         description="This revision matches the previous one."
       />
     );

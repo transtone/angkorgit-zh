@@ -327,7 +327,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
             </span>
           }
         >
-          <Button variant="ghost" size="icon-sm" aria-label="Close diff" onClick={closeCenterDiff}>
+          <Button variant="ghost" size="icon-sm" aria-label="关闭 diff" onClick={closeCenterDiff}>
             <X className="size-4" />
           </Button>
         </Hint>
@@ -368,11 +368,11 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
             <Hint
               label={
                 <span className="flex items-center gap-1">
-                  Previous file <Kbd>[</Kbd>
+                  上一个文件 <Kbd>[</Kbd>
                 </span>
               }
             >
-              <Button variant="ghost" size="icon-sm" aria-label="Previous file" disabled={index <= 0} onClick={() => goFile(-1)}>
+              <Button variant="ghost" size="icon-sm" aria-label="上一个文件" disabled={index <= 0} onClick={() => goFile(-1)}>
                 <ChevronLeft className="size-4" />
               </Button>
             </Hint>
@@ -382,14 +382,14 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
             <Hint
               label={
                 <span className="flex items-center gap-1">
-                  Next file <Kbd>]</Kbd>
+                  下一个文件 <Kbd>]</Kbd>
                 </span>
               }
             >
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Next file"
+                aria-label="下一个文件"
                 disabled={index < 0 || index >= files.length - 1}
                 onClick={() => goFile(1)}
               >
@@ -501,12 +501,12 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
                         queueMicrotask(() => request(file.path));
                       }}
                     >
-                      Retry
+                      重试
                     </Button>
                   </div>
                 ) : !entry.diff ? (
                   <p className="py-6 text-center text-xs text-faint">
-                    {ignoreWhitespace ? 'Only whitespace changed in this file' : 'No text changes'}
+                    {ignoreWhitespace ? '此文件仅有空白字符更改' : 'No text changes'}
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-b-lg" data-file-diff>

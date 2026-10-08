@@ -481,14 +481,14 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           wrapDisabled={!!textDiff && wrapUnavailable(textDiff)}
           notes={
             <>
-              {ignoreWhitespace && <MenuNote>Staging is off: these hunks are not the patch git would apply.</MenuNote>}
+              {ignoreWhitespace && <MenuNote>暂存已停用：当前显示的块不是 Git 会实际应用的补丁。</MenuNote>}
               {textDiff && wrapUnavailable(textDiff) && (
-                <MenuNote>Wrapping stays off for large files so scrolling keeps up.</MenuNote>
+                <MenuNote>大文件下保持关闭换行以保证滚动流畅。</MenuNote>
               )}
             </>
           }
         />
-        <Hint label="File history">
+        <Hint label="文件历史">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -666,7 +666,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               title="Only whitespace changes found"
               description={
                 isWorkingCopy && target.staged
-                  ? 'These whitespace changes are staged and will be committed. Turn off Ignore whitespace to unstage them.'
+                  ? 'These whitespace changes are staged and will be committed. Turn off 忽略空白字符 to unstage them.'
                   : 'Line and hunk stage are off while whitespace is hidden.'
               }
             />

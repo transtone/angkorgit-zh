@@ -519,7 +519,7 @@ export function WelcomePage() {
             {recents.length === 0 ? (
               <SettingEmpty
                 icon={<FolderGit2 className="size-4" />}
-                title="No repositories yet"
+                title="还没有仓库"
                 description="Open a folder that already has a .git directory, scan a folder full of them, or clone one from a URL. Everything you open shows up here."
                 action={
                   <span className="flex gap-2">

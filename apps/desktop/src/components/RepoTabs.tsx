@@ -510,7 +510,7 @@ export function RepoTabs() {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      <Hint label={`Open another repository (${modKey()}T)`}>
+      <Hint label={`打开另一个仓库 (${modKey()}T)`}>
         <Button
           variant="ghost"
           size="icon-sm"

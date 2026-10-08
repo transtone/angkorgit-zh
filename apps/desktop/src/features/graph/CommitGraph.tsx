@@ -539,7 +539,7 @@ export function CommitGraph() {
           ) : (
             <PaneEmpty
               icon={filtersActive ? <Filter /> : <GitCommitHorizontal />}
-              title={filtersActive ? 'No matching commits' : 'No commits yet'}
+              title={filtersActive ? 'No matching commits' : '还没有提交'}
               description={
                 filtersActive
                   ? 'Nothing matches the current filters.'
