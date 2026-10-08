@@ -30,3 +30,4 @@ zh-dict/pending.tsv
 
 # local-only tooling (MCP computer-use), never commit
 .shuncode/
+.commandcode/
