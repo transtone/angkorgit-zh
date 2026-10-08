@@ -798,7 +798,7 @@ function RepoShortcutsCard() {
 const SHORTCUTS: Array<[string, string[]]> = [
   ['命令面板', ['mod', 'K']],
   ['Switch to a recent repository', ['mod', 'P']],
-  ['打开仓库 in a new tab', ['mod', 'T']],
+  ['在新标签页中打开仓库', ['mod', 'T']],
   ['切换终端', ['mod', '`']],
   ['切换侧边栏', ['mod', 'B']],
   ['撤销/重做操作', ['mod', 'Z / ⇧Z']],

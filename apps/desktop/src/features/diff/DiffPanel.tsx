@@ -666,7 +666,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               title="仅发现空白字符更改"
               description={
                 isWorkingCopy && target.staged
-                  ? 'These whitespace changes are staged and will be committed. Turn off 忽略空白字符 to unstage them.'
+                  ? '这些空白字符更改已暂存，将会被提交。关闭“忽略空白字符”可取消暂存。'
                   : '隐藏空白字符时，代码块与单行暂存已停用。'
               }
             />

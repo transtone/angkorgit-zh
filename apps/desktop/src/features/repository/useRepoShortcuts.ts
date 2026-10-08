@@ -24,7 +24,7 @@ export async function switchToRepo(path: string, ensureRepoRoute: () => void): P
 }
 
 export async function openRepositoryInNewTab(ensureRepoRoute: () => void): Promise<void> {
-  const dir = await pickDirectory('打开仓库 in a new tab');
+  const dir = await pickDirectory('在新标签页中打开仓库');
   if (!dir) return;
   try {
     await useRepo.getState().open(dir);
