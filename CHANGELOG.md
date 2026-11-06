@@ -6,6 +6,12 @@
 
 ## [未发布]
 
+## [0.26.0] — 2026-11-06
+
+The hooks release. Commits and pushes now run your Git hooks the way `git` does, the
+commit graph is easier to follow in busy repositories, and AI can write a new message
+for a commit you are rewording.
+
 ### Added
 - **Commits run your Git hooks.** `pre-commit` and `commit-msg` now run when you
   commit or amend, from `.git/hooks` or `core.hooksPath` (Husky and similar setups
@@ -17,15 +23,43 @@
   repositories that have hooks.
   Running hooks needs Git 2.36 or newer on your PATH; without it the commit still goes
   through and AngKorGit tells you the hooks did not run. (#82)
+- **Pushes run your `pre-push` hook.** Every push in the app (toolbar, graph, sidebar,
+  tags, force push and the push in the pull request dialog) runs `pre-push` first with
+  the same arguments and ref lines `git push` gives it, including the remote's current
+  commit for each ref. A failing hook stops the push before anything is sent and shows
+  its output, with **Push without hooks** to go ahead anyway; the Push menu has the same
+  entry when the repository has a `pre-push` hook. If the server closes an idle HTTPS
+  connection while a slow hook runs, the push reconnects without running the hook a
+  second time. With Git 2.36 to 2.39 the hook still runs on macOS and Linux. (#82)
 - **Write an earlier commit's message with AI.** The commit message editor in the
   inspector has the same sparkle button as the commit box: it sends that commit's
   changes to your AI provider and fills in a new summary and description, following
   your commit style and branch prefix rules. Edit it, then Save message as before;
   the button stops a run that is taking too long.
+- **Branch and tag chips in the graph have the sidebar's actions.** Right-click a
+  branch chip to rename or delete it, create a branch at it or open it in a new
+  worktree, next to the merge, rebase, pull and push entries it already had. Tag chips
+  can be checked out, pushed and deleted from the graph too.
+
+### Changed
+- **A tidier commit graph.** Branch lines now run like rails, straight across and
+  down with rounded corners, instead of diagonal curves that tangled where branches
+  crossed. Lanes keep their spacing in busy repositories, so a commit's avatar no
+  longer covers the lines next to it, and every branch and tag chip takes the colour
+  of its lane. The row band is a flat stripe that ends in a thin lane coloured line
+  before the message, and the uncommitted changes banner no longer lets the rows
+  scroll through it.
+- **The graph column can be resized and scrolls sideways.** Drag the edge of the Graph
+  header to make the column wider or narrower (double-click it to reset). When a
+  repository has more branches than the column shows, swipe sideways or use Shift and
+  the wheel over the graph, or drag the scrollbar under it, to bring the rest into view.
 
 ### Fixed
 - Closing a tab right after switching to it (⌘W / Ctrl+W) no longer brings the
   closed tab back a moment later.
+- A tab with a short name and a keyboard shortcut no longer shrinks to a sliver of
+  its first letter when many tabs are open. Every tab keeps at least a few letters of
+  its name, and the shortcut stays visible.
 
 ## [0.25.0] — 2026-10-28
 
@@ -1838,7 +1872,8 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/cheat2001/angkorgit/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/cheat2001/angkorgit/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/cheat2001/angkorgit/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/cheat2001/angkorgit/compare/v0.22.0...v0.23.0

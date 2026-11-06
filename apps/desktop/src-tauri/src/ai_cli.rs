@@ -196,15 +196,6 @@ pub(crate) fn capture(command: Command, stdin: &str, timeout: Duration) -> AppRe
     capture_child(child, stdin, timeout)
 }
 
-pub(crate) fn capture_tree(
-    command: Command,
-    stdin: &str,
-    timeout: Duration,
-) -> AppResult<Captured> {
-    let child = spawn_tree(command).map_err(|e| AppError::other(format!("启动失败：{e}")))?;
-    capture_tree_child(child, stdin, timeout)
-}
-
 pub(crate) fn spawn_piped(mut command: Command) -> std::io::Result<Child> {
     command
         .stdin(Stdio::piped())
@@ -704,7 +695,8 @@ mod tests {
             pid_file.display()
         ));
         let started = Instant::now();
-        let Err(err) = capture_tree(command, "", Duration::from_secs(1)) else {
+        let child = spawn_tree(command).unwrap();
+        let Err(err) = capture_tree_child(child, "", Duration::from_secs(1)) else {
             panic!("the sleeping shell must time out");
         };
         assert!(err.to_string().contains("超时"), "{err}");

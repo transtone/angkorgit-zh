@@ -59,6 +59,7 @@ import {
 } from '@angkorgit/design-system';
 import { ipc, openExternal } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
+import { isHookFailure, reportHookFailure } from '@/components/hookFailure';
 import { EmptyCard } from '@/components/EmptyCard';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
@@ -305,6 +306,7 @@ export function Sidebar() {
     label: string,
     op: () => Promise<unknown>,
     undoable?: { kind: UndoKind; extra?: Record<string, string> },
+    retryWithoutHooks?: () => void,
   ) => {
     try {
       const result = undoable
@@ -320,9 +322,29 @@ export function Sidebar() {
       toastOutcome(result as { status?: string; message?: string } | undefined, `${label} 已完成`);
       await refreshAll();
     } catch (error) {
+      if (retryWithoutHooks && isHookFailure(error)) {
+        reportHookFailure({ repoPath: path, operation: 'push', error, retry: retryWithoutHooks });
+        return;
+      }
       toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
     }
   };
+
+  const pushTag = (tag: string, noVerify = false): void =>
+    void act(
+      `推送标签 ${tag}`,
+      () => ipc.pushTag(path, remotes[0]?.name ?? 'origin', tag, noVerify),
+      undefined,
+      () => pushTag(tag, true),
+    );
+
+  const pushBranch = (branch: string, noVerify = false): void =>
+    void act(
+      `推送 ${branch}`,
+      () => ipc.push(path, pickRemote(remotes, branches.find((b) => !b.isRemote && b.name === branch)?.upstream)?.name ?? 'origin', false, false, true, branch, noVerify),
+      undefined,
+      () => pushBranch(branch, true),
+    );
 
   const removeWorktree = async (wt: WorktreeInfo) => {
     if (wt.isMain) return;
@@ -745,7 +767,7 @@ export function Sidebar() {
       <button
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
         onDoubleClick={() => void act(`检出 ${branch.name}`, () => ipc.checkout(path, branch.name), { kind: 'checkout' })}
-        title={`${branch.name} — double-click to check out ${branch.name.split('/').slice(1).join('/')} from it (fast-forwards the local branch when it is behind)`}
+        title={`${branch.name}——双击从此处检出 ${branch.name.split('/').slice(1).join('/')}（本地分支落后时会快进）`}
       >
         <HeadMark active={false} />
         <span className="min-w-0 truncate">{label}</span>
@@ -1339,8 +1361,7 @@ export function Sidebar() {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                const tag = tagMenu.tag;
-                void act(`推送标签 ${tag.name}`, () => ipc.pushTag(path, remotes[0]?.name ?? 'origin', tag.name));
+                pushTag(tagMenu.tag.name);
               }}
             >
               <Cloud /> 推送到远端
@@ -1630,11 +1651,7 @@ export function Sidebar() {
                   {branchMenu.branch.behind > 0 && <Badge tone="info">↓{capCount(branchMenu.branch.behind)}</Badge>}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() =>
-                    void act(`推送 ${branchMenu.branch.name}`, () =>
-                      ipc.push(path, pickRemote(remotes, branchMenu.branch.upstream)?.name ?? 'origin', false, false, true, branchMenu.branch.name),
-                    )
-                  }
+                  onClick={() => pushBranch(branchMenu.branch.name)}
                 >
                   <ArrowUpFromLine /> 推送
                   {branchMenu.branch.ahead > 0 && <Badge tone="primary">↑{capCount(branchMenu.branch.ahead)}</Badge>}

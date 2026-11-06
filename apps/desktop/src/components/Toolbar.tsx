@@ -49,6 +49,8 @@ import {
   cn,
 } from '@angkorgit/design-system';
 import { ipc, pickDirectory } from '@/core/ipc';
+import { isHookFailure, reportHookFailure } from '@/components/hookFailure';
+import { useRepoHooks } from '@/features/repository/useRepoHooks';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';
 import { GroupDot } from '@/features/repository/RepoGroupMenu';
@@ -59,7 +61,7 @@ import { useUndo } from '@/features/history/undoStore';
 import { useSettings, type IdentityProfile } from '@/features/settings/store';
 import { applyProfileToRepo, ensureRepoProfile } from '@/features/settings/profiles';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
-import { capCount, isMac, modKey } from '@/shared/utils';
+import { basename, capCount, isMac, modKey } from '@/shared/utils';
 
 function RepoSwitcher() {
   const repo = useRepo((s) => s.repo);
@@ -402,6 +404,27 @@ function UndoRedoButtons({ onRefresh }: { onRefresh: () => Promise<void> }) {
   );
 }
 
+interface PushRequest {
+  repoPath: string;
+  remote: string;
+  branch: string | undefined;
+  force: boolean;
+  withTags: boolean;
+  setUpstream: boolean;
+  noVerify: boolean;
+}
+
+function rebaseBlocker(request: PushRequest, repoPath: string, headBranch: string | null): string | null {
+  const branch = request.branch ?? '待推送的分支';
+  if (request.repoPath !== repoPath) {
+    return `请先切换到 ${basename(request.repoPath)} 并检出 ${branch}：拉取操作会对当前检出的分支执行变基。`;
+  }
+  if (!request.branch || headBranch !== request.branch) {
+    return `请先检出 ${branch}：拉取操作会对当前检出的分支执行变基。`;
+  }
+  return null;
+}
+
 function isNonFastForward(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   return e?.code === 'non_fast_forward' || /non-fast-?forward/i.test(e?.message ?? '');
@@ -423,6 +446,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const navigate = useNavigate();
   const [spinning, setSpinning] = useState(false);
+  const repoHooks = useRepoHooks(repo?.path);
 
   if (!repo) return null;
   const remote = pickRemote(remotes, headUpstream)?.name ?? 'origin';
@@ -432,12 +456,17 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const { editors } = useEditors();
   const editor = preferredEditor(editors, editorId);
 
-  const [pushRejected, setPushRejected] = useState(false);
+  const [pushRejected, setPushRejected] = useState<PushRequest | null>(null);
   const [pullCheck, setPullCheck] = useState(false);
   const pullWarning = pullWarningOf(pullPreview);
   const pullWarningLine = pullPreview ? pullWarningText(pullPreview) : null;
 
-  const run = async (label: string, op: () => Promise<{ status: string; message: string } | void>) => {
+  const run = async (
+    label: string,
+    op: () => Promise<{ status: string; message: string } | void>,
+    retryWithoutHooks?: () => void,
+    onNonFastForward?: () => void,
+  ) => {
     if (busy) return;
     setBusy(label);
     try {
@@ -450,8 +479,12 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       }
       await onRefresh();
     } catch (error) {
-      if (label === '推送' && isNonFastForward(error)) {
-        setPushRejected(true);
+      if (retryWithoutHooks && isHookFailure(error)) {
+        reportHookFailure({ repoPath: repo.path, operation: 'push', error, retry: retryWithoutHooks });
+        return;
+      }
+      if (onNonFastForward && isNonFastForward(error)) {
+        onNonFastForward();
         return;
       }
       const text = String((error as { message?: string }).message ?? error);
@@ -465,11 +498,35 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
     }
   };
 
-  const runPush = (label: string, op: () => Promise<{ status: string; message: string } | void>) =>
+  const pushRequest = (overrides: Partial<PushRequest> = {}): PushRequest => ({
+    repoPath: repo.path,
+    remote,
+    branch: repo.headBranch ?? undefined,
+    force: false,
+    withTags: false,
+    setUpstream: true,
+    noVerify: false,
+    ...overrides,
+  });
+  const runPush = (label: string, request: PushRequest): void =>
     void (async () => {
       if (busy) return;
-      await ensureRepoProfile(repo.path);
-      await run(label, op);
+      await ensureRepoProfile(request.repoPath);
+      await run(
+        label,
+        () =>
+          ipc.push(
+            request.repoPath,
+            request.remote,
+            request.force,
+            request.withTags,
+            request.setUpstream,
+            request.branch,
+            request.noVerify,
+          ),
+        () => runPush(label, { ...request, noVerify: true }),
+        !request.force && request.remote === remote ? () => setPushRejected(request) : undefined,
+      );
       void import('@/features/forge/store').then(({ useForge }) => useForge.getState().load(true));
     })();
   const confirmForcePush = async () => {
@@ -480,7 +537,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       confirmLabel: '强制推送',
       destructive: true,
     });
-    if (ok) runPush('推送（强制）', () => ipc.push(repo.path, remote, true, false, true));
+    if (ok) runPush('推送（强制）', pushRequest({ force: true }));
   };
 
   return (
@@ -514,17 +571,22 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       <UndoRedoButtons onRefresh={onRefresh} />
 
       <PushRejectedDialog
-        open={pushRejected}
-        remote={remote}
-        branch={repo.headBranch ?? null}
-        onClose={() => setPushRejected(false)}
+        open={pushRejected !== null}
+        remote={pushRejected?.remote ?? remote}
+        branch={pushRejected?.branch ?? repo.headBranch ?? null}
+        pullBlocked={pushRejected ? rebaseBlocker(pushRejected, repo.path, repo.headBranch) : null}
+        onClose={() => setPushRejected(null)}
         onPullRebase={() => {
-          setPushRejected(false);
-          void run('拉取（变基）', () => ipc.pull(repo.path, remote, 'rebase'));
+          const rejected = pushRejected;
+          const current = useRepo.getState().repo;
+          if (!rejected || !current || rebaseBlocker(rejected, current.path, current.headBranch) !== null) return;
+          setPushRejected(null);
+          void run('拉取（变基）', () => ipc.pull(rejected.repoPath, rejected.remote, 'rebase'));
         }}
         onForcePush={() => {
-          setPushRejected(false);
-          runPush('推送（强制）', () => ipc.push(repo.path, remote, true, false, true));
+          const rejected = pushRejected;
+          setPushRejected(null);
+          if (rejected) runPush('推送（强制）', { ...rejected, force: true });
         }}
       />
 
@@ -572,7 +634,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
           className="max-w-[28rem]"
           label={
             <span className="flex flex-col gap-0.5">
-              <span>{`从 ${remote} 拉取${status?.behind ? ` (${status.behind} behind)` : ''} · merge or rebase per pull.rebase`}</span>
+              <span>{`从 ${remote} 拉取${status?.behind ? `（落后 ${status.behind} 个提交）` : ''} · 按 pull.rebase 配置合并或变基`}</span>
               {pullWarningLine && <span className="text-danger">{pullWarningLine}</span>}
             </span>
           }
@@ -627,13 +689,13 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         </DropdownMenu>
       </div>
       <div className="flex items-center">
-        <Hint label={`推送到 ${remote}${status?.ahead ? ` (${status.ahead} ahead)` : ''}`}>
+        <Hint label={`推送到 ${remote}${status?.ahead ? `（领先 ${status.ahead} 个提交）` : ''}`}>
           <Button
             variant="ghost"
             size="sm"
             className="rounded-r-none"
             disabled={!!busy}
-            onClick={() => runPush('推送', () => ipc.push(repo.path, remote, false, false, true))}
+            onClick={() => runPush('推送', pushRequest())}
           >
             <ArrowUpFromLine />
             推送
@@ -650,9 +712,16 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             <DropdownMenuItem onClick={() => void confirmForcePush()} destructive>
               强制推送
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => runPush('推送（含标签）', () => ipc.push(repo.path, remote, false, true, true))}>
+            <DropdownMenuItem onClick={() => runPush('推送（含标签）', pushRequest({ withTags: true }))}>
               推送（含标签）
             </DropdownMenuItem>
+            {repoHooks.includes('pre-push') && (
+              <DropdownMenuItem
+                onClick={() => runPush('跳过钩子推送', pushRequest({ noVerify: true }))}
+              >
+                跳过钩子推送
+              </DropdownMenuItem>
+            )}
             {remotes.length > 1 && (
               <>
                 <DropdownMenuSeparator />
@@ -662,8 +731,9 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
                     key={r.name}
                     checked={r.name === remote}
                     onSelect={() =>
-                      runPush(`推送到 ${r.name}`, () =>
-                        ipc.push(repo.path, r.name, false, false, pushSetsUpstream(headUpstream, r.name)),
+                      runPush(
+                        `推送到 ${r.name}`,
+                        pushRequest({ remote: r.name, setUpstream: pushSetsUpstream(headUpstream, r.name) }),
                       )
                     }
                   >

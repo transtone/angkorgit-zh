@@ -144,6 +144,7 @@ interface UiState {
   commitBoxHeight: number | null;
   graphColumns: GraphColumns;
   graphTail: boolean;
+  graphWidth: number | null;
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -180,6 +181,7 @@ interface UiState {
   setCommitBoxHeight: (height: number | null) => void;
   setGraphColumn: (column: keyof GraphColumns, on: boolean) => void;
   setGraphTail: (on: boolean) => void;
+  setGraphWidth: (width: number | null) => void;
   setFileView: (view: FileView) => void;
   setFileFilterOpen: (on: boolean) => void;
   focusInspector: (target: string | null) => void;
@@ -244,6 +246,7 @@ export const useUi = create<UiState>()(
   commitBoxHeight: null,
   graphColumns: DEFAULT_GRAPH_COLUMNS,
   graphTail: true,
+  graphWidth: null,
 
   toggleSidebar: () =>
     set((s) =>
@@ -338,6 +341,7 @@ export const useUi = create<UiState>()(
   setGraphColumn: (column, on) =>
     set((s) => ({ graphColumns: { ...s.graphColumns, [column]: on } })),
   setGraphTail: (graphTail) => set({ graphTail }),
+  setGraphWidth: (graphWidth) => set({ graphWidth }),
   setFileView: (fileView) => set({ fileView }),
   focusInspector: (target) => {
     focusRequests.inspectorTarget = target;
@@ -379,6 +383,7 @@ export const useUi = create<UiState>()(
         commitBoxHeight: state.commitBoxHeight,
         graphColumns: state.graphColumns,
         graphTail: state.graphTail,
+        graphWidth: state.graphWidth,
       }),
     },
   ),

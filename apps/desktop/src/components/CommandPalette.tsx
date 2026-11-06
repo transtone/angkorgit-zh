@@ -28,6 +28,7 @@ import {
   Redo2,
   RefreshCw,
   Settings,
+  ShieldOff,
   SquareTerminal,
   Sun,
   Tag as TagIcon,
@@ -40,6 +41,8 @@ import {
 import { Kbd, Spinner } from '@angkorgit/design-system';
 import { ipc, openExternal, pickDirectory } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
+import { isHookFailure, reportHookFailure } from '@/components/hookFailure';
+import { useRepoHooks } from '@/features/repository/useRepoHooks';
 import { useRepo } from '@/features/repository/store';
 import { abortMergeFlow } from '@/features/repository/merge';
 import { sidebarVisible, useUi } from '@/features/ui/store';
@@ -89,7 +92,9 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
   const path = repo?.path ?? '';
   const repoState = repo?.state ?? 'clean';
   const headUpstream = useMemo(() => branches.find((b) => !b.isRemote && b.isHead)?.upstream ?? null, [branches]);
+  const repoHooks = useRepoHooks(path);
   const remote = pickRemote(remotes, headUpstream)?.name ?? 'origin';
+  const headBranch = repo?.headBranch ?? undefined;
   const locals = useMemo(() => branches.filter((b) => !b.isRemote && !b.isHead), [branches]);
   const otherRepos = useMemo(() => recents.filter((r) => r.path !== path).slice(0, 8), [recents, path]);
   const groupSections = useMemo(
@@ -135,7 +140,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         setFiles([]);
         setFilesError(true);
         setFilesLoading(false);
-        toast.error(`Listing files failed: ${(error as { message?: string }).message ?? error}`);
+        toast.error(`列出文件失败：${(error as { message?: string }).message ?? error}`);
       });
   };
 
@@ -155,7 +160,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
 
   const close = () => setPaletteOpen(false);
 
-  const run = (label: string, op: () => Promise<unknown>) => {
+  const run = (label: string, op: () => Promise<unknown>, retryWithoutHooks?: () => void) => {
     close();
     void (async () => {
       try {
@@ -164,10 +169,17 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         toastOutcome(result, `${label} 已完成`);
         await onRefresh();
       } catch (error) {
+        if (retryWithoutHooks && isHookFailure(error)) {
+          reportHookFailure({ repoPath: path, operation: 'push', error, retry: retryWithoutHooks });
+          return;
+        }
         toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
       }
     })();
   };
+
+  const runPush = (label: string, push: (noVerify: boolean) => Promise<unknown>, noVerify = false): void =>
+    run(label, () => push(noVerify), () => runPush(label, push, true));
 
   const runHistory = (direction: 'undo' | 'redo') => {
     close();
@@ -280,7 +292,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
 
         {mode !== 'commands' && filesLoading && (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-faint">
-            <Spinner /> Loading files…
+            <Spinner /> 正在加载文件…
           </div>
         )}
         {mode !== 'commands' && !filesLoading && filesError && (
@@ -314,7 +326,20 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
             label="拉取（变基）"
             onSelect={() => run('拉取（变基）', () => ipc.pull(path, remote, 'rebase'))}
           />
-          <PaletteItem icon={<ArrowUpFromLine />} label="推送" onSelect={() => run('推送', () => ipc.push(path, remote, false, false, true))} />
+          <PaletteItem
+            icon={<ArrowUpFromLine />}
+            label="推送"
+            onSelect={() => runPush('推送', (noVerify) => ipc.push(path, remote, false, false, true, headBranch, noVerify))}
+          />
+          {repoHooks.includes('pre-push') && (
+            <PaletteItem
+              icon={<ShieldOff />}
+              label="跳过钩子推送"
+              onSelect={() =>
+                runPush('跳过钩子推送', (noVerify) => ipc.push(path, remote, false, false, true, headBranch, noVerify), true)
+              }
+            />
+          )}
           {remotes.length > 1 &&
             remotes.map((r) => (
               <PaletteItem
@@ -331,7 +356,9 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
                 icon={<ArrowUpFromLine />}
                 label={`推送到 ${r.name}`}
                 onSelect={() =>
-                  run(`推送到 ${r.name}`, () => ipc.push(path, r.name, false, false, pushSetsUpstream(headUpstream, r.name)))
+                  runPush(`推送到 ${r.name}`, (noVerify) =>
+                    ipc.push(path, r.name, false, false, pushSetsUpstream(headUpstream, r.name), headBranch, noVerify),
+                  )
                 }
               />
             ))}
@@ -356,7 +383,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
                 {prUrl && (
                   <PaletteItem
                     icon={<GitPullRequest />}
-                    label={`Create ${forgeNoun(forgeCurrent ? forgeKind : null)}`}
+                    label={`创建${forgeNoun(forgeCurrent ? forgeKind : null)}`}
                     onSelect={() => {
                       close();
                       if (inApp) openDialog('createPullRequest');

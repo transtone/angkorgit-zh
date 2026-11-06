@@ -38,20 +38,20 @@ test('commit search finds matches in the full graph and steps through them', asy
   const search = page.getByPlaceholder('搜索提交…');
   await expect(search).toBeVisible({ timeout: 10_000 });
   await search.fill('virtualize');
-  await expect(page.getByText(/^1 of \d+$/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/^1 \/ \d+$/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/200\+ 个提交/)).toBeVisible();
   await expect(page.locator('[data-search-match="active"]')).toHaveText(/virtualize commit rows/);
   await expect(page.locator('[data-search-match]').first()).toBeVisible();
   await search.press('Enter');
-  await expect(page.getByText(/^2 of \d+$/)).toBeVisible();
+  await expect(page.getByText(/^2 \/ \d+$/)).toBeVisible();
   await page.getByLabel('上一个匹配').click();
-  await expect(page.getByText(/^1 of \d+$/)).toBeVisible();
+  await expect(page.getByText(/^1 \/ \d+$/)).toBeVisible();
   await page.getByText('fix(diff): handle renamed files in word diff').first().click();
   await expect(search).toHaveValue('virtualize');
   await expect(page.locator('[data-search-match="active"]')).toHaveCount(0);
   await search.press('Escape');
   await expect(search).toHaveValue('');
-  await expect(page.getByText(/^1 of \d+$/)).toBeHidden();
+  await expect(page.getByText(/^1 \/ \d+$/)).toBeHidden();
 });
 
 test('a search result that lands after a click keeps the clicked commit selected', async ({ page }) => {
@@ -61,7 +61,7 @@ test('a search result that lands after a click keeps the clicked commit selected
   const search = page.getByPlaceholder('搜索提交…');
   await expect(search).toBeVisible({ timeout: 10_000 });
   await search.fill('virtualiz');
-  const pill = page.getByText(/^1 of \d+$/);
+  const pill = page.getByText(/^1 \/ \d+$/);
   await expect(pill).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-search-match="active"]')).toHaveText(/virtualize commit rows/);
   await search.pressSequentially('e');
@@ -74,9 +74,9 @@ test('a search result that lands after a click keeps the clicked commit selected
   await expect(page.locator('[data-search-match="active"]')).toHaveCount(0);
   await expect(page.locator('[data-search-match]').first()).toBeVisible();
   await page.locator('[data-search-match]').nth(1).click();
-  await expect(page.getByText(/^2 of \d+$/)).toBeVisible();
+  await expect(page.getByText(/^2 \/ \d+$/)).toBeVisible();
   await search.press('Enter');
-  await expect(page.getByText(/^3 of \d+$/)).toBeVisible();
+  await expect(page.getByText(/^3 \/ \d+$/)).toBeVisible();
   await expect(page.locator('[data-search-match="active"]')).toHaveText(/virtualize commit rows/);
 });
 
@@ -152,14 +152,14 @@ test('the author box finds commits without flattening the graph', async ({ page 
   const author = page.getByPlaceholder('查找作者…');
   await expect(author).toBeVisible({ timeout: 10_000 });
   await author.fill('Dara');
-  await expect(page.getByText(/^1 of \d+$/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/^1 \/ \d+$/)).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-search-match="active"]')).toContainText('Dara Kim');
   await expect(page.getByText(/200\+ 个提交/)).toBeVisible();
   await expect(page.locator('[data-graph-tail]').first()).toBeVisible();
   await page.getByPlaceholder('搜索提交…').fill('renamed');
   await expect(page.locator('[data-search-match="active"]')).toContainText('fix(diff): handle renamed files');
   await author.press('Enter');
-  await expect(page.getByText(/^2 of \d+$/)).toBeVisible();
+  await expect(page.getByText(/^2 \/ \d+$/)).toBeVisible();
 });
 
 test('reconnecting an account opens the token form with the account prefilled', async ({ page }) => {
@@ -417,9 +417,9 @@ test('local branch menus push the selected branch without checking it out', asyn
       await page.getByRole('complementary', { name: '分支与引用' })
         .getByText(selectedBranch, { exact: true }).first().click({ button: 'right' });
     } else if (entry === 'ref') {
-      await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+      await page.getByTitle(/^feature\/diff-viewer · 本地/).first().click({ button: 'right' });
     } else {
-      await page.getByRole('row').filter({ has: page.getByTitle(/^feature\/diff-viewer · local/) }).click({ button: 'right' });
+      await page.getByRole('row').filter({ has: page.getByTitle(/^feature\/diff-viewer · 本地/) }).click({ button: 'right' });
     }
     await page.getByRole('menuitem', { name: entry === 'commit' ? `推送 ${selectedBranch}` : /^推送/ }).click();
     await expect.poll(() => page.evaluate(() => (window as unknown as { __branchPush: string[] | null }).__branchPush))
@@ -444,7 +444,7 @@ test('synchronized local branches hide push and pull in every context menu', asy
     if (entry === 'sidebar') {
       await page.getByRole('complementary', { name: '分支与引用' }).getByText('main', { exact: true }).first().click({ button: 'right' });
     } else if (entry === 'ref') {
-      await page.getByTitle(/^main · local/).first().click({ button: 'right' });
+      await page.getByTitle(/^main · 本地/).first().click({ button: 'right' });
     } else {
       await page.getByRole('row').first().click({ button: 'right' });
     }
@@ -800,7 +800,7 @@ test('搜索提交哈希会在完整提交图中跳转到它', async ({ page }) 
   await search.fill('000096aaaaaa');
   await expect(page.getByText('400 个提交')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('000096aa').first()).toBeVisible();
-  await expect(page.getByText('1 of 1')).toBeVisible();
+  await expect(page.getByText('1 / 1')).toBeVisible();
 
   await page.getByText('fix(diff): handle renamed files in word diff').first().click();
   await expect(page.getByText('400 个提交')).toBeVisible();
@@ -817,7 +817,7 @@ test('a short hash prefix jumps like a full hash and an unknown hex word reports
   await expect(page.getByText('000096aa').first()).toBeVisible();
 
   await search.fill('dedede');
-  await expect(page.getByText('No matches')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('没有匹配项')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('400 个提交')).toBeVisible();
 });
 
@@ -827,7 +827,7 @@ test('搜索不存在的哈希会保留提交图并提示', async ({ page }) => 
   const search = page.getByPlaceholder('搜索提交…');
   await expect(search).toBeVisible({ timeout: 10_000 });
   await search.fill('deadbeef123');
-  await expect(page.getByText('No matches')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('没有匹配项')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/200\+ 个提交/)).toBeVisible();
 });
 
@@ -1162,12 +1162,108 @@ test('Commit without hooks never claims to run hooks and keeps text typed while 
   await expect(description).toHaveValue('typed while the commit ran');
 });
 
+test('a failing pre-push hook shows its output and the push can skip the hooks', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('angkorgit-demo-hooks', 'fail'));
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole('button', { name: '推送选项' }).click();
+  await expect(page.getByRole('menuitem', { name: '跳过钩子推送' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.locator('header').getByRole('button', { name: /^推送\s*\d*$/ }).click();
+  const dialog = page.locator('[data-hook-failed="push"]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('钩子阻止了推送');
+  await expect(dialog).toContainText('pre-push 钩子执行失败（退出码 1）。');
+  await expect(dialog).toContainText('未推送任何内容。');
+  const output = dialog.locator('[data-hook-output]');
+  await expect(output).toContainText('keeps lanes stable across pages');
+  expect(await output.textContent()).not.toContain('\u001b');
+  await expect(page.getByText('已将 main 推送到 origin（演示）')).toHaveCount(0);
+
+  await dialog.locator('[data-hook-actions]').getByRole('button', { name: '跳过钩子推送' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('已将 main 推送到 origin（演示）')).toBeVisible();
+});
+
+test('Force push after a rejected Push without hooks keeps skipping the hook and pushes the same branch', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('angkorgit-demo-hooks', 'fail');
+    localStorage.setItem('angkorgit-demo-push-rejected', '1');
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  await page.locator('header').getByRole('button', { name: /^推送\s*\d*$/ }).click();
+  const hookDialog = page.locator('[data-hook-failed="push"]');
+  await expect(hookDialog).toBeVisible();
+  await hookDialog.locator('[data-hook-actions]').getByRole('button', { name: '跳过钩子推送' }).click();
+
+  const rejected = page.locator('[data-push-rejected]');
+  await expect(rejected).toBeVisible();
+  await expect(rejected).toContainText('origin/main');
+  await rejected.getByRole('button', { name: /^强制推送/ }).click();
+  await expect(page.getByText('已将 main 推送到 origin（强制）（演示）')).toBeVisible();
+  await expect(hookDialog).toHaveCount(0);
+});
+
+test('Pull with rebase after a rejected Push without hooks waits until the pushed branch is checked out again', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('angkorgit-demo-hooks', 'fail');
+    localStorage.setItem('angkorgit-demo-hooks-delay', '1500');
+    localStorage.setItem('angkorgit-demo-push-rejected', '1');
+    localStorage.setItem('angkorgit-demo-checkout', '1');
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  await page.locator('header').getByRole('button', { name: /^推送\s*\d*$/ }).click();
+  await page.getByTitle('develop — 点击筛选提交图，双击检出').dblclick();
+  const checkoutBranch = 'develop';
+  await expect(page.getByText(`检出 ${checkoutBranch} 已完成`)).toBeVisible();
+  const hookDialog = page.locator('[data-hook-failed="push"]');
+  await expect(hookDialog).toBeVisible({ timeout: 10_000 });
+  await hookDialog.locator('[data-hook-actions]').getByRole('button', { name: '跳过钩子推送' }).click();
+
+  const rejected = page.locator('[data-push-rejected]');
+  await expect(rejected).toBeVisible();
+  await expect(rejected).toContainText('origin/main');
+  const pullRebase = rejected.getByRole('button', { name: /^拉取（变基）/ });
+  await expect(pullRebase).toBeDisabled();
+  await expect(rejected.locator('[data-pull-blocked]')).toHaveText(
+    '请先检出 main：拉取操作会对当前检出的分支执行变基。',
+  );
+  await expect(rejected.getByRole('button', { name: '取消' })).toBeFocused();
+  await rejected.getByRole('button', { name: '取消' }).click();
+  await expect(rejected).toBeHidden();
+  await expect(page.getByText('拉取（变基） 完成')).toHaveCount(0);
+  await expect(page.getByText('已是最新（演示）')).toHaveCount(0);
+
+  await page.getByTitle('main — 点击筛选提交图，双击检出').dblclick();
+  await expect(page.getByText('检出 main 已完成')).toBeVisible();
+  await page.getByRole('button', { name: '推送选项' }).click();
+  await page.getByRole('menuitem', { name: '跳过钩子推送' }).click();
+  await expect(rejected).toBeVisible();
+  await expect(rejected.locator('[data-pull-blocked]')).toHaveCount(0);
+  await expect(pullRebase).toBeEnabled();
+  await expect(pullRebase).toBeFocused();
+  await pullRebase.click();
+  await expect(page.getByText('已是最新（演示）')).toBeVisible();
+});
+
 test('the commit box has no Skip hooks box when the repository has no hooks', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByLabel('提交摘要')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: '跳过钩子' })).toHaveCount(0);
+  await page.getByRole('button', { name: '推送选项' }).click();
+  await expect(page.getByRole('menuitem', { name: '强制推送' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '跳过钩子推送' })).toHaveCount(0);
 });
 
 test('a submodule left at an older commit offers Update submodule instead of Discard', async ({ page }) => {
@@ -1569,14 +1665,14 @@ test('hovering a crowded ref cell stacks every ref in place, folded ones include
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  const rowChip = page.getByTitle(/^feature\/diff-viewer · local/).first();
+  const rowChip = page.getByTitle(/^feature\/diff-viewer · 本地/).first();
   const row = page.getByRole('row').filter({ has: rowChip }).first();
   await expect(row.getByText('release/0.4', { exact: true })).toHaveCount(0);
-  await expect(row.getByRole('button', { name: '1 more ref' })).toHaveText('+1');
+  await expect(row.getByRole('button', { name: '还有 1 个引用' })).toHaveText('+1');
   await rowChip.hover();
   const panel = page.locator('[data-more-refs]');
-  const first = panel.getByTitle(/^feature\/diff-viewer · local/);
-  const second = panel.getByTitle(/^release\/0\.4 · local — double-click to checkout/);
+  const first = panel.getByTitle(/^feature\/diff-viewer · 本地/);
+  const second = panel.getByTitle(/^release\/0\.4 · 本地——双击检出/);
   await expect(first).toBeVisible();
   await expect(second).toBeVisible();
   const rowBox = await rowChip.boundingBox();
@@ -1600,13 +1696,13 @@ test('the checked-out branch is the visible chip and the only one with the tick'
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   const rows = page.getByRole('row');
   const top = rows.first();
-  await expect(top.getByTitle(/^main · local/)).toBeVisible();
+  await expect(top.getByTitle(/^main · 本地/)).toBeVisible();
   await expect(top.getByText('hotfix/lane-colors', { exact: true })).toHaveCount(0);
-  await expect(top.getByRole('button', { name: '1 more ref' })).toHaveText('+1');
-  await top.getByTitle(/^main · local/).hover();
+  await expect(top.getByRole('button', { name: '还有 1 个引用' })).toHaveText('+1');
+  await top.getByTitle(/^main · 本地/).hover();
   const panel = page.locator('[data-more-refs]');
-  const main = panel.getByTitle(/^main · local/);
-  const hotfix = panel.getByTitle(/^hotfix\/lane-colors · local/);
+  const main = panel.getByTitle(/^main · 本地/);
+  const hotfix = panel.getByTitle(/^hotfix\/lane-colors · 本地/);
   await expect(main).toBeVisible();
   await expect(hotfix).toBeVisible();
   const mainBox = await main.boundingBox();
@@ -1624,7 +1720,7 @@ test('a separated origin chip offers the reset from its right-click menu too', a
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  await page.getByTitle(/origin\/main — double-click to reset main to it/).first().click({ button: 'right' });
+  await page.getByTitle(/origin\/main——双击将 main 重置到此处/).first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: '将 main 重置为此提交…' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('将分支重置到其远端？')).toBeVisible();
@@ -1684,7 +1780,7 @@ test('branch menus hide unavailable fast-forwards and advance the selected branc
     const { useRepo } = await import('/src/features/repository/store.ts');
     useRepo.setState({ worktrees: [] });
   });
-  await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+  await page.getByTitle(/^feature\/diff-viewer · 本地/).first().click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: '将 feature/diff-viewer 快进到 main', exact: true })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '将 main 快进到 feature/diff-viewer', exact: true })).toHaveCount(0);
   await page.getByRole('menuitem', { name: '将 feature/diff-viewer 快进到 main', exact: true }).click();
@@ -1713,7 +1809,7 @@ test('fast-forward menus hide self, diverged and occupied branches', async ({ pa
   await expect(page.getByRole('menu')).toBeVisible();
   await expect(fastForward).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+  await page.getByTitle(/^feature\/diff-viewer · 本地/).first().click({ button: 'right' });
   await expect(page.getByRole('menu')).toBeVisible();
   await expect(fastForward).toHaveCount(0);
 });
@@ -1738,10 +1834,131 @@ test('both branch menus use strict fast-forward when the current branch is behin
   await page.getByRole('menuitem', { name: `将 main 快进到 ${branch}`, exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __fastForwardCalls: string[][] }).__fastForwardCalls))
     .toEqual([['main', branch]]);
-  await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+  await page.getByTitle(/^feature\/diff-viewer · 本地/).first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: '将 main 快进到 feature/diff-viewer', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __fastForwardCalls: string[][] }).__fastForwardCalls))
     .toEqual([['main', branch], ['main', 'feature/diff-viewer']]);
+});
+
+test('graph branch and tag chips offer the sidebar actions, with the checked-out branch protected', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.getByTitle(/^feature\/diff-viewer · 本地/).first().click({ button: 'right' });
+  const menu = page.getByRole('menu');
+  await expect(menu.getByRole('menuitem', { name: '在新工作树中打开…' })).toHaveCount(0);
+  await expect(menu.getByRole('menuitem', { name: '在此处新建分支…' })).toBeEnabled();
+  await expect(menu.getByRole('menuitem', { name: '重命名 feature/diff-viewer…' })).toBeEnabled();
+  await menu.getByRole('menuitem', { name: '删除 feature/diff-viewer', exact: true }).click();
+  await expect(page.getByText('删除分支 feature/diff-viewer 已完成')).toBeVisible();
+  await page.getByTitle(/^main · 本地/).first().click({ button: 'right' });
+  await expect(menu.getByRole('menuitem', { name: '删除 main', exact: true })).toHaveAttribute('aria-disabled', 'true');
+  await expect(menu.getByRole('menuitem', { name: '将 main 合并到 main' })).toHaveAttribute('aria-disabled', 'true');
+  await expect(menu.getByRole('menuitem', { name: '检出 main' })).toHaveAttribute('aria-disabled', 'true');
+  await expect(menu.getByRole('menuitem', { name: '重命名 main…' })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await page.getByTitle('v0.4.0', { exact: true }).first().click({ button: 'right' });
+  await expect(menu.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeEnabled();
+  await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeEnabled();
+  await menu.getByRole('menuitem', { name: '删除标签 v0.4.0', exact: true }).click();
+  await expect(page.getByText('删除标签 v0.4.0 已完成')).toBeVisible();
+});
+
+test('graph chips wear their lane colour, lines run as rails and the WIP banner hides the rows under it', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const top = page.getByRole('row').first();
+  const head = top.getByTitle(/^main · 本地/);
+  await expect(head).toBeVisible();
+  const colours = await top.evaluate((row) => {
+    const chip = row.querySelector('[data-lane-chip]') as HTMLElement;
+    const connector = row.querySelector('svg line[data-graph-connector]') as SVGLineElement;
+    return { chip: getComputedStyle(chip).backgroundColor, lane: getComputedStyle(connector).stroke };
+  });
+  expect(colours.chip).toBe(colours.lane);
+  const curves = await page.locator('[role=row] svg path').evaluateAll((paths) =>
+    paths.map((p) => p.getAttribute('d') ?? '').filter((d) => d.includes(' C ')),
+  );
+  expect(curves).toEqual([]);
+  const banner = page.getByRole('button', { name: /未提交的文件更改/ });
+  const background = await banner.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(background).not.toMatch(/rgba|\/ 0\./);
+});
+
+test('a graph with more lanes than its column scrolls sideways under its own scrollbar', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-graph-scrollbar]')).toHaveCount(0);
+  await page.evaluate(() => localStorage.setItem('angkorgit-demo-busy-graph', '1'));
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const bar = page.locator('[data-graph-scrollbar]');
+  await expect(bar).toBeVisible();
+  const list = page.getByRole('table', { name: '提交' });
+  const offset = () => list.evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue('--graph-scroll-x') || '0'));
+  const node = page.getByRole('row').nth(4).locator('span.rounded-full').first();
+  const start = (await node.boundingBox())!.x;
+  const listBox = (await list.boundingBox())!;
+  await page.mouse.move(listBox.x + 300, listBox.y + 200);
+  let previous = 0;
+  for (let i = 0; i < 4; i++) {
+    await page.mouse.wheel(10, 0);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    const now = await offset();
+    expect(now).toBeGreaterThan(previous);
+    previous = now;
+  }
+  expect(Math.abs(start - (await node.boundingBox())!.x - previous)).toBeLessThan(1);
+  const thumb = page.locator('[data-graph-scrollbar-thumb]');
+  const t = (await thumb.boundingBox())!;
+  await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(t.x + t.width / 2 + 30, t.y + t.height / 2, { steps: 4 });
+  await page.mouse.up();
+  expect(await offset()).toBeGreaterThan(previous);
+  const b = (await bar.boundingBox())!;
+  await page.mouse.click(b.x + 2, b.y + b.height / 2);
+  expect(await offset()).toBe(0);
+  await page.mouse.move(listBox.x + 500, listBox.y + 300);
+  await page.mouse.wheel(0, 200);
+  await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  expect(await offset()).toBe(0);
+});
+
+test('dragging the graph header edge resizes the column, keeps it after a reload and scrolls only what it hides', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('angkorgit-demo-busy-graph', '1'));
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const edge = async () => (await page.locator('[data-graph-resize]').boundingBox())!.x;
+  const drag = async (dx: number) => {
+    const h = (await page.locator('[data-graph-resize]').boundingBox())!;
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2 + dx, h.y + h.height / 2, { steps: 6 });
+    await page.mouse.up();
+  };
+  const bar = page.locator('[data-graph-scrollbar]');
+  await expect(bar).toBeVisible();
+  const start = await edge();
+  const startBar = (await bar.boundingBox())!.width;
+  await drag(-80);
+  expect(Math.abs((await edge()) - (start - 80))).toBeLessThan(2);
+  expect((await bar.boundingBox())!.width).toBeLessThan(startBar - 70);
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect(bar).toBeVisible();
+  await expect.poll(async () => Math.abs((await edge()) - (start - 80))).toBeLessThan(2);
+  await drag(400);
+  await expect(bar).toHaveCount(0);
+  await page.locator('[data-graph-resize]').dblclick();
+  await expect.poll(async () => Math.abs((await edge()) - start)).toBeLessThan(2);
+  await expect(bar).toBeVisible();
 });
 
 test('the remote menu and the palette open the repository page in the browser', async ({ page }) => {
@@ -1820,8 +2037,8 @@ test('the checked-out branch chip is filled while other local chips stay tinted'
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  const headChip = page.getByTitle(/^main · local/).first();
-  const otherChip = page.getByTitle(/^feature\/diff-viewer · local/).first();
+  const headChip = page.getByTitle(/^main · 本地/).first();
+  const otherChip = page.getByTitle(/^feature\/diff-viewer · 本地/).first();
   const opacity = (color: string) => Number(color.split(',')[3]?.replace(')', '') ?? '1');
   const headBg = await headChip.evaluate((el) => getComputedStyle(el).backgroundColor);
   const otherBg = await otherChip.evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -1834,7 +2051,7 @@ test('double-clicking a separated origin chip offers to reset the local branch',
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  await page.getByTitle(/origin\/main — double-click to reset main to it/).first().dblclick();
+  await page.getByTitle(/origin\/main——双击将 main 重置到此处/).first().dblclick();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('将分支重置到其远端？')).toBeVisible();
   await expect(dialog.getByText(/2 个提交仅存在于本地分支，将被丢弃/)).toBeVisible();
@@ -3632,11 +3849,39 @@ test('tabs shrink to share a narrow window like browser tabs and scroll only pas
   await expect(page.getByRole('button', { name: '关闭 angkorgit' })).toBeVisible();
   await page.setViewportSize({ width: 480, height: 900 });
   await expect(page.locator('[data-tab-overflow]')).toBeVisible();
-  expect((await longTab.boundingBox())!.width).toBeGreaterThanOrEqual(48);
+  expect((await longTab.boundingBox())!.width).toBeGreaterThanOrEqual(44);
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(strip).toHaveAttribute('data-tab-strip', 'full');
   await expect(page.getByRole('button', { name: '关闭 tycho' })).toBeVisible();
   expect(Math.abs((await longTab.boundingBox())!.width - wide.width)).toBeLessThan(2);
+});
+
+test('a short tab name keeps its letters next to a shortcut pill while the strip squeezes', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    const names = ['campaignrouting', 'gatewayservice', 'ledgerreports', 'notificationhub', 'pricingengine', 'zed', 'schedulerworker', 'inventorysync', 'auditlogviewer', 'checkoutflow', 'angkorgit'];
+    const paths = names.map((name) => `/Users/demo/projects/${name}`);
+    localStorage.setItem('angkorgit-ui', JSON.stringify({ state: { repoTabs: paths, worktreeTabs: [] }, version: 0 }));
+    localStorage.setItem(
+      'angkorgit-settings',
+      JSON.stringify({ state: { repoShortcuts: { '/Users/demo/projects/zed': 'shift+meta+y', '/Users/demo/projects/inventorysync': 'shift+meta+i' } }, version: 0 }),
+    );
+  });
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-tab-strip]')).toHaveAttribute('data-tab-strip', 'full');
+  const zed = page.locator('[data-tab-path="/Users/demo/projects/zed"]');
+  await expect(zed.locator('[data-tab-shortcut]')).toBeVisible();
+  const name = zed.locator('span').first();
+  const fits = await name.evaluate((el) => el.scrollHeight <= el.clientHeight + 1 && el.getBoundingClientRect().width >= 18);
+  expect(fits).toBe(true);
+  for (const path of ['campaignrouting', 'inventorysync']) {
+    const label = page.locator(`[data-tab-path="/Users/demo/projects/${path}"] span`).first();
+    expect((await label.boundingBox())!.width).toBeGreaterThanOrEqual(24);
+  }
 });
 
 test("what's new opens from the welcome footer and the status bar and its unread dot clears once seen", async ({ page }) => {

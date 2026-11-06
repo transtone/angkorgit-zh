@@ -17,6 +17,7 @@ const useHookFailures = create<{ pending: Record<string, HookFailureReport> }>((
 const ELSEWHERE: Record<HookOperation, (repo: string) => string> = {
   commit: (repo) => `${repo} 中未创建任何提交。返回该仓库可查看钩子输出。`,
   amend: (repo) => `${repo} 中的上一次提交未被修改。返回该仓库可查看钩子输出。`,
+  push: (repo) => `${repo} 中未推送任何内容。返回该仓库可查看钩子输出。`,
 };
 
 export function isHookFailure(error: unknown): error is IpcError {

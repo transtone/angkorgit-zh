@@ -18,19 +18,23 @@ const REF_STACK_ALIGN_OFFSET = -5;
 const CHAR_WIDTH = 6.4;
 const CHIP_PADDING = 18;
 const CHIP_ICON = 14;
-export const LANE_WIDTH = 20;
-export const LANE_WIDTH_MIN = 11;
-export const GUTTER_MAX_WIDTH = 190;
+export const LANE_WIDTH = 22;
+export const GUTTER_DEFAULT_WIDTH = 190;
+export const GUTTER_MIN_WIDTH = 60;
+export const GUTTER_MAX_WIDTH = 600;
 export const GUTTER_BASE = 18;
 const NODE_RADIUS = 4;
 const AVATAR_SIZE = 20;
 const TAIL_HEIGHT = 22;
+const TAIL_EDGE = 2;
 const NODE_RING = 2;
 const NODE_HALO = 1.5;
 
 export function laneColor(color: number): string {
   return `hsl(var(--graph-${color % 10}))`;
 }
+
+const laneTint = (color: number, alpha: number) => `hsl(var(--graph-${color % 10}) / ${alpha})`;
 
 export const laneX = (lane: number, laneWidth: number = LANE_WIDTH) =>
   AVATAR_SIZE / 2 + NODE_RING + NODE_HALO + 1 + lane * laneWidth;
@@ -46,27 +50,39 @@ export function GraphTailDefs() {
             <stop offset="1" stopColor={laneColor(i)} style={{ stopOpacity: 'var(--graph-tail-end)' }} />
           </linearGradient>
         ))}
-        {Array.from({ length: 10 }, (_, i) => (
-          <linearGradient key={`edge-${i}`} id={`graph-tail-edge-${i}`} x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stopColor={laneColor(i)} stopOpacity={0} />
-            <stop offset="0.6" stopColor={laneColor(i)} stopOpacity={0} />
-            <stop offset="1" stopColor={laneColor(i)} style={{ stopOpacity: 'var(--graph-tail-edge)' }} />
-          </linearGradient>
-        ))}
       </defs>
     </svg>
   );
 }
 
-export function laneWidthFor(maxLane: number): number {
-  const fit = Math.floor((GUTTER_MAX_WIDTH - GUTTER_BASE) / (maxLane + 1));
-  return Math.max(LANE_WIDTH_MIN, Math.min(LANE_WIDTH, fit));
+export function gutterWidthFor(maxLane: number, laneWidth: number = LANE_WIDTH, limit: number = GUTTER_DEFAULT_WIDTH): number {
+  return Math.min(GUTTER_BASE + (maxLane + 1) * laneWidth, limit);
 }
 
-export function gutterWidthFor(maxLane: number, laneWidth: number): number {
-  return GUTTER_BASE + (maxLane + 1) * laneWidth;
+export function gutterOverflowFor(maxLane: number, laneWidth: number = LANE_WIDTH, limit: number = GUTTER_DEFAULT_WIDTH): number {
+  return Math.max(0, GUTTER_BASE + (maxLane + 1) * laneWidth - gutterWidthFor(maxLane, laneWidth, limit));
 }
+
+export const clampGraphWidth = (width: number) => Math.round(Math.min(GUTTER_MAX_WIDTH, Math.max(GUTTER_MIN_WIDTH, width)));
+
+export const GRAPH_SCROLL_VAR = '--graph-scroll-x';
+export const graphShift = { transform: `translateX(calc(var(${GRAPH_SCROLL_VAR}, 0px) * -1))` } as const;
 const CY = ROW_HEIGHT / 2;
+const RAIL_RADIUS = 6;
+
+function railIn(from: number, to: number): string {
+  if (from === to) return `M ${from} 0 V ${CY}`;
+  const r = Math.min(RAIL_RADIUS, Math.abs(to - from));
+  const s = to > from ? 1 : -1;
+  return `M ${from} 0 V ${CY - r} Q ${from} ${CY} ${from + s * r} ${CY} H ${to}`;
+}
+
+function railOut(from: number, to: number): string {
+  if (from === to) return `M ${from} ${CY} V ${ROW_HEIGHT}`;
+  const r = Math.min(RAIL_RADIUS, Math.abs(to - from));
+  const s = to > from ? 1 : -1;
+  return `M ${from} ${CY} H ${to - s * r} Q ${to} ${CY} ${to} ${CY + r} V ${ROW_HEIGHT}`;
+}
 
 function StashNode({ color }: { color?: number }) {
   return (
@@ -95,6 +111,7 @@ function GraphGutter({
   hasRefs,
   isStash,
   showTail,
+  overflow,
 }: {
   row: GraphRowData;
   width: number;
@@ -104,46 +121,36 @@ function GraphGutter({
   hasRefs: boolean;
   isStash: boolean;
   showTail: boolean;
+  overflow: number;
 }) {
   const { node, passing } = row;
   const x = (lane: number) => laneX(lane, laneWidth);
-  const nx = Math.min(x(node.lane), width - AVATAR_SIZE / 2 - NODE_RING - NODE_HALO - 1);
+  const nx = x(node.lane);
   const total = width + GUTTER_GAP;
   return (
     <div className="relative shrink-0 overflow-hidden" style={{ width: total, height: ROW_HEIGHT }}>
       <svg width={total} height={ROW_HEIGHT} aria-hidden>
+        <g style={graphShift}>
         {showTail && (
-          <>
-            <rect
-              data-graph-tail
-              x={nx}
-              y={CY - TAIL_HEIGHT / 2}
-              width={Math.max(0, total - nx - 1)}
-              height={TAIL_HEIGHT}
-              rx={TAIL_HEIGHT / 2}
-              fill={`url(#graph-tail-${node.color % 10})`}
-            />
-            <rect
-              x={nx + 0.5}
-              y={CY - TAIL_HEIGHT / 2 + 0.5}
-              width={Math.max(0, total - nx - 2)}
-              height={TAIL_HEIGHT - 1}
-              rx={(TAIL_HEIGHT - 1) / 2}
-              fill="none"
-              stroke={`url(#graph-tail-edge-${node.color % 10})`}
-              strokeWidth={1}
-            />
-          </>
+          <rect
+            data-graph-tail
+            x={nx}
+            y={CY - TAIL_HEIGHT / 2}
+            width={Math.max(0, total - nx + overflow)}
+            height={TAIL_HEIGHT}
+            fill={`url(#graph-tail-${node.color % 10})`}
+          />
         )}
         {hasRefs && (
           <line
-            x1={0}
+            data-graph-connector
+            x1={-overflow - 1}
             y1={CY}
             x2={nx}
             y2={CY}
             stroke={laneColor(node.color)}
-            strokeOpacity={0.45}
-            strokeWidth={1}
+            strokeOpacity={0.85}
+            strokeWidth={1.5}
           />
         )}
         {passing.map((p) => (
@@ -160,7 +167,7 @@ function GraphGutter({
         {node.closing.map((c) => (
           <path
             key={`c${c.lane}`}
-            d={`M ${x(c.lane)} 0 C ${x(c.lane)} ${CY}, ${nx} ${CY * 0.4}, ${nx} ${CY}`}
+            d={railIn(x(c.lane), nx)}
             stroke={laneColor(c.color)}
             strokeWidth={2}
             fill="none"
@@ -169,7 +176,7 @@ function GraphGutter({
         {node.merges.map((m) => (
           <path
             key={`m${m.lane}`}
-            d={`M ${nx} ${CY} C ${x(m.lane)} ${CY * 1.6}, ${x(m.lane)} ${CY}, ${x(m.lane)} ${ROW_HEIGHT}`}
+            d={railOut(nx, x(m.lane))}
             stroke={laneColor(m.color)}
             strokeWidth={2}
             fill="none"
@@ -191,6 +198,17 @@ function GraphGutter({
             strokeWidth={2}
           />
         )}
+        </g>
+        {showTail && (
+          <rect
+            data-graph-tail-edge
+            x={total - TAIL_EDGE}
+            y={2}
+            width={TAIL_EDGE}
+            height={ROW_HEIGHT - 4}
+            fill={laneColor(node.color)}
+          />
+        )}
       </svg>
       {!node.isMerge && (
         <span
@@ -204,6 +222,7 @@ function GraphGutter({
             boxShadow: `0 0 0 ${NODE_HALO}px hsl(var(--background)), 0 0 0 ${NODE_HALO + NODE_RING}px ${laneColor(node.color)}`,
             background: 'hsl(var(--surface))',
             outline: isStash ? `1.5px dashed ${laneColor(node.color)}` : undefined,
+            ...graphShift,
             outlineOffset: isStash ? -1.5 : undefined,
           }}
         >
@@ -290,6 +309,7 @@ function RefChip({
   head,
   worktree,
   separated,
+  color,
   onCheckoutRef,
   onRefMenu,
   onResetToRemote,
@@ -298,31 +318,38 @@ function RefChip({
   head: boolean;
   worktree?: string;
   separated: boolean;
+  color: number;
   onCheckoutRef: (ref: RefInfo) => void;
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
+  const laneStyle = group.stash
+    ? undefined
+    : head
+      ? { background: laneColor(color), borderColor: laneColor(color), color: 'hsl(var(--background))' }
+      : { background: laneTint(color, 0.16), borderColor: laneTint(color, 0.45), color: laneColor(color) };
   return (
     <Badge
-      tone={group.stash ? 'neutral' : group.tag || group.detachedHead ? 'primary' : group.local ? 'success' : 'info'}
+      tone="neutral"
+      data-lane-chip={group.stash ? undefined : color % 10}
+      style={laneStyle}
       className={cn(
         'min-w-0 shrink whitespace-nowrap',
-        !group.tag && !group.stash &&
+        !group.tag && !group.stash && !head &&
           'cursor-pointer hover:z-20 hover:shrink-0 hover:!bg-surface-overlay hover:shadow-soft',
         group.stash && 'max-w-[11rem] cursor-pointer border-dashed hover:!bg-surface-overlay',
-        head &&
-          'border-success bg-success text-background shadow-soft hover:!bg-success',
+        head && 'cursor-pointer shadow-soft hover:z-20 hover:shrink-0',
       )}
       title={
         group.stash
-          ? `${group.label}\nStash — click the row to see its files, right-click to apply, pop or drop`
+          ? `${group.label}\n暂存——单击此行查看文件，右键应用、弹出或丢弃`
           : group.tag || group.detachedHead
           ? group.detachedHead
             ? 'HEAD 游离在该提交处'
             : group.label
           : separated
-            ? `${group.primary.shorthand} — double-click to reset ${group.label} to it, right-click for actions`
-            : `${group.label}${group.local ? ' · local' : ''}${group.remote ? ' · origin' : ''}${worktree ? ` · in worktree ${worktree}` : ''} — ${worktree ? 'double-click to switch to that worktree' : group.local ? 'double-click to checkout' : `double-click to check out ${group.label} from it (fast-forwards the local branch when it is behind)`}, right-click for actions`
+            ? `${group.primary.shorthand}——双击将 ${group.label} 重置到此处，右键显示操作`
+            : `${group.label}${group.local ? ' · 本地' : ''}${group.remote ? ' · origin' : ''}${worktree ? ` · 位于工作树 ${worktree}` : ''}——${worktree ? '双击切换到该工作树' : group.local ? '双击检出' : `双击从此处检出 ${group.label}（本地分支落后时会快进）`}，右键显示操作`
       }
       onDoubleClick={(e) => {
         if (group.tag || group.detachedHead || group.stash) return;
@@ -397,6 +424,7 @@ function RefCell({
       group={group}
       head={head}
       worktree={group.local ? worktrees?.get(group.label) : undefined}
+      color={color}
       separated={group.remote && !group.local && (resettableBranches?.has(group.label) ?? false)}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={onRefMenu}
@@ -410,7 +438,7 @@ function RefCell({
       {hidden.length > 0 && (
         <Badge
           role="button"
-          aria-label={`${hidden.length} more ${hidden.length === 1 ? 'ref' : 'refs'}`}
+          aria-label={`还有 ${hidden.length} 个引用`}
           aria-expanded={more}
           className="shrink-0 cursor-pointer hover:!bg-surface-overlay"
           title={hidden.map((g) => g.label).join(', ')}
@@ -431,7 +459,7 @@ function RefCell({
       {groups.length > 0 && (
         <span
           className="h-px min-w-1 flex-1"
-          style={{ background: laneColor(color), opacity: 0.45 }}
+          style={{ background: laneColor(color), opacity: 0.85, height: 1.5 }}
         />
       )}
     </span>
@@ -464,6 +492,7 @@ interface Props {
   laneWidth?: number;
   columns?: GraphColumns;
   showTail?: boolean;
+  graphOverflow?: number;
   headBranch?: string | null;
   worktrees?: ReadonlyMap<string, string>;
   resettableBranches?: ReadonlySet<string>;
@@ -482,6 +511,7 @@ export const CommitRow = memo(function CommitRow({
   laneWidth = LANE_WIDTH,
   columns = DEFAULT_GRAPH_COLUMNS,
   showTail = true,
+  graphOverflow = 0,
   headBranch = null,
   worktrees,
   resettableBranches,
@@ -530,6 +560,7 @@ export const CommitRow = memo(function CommitRow({
         hasRefs={columns.refs && commit.refs.length > 0}
         isStash={isStash}
         showTail={showTail}
+        overflow={graphOverflow}
       />
       {commit.isHead && commit.refs.length === 0 && <Badge tone="primary">HEAD</Badge>}
       {columns.message ? (

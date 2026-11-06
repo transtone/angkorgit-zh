@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@angkorgit/design-system';
 
-export type HookOperation = 'commit' | 'amend';
+export type HookOperation = 'commit' | 'amend' | 'push';
 
 export interface HookFailureView {
   operation: HookOperation;
@@ -28,6 +28,10 @@ const COPY: Record<HookOperation, { outcome: string; retry: string }> = {
   amend: {
     outcome: '上一次提交未被修改。提交消息仍保留在提交框中。',
     retry: '跳过钩子修订',
+  },
+  push: {
+    outcome: '未推送任何内容。',
+    retry: '跳过钩子推送',
   },
 };
 
@@ -52,7 +56,7 @@ export function HookFailedDialog({
     <Dialog open={failure !== null} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-w-2xl" data-hook-failed={failure?.operation}>
         <DialogHeader>
-          <DialogTitle>钩子阻止了{failure?.operation === 'amend' ? '修订' : '提交'}</DialogTitle>
+          <DialogTitle>钩子阻止了{failure?.operation === 'amend' ? '修订' : failure?.operation === 'push' ? '推送' : '提交'}</DialogTitle>
           <DialogDescription>
             {failure?.message} {text.outcome}
           </DialogDescription>

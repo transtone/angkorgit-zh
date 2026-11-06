@@ -140,13 +140,8 @@
 上游新引入的英文串会进入 `zh-dict/pending.tsv`（构建产物，不入库），翻译后补进 `dict.tsv` 即可。
 详见 [docs/Localization.md](docs/Localization.md)。
 
-## 🚫 故意不做的事情
-
-- **应用内代码评审（PR Review）**：代码托管平台（GitHub/GitLab）配合 CI 日志与行内评论体验更佳，软件内提供一键“在浏览器中打开”按钮。
 - **遥测数据、强制账号、云服务**：不会向外部发送任何追踪数据，无需注册任何平台。
-- **插件市场**：暂不支持扩展插件。
-
-## 📦 安装与下载
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.26.0/AngKorGit_0.26.0_x64-setup.exe -o "$env:TEMP\AngKorGit-setup.exe"; Start-Process "$env:TEMP\AngKorGit-setup.exe"
 
 本仓库的 [Releases 发行页面](https://github.com/wuwuzhazha/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
 

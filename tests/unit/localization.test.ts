@@ -141,14 +141,28 @@ describe('Chinese localization of the upstream collaboration update', () => {
     expect(dialog).toContain('强制推送');
     expect(dialog).not.toMatch(/The remote has moved on|Force push|Pull with rebase/);
     const toolbar = source('apps/desktop/src/components/Toolbar.tsx');
-    expect(toolbar).toContain("label === '推送'");
-    expect(toolbar).not.toContain("label === 'Push'");
+    expect(toolbar).toContain('onNonFastForward && isNonFastForward(error)');
+    expect(toolbar).toContain("runPush('推送', pushRequest())");
+    expect(toolbar).not.toContain("runPush('Push',");
     const error = source('apps/desktop/src-tauri/src/error.rs');
     expect(error).toContain('请先用变基拉取将其取回');
     expect(error).not.toContain('Pull with rebase to');
     const remote = source('apps/desktop/src-tauri/src/core/remote.rs');
     expect(remote).toContain('请修复被拒的引用后重新推送');
     expect(remote).not.toContain('Nothing else from this push was rolled back');
+  });
+
+  it('localizes push hook failures and retry controls', () => {
+    const dialog = source('apps/desktop/src/components/HookFailedDialog.tsx');
+    expect(dialog).toContain("retry: '跳过钩子推送'");
+    expect(dialog).toContain("outcome: '未推送任何内容。'");
+    expect(dialog).toContain("failure?.operation === 'push' ? '推送'");
+    for (const path of ['apps/desktop/src/components/Toolbar.tsx', 'apps/desktop/src/components/CommandPalette.tsx']) {
+      const ui = source(path);
+      expect(ui).toContain('跳过钩子推送');
+      expect(ui).not.toMatch(/Push without hooks|Push with tags|Switch to .* and check out/);
+    }
+    expect(source('apps/desktop/src/components/PushRejectedDialog.tsx')).toMatch(/autoFocus=\{pullBlocked !== null\}>\s*取消\s*<\/Button>/);
   });
 
   it('localizes single-file and commit AI reviews while keeping provider brands', () => {

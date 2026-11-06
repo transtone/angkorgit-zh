@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
-import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Combine, Copy, FastForward, Filter, FolderTree, GitBranchPlus, GitCommitHorizontal, Settings2, GitMerge, ListOrdered, ListRestart, Pencil, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Cloud, Combine, Copy, FastForward, Filter, FolderTree, GitBranchPlus, GitCommitHorizontal, Settings2, GitMerge, ListOrdered, ListRestart, Pencil, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
 import { pickRemote, type CommitInfo, type RefInfo } from '@angkorgit/core';
 import {
   Button,
@@ -25,9 +25,11 @@ import { useRepo } from '@/features/repository/store';
 import { useGraph } from './store';
 import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
-import { AUTHOR_COL_WIDTH, CommitRow, GUTTER_GAP, GraphTailDefs, REF_COL_WIDTH, ROW_HEIGHT, gutterWidthFor, laneWidthFor } from './GraphRow';
+import { AUTHOR_COL_WIDTH, CommitRow, GUTTER_GAP, GraphTailDefs, GUTTER_DEFAULT_WIDTH, LANE_WIDTH, REF_COL_WIDTH, ROW_HEIGHT, clampGraphWidth, gutterOverflowFor, gutterWidthFor } from './GraphRow';
+import { GraphScrollbar } from './GraphScrollbar';
 import { WipRow } from './WipRow';
 import { confirmDialog } from '@/components/confirm';
+import { isHookFailure, reportHookFailure } from '@/components/hookFailure';
 import { useShortcuts } from '@/shared/useShortcuts';
 
 interface MenuState {
@@ -47,6 +49,9 @@ const localNameOf = (remote: RefInfo) => remote.shorthand.split('/').slice(1).jo
 
 const stashIndexOf = (ref: RefInfo) => Number(/\{(\d+)\}/.exec(ref.name)?.[1] ?? 0);
 
+const GRAPH_LEFT_WITH_REFS = 4 + REF_COL_WIDTH;
+const GRAPH_LEFT_WITHOUT_REFS = 16;
+
 export function CommitGraph() {
   const repo = useRepo((s) => s.repo);
   const refresh = useRepo((s) => s.refresh);
@@ -59,6 +64,10 @@ export function CommitGraph() {
   const requestEditMessage = useUi((s) => s.requestEditMessage);
   const graphColumns = useUi((s) => s.graphColumns);
   const graphTail = useUi((s) => s.graphTail);
+  const graphWidth = useUi((s) => s.graphWidth);
+  const setGraphWidth = useUi((s) => s.setGraphWidth);
+  const widthDrag = useRef<{ x: number; width: number } | null>(null);
+  const [resizingGraph, setResizingGraph] = useState(false);
   const setGraphTail = useUi((s) => s.setGraphTail);
   const setGraphColumn = useUi((s) => s.setGraphColumn);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,8 +159,10 @@ export function CommitGraph() {
     clearPendingScroll();
   }, [pendingScrollIndex, rows.length, virtualizer, clearPendingScroll]);
 
-  const laneWidth = laneWidthFor(maxLane);
-  const gutterWidth = gutterWidthFor(maxLane, laneWidth);
+  const laneWidth = LANE_WIDTH;
+  const graphLimit = graphWidth ?? GUTTER_DEFAULT_WIDTH;
+  const gutterWidth = gutterWidthFor(maxLane, laneWidth, graphLimit);
+  const graphOverflow = gutterOverflowFor(maxLane, laneWidth, graphLimit);
   const filtersActive = Boolean(filters.branch);
 
   const moveSelection = useCallback(
@@ -208,6 +219,7 @@ export function CommitGraph() {
       label: string,
       op: () => Promise<unknown>,
       undoable?: { kind: UndoKind; extra?: Record<string, string> },
+      retryWithoutHooks?: () => void,
     ) => {
       try {
         const run = undoable
@@ -229,6 +241,10 @@ export function CommitGraph() {
         await refresh();
         await reload(path);
       } catch (error) {
+        if (retryWithoutHooks && isHookFailure(error)) {
+          reportHookFailure({ repoPath: path, operation: 'push', error, retry: retryWithoutHooks });
+          return;
+        }
         toast.error(`${label} 失败：${(error as { message?: string }).message ?? error}`);
       }
     },
@@ -238,9 +254,14 @@ export function CommitGraph() {
   const pushRemoteFor = (branch: string): string =>
     pickRemote(remotes, branches.find((b) => !b.isRemote && b.name === branch)?.upstream)?.name ?? 'origin';
 
-  const pushBranch = async (branch: string) => {
+  const pushBranch = async (branch: string, noVerify = false): Promise<void> => {
     await ensureRepoProfile(path);
-    await act(`推送 ${branch}`, () => ipc.push(path, pushRemoteFor(branch), false, false, true, branch));
+    await act(
+      `推送 ${branch}`,
+      () => ipc.push(path, pushRemoteFor(branch), false, false, true, branch, noVerify),
+      undefined,
+      () => void pushBranch(branch, true),
+    );
     void import('@/features/forge/store').then(({ useForge }) => useForge.getState().load(true));
   };
 
@@ -369,6 +390,23 @@ export function CommitGraph() {
 
   const headBranch = useMemo(() => branches.find((b) => b.isHead && !b.isRemote)?.name ?? null, [branches]);
 
+  const refMenuIsHead = refMenu?.ref.kind === 'localBranch' && refMenu.ref.shorthand === headBranch;
+  const refMenuBranch =
+    refMenu?.ref.kind === 'localBranch' ? branches.find((b) => !b.isRemote && b.name === refMenu.ref.shorthand) : undefined;
+  const refMenuCanOpenWorktree =
+    !!refMenu &&
+    (refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch') &&
+    !refMenuIsHead &&
+    !(refMenu.ref.kind === 'localBranch' && worktreeBranches.has(refMenu.ref.shorthand));
+
+  const pushTag = (tag: string, noVerify = false): void =>
+    void act(
+      `推送标签 ${tag}`,
+      () => ipc.pushTag(path, pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name ?? 'origin', tag, noVerify),
+      undefined,
+      () => pushTag(tag, true),
+    );
+
   const refMenuResetTarget = (() => {
     if (!refMenu || refMenu.ref.kind !== 'remoteBranch') return null;
     const name = localNameOf(refMenu.ref);
@@ -396,11 +434,11 @@ export function CommitGraph() {
           (find.loading && find.matches.length === 0 ? (
             <Spinner className="size-3.5 text-faint" />
           ) : find.matches.length === 0 ? (
-            <span className="text-xs text-danger">No matches</span>
+            <span className="text-xs text-danger">没有匹配项</span>
           ) : (
             <span
               className="flex items-center gap-0.5 rounded-md border border-border-subtle bg-surface-raised/60 px-1"
-              aria-label={`Match ${find.active + 1} of ${find.matches.length}${find.truncated ? ' or more' : ''}`}
+              aria-label={`第 ${find.active + 1} 个匹配，共 ${find.matches.length}${find.truncated ? ' 个以上' : ' 个'}`}
             >
               <Hint label="上一个匹配（Shift+回车）">
                 <Button
@@ -414,7 +452,7 @@ export function CommitGraph() {
                 </Button>
               </Hint>
               <span className="whitespace-nowrap px-1 text-[10px] font-medium tabular-nums text-muted">
-                {find.active + 1} of {find.matches.length}
+                {find.active + 1} / {find.matches.length}
                 {find.truncated ? '+' : ''}
               </span>
               <Hint label="下一个匹配（回车）">
@@ -507,8 +545,41 @@ export function CommitGraph() {
             分支 / 标签
           </span>
         )}
-        <span className="shrink-0 truncate" style={{ width: gutterWidth, marginRight: GUTTER_GAP }}>
-          图表
+        <span className="relative shrink-0" style={{ width: gutterWidth, marginRight: GUTTER_GAP }}>
+          <span className="block truncate">图表</span>
+          <span
+            data-graph-resize
+            className="group/resize absolute inset-y-0 z-10 flex w-2 cursor-col-resize justify-center"
+            style={{ right: -GUTTER_GAP / 2 - 4 }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              widthDrag.current = { x: event.clientX, width: gutterWidth };
+              setResizingGraph(true);
+            }}
+            onPointerMove={(event) => {
+              if (!widthDrag.current) return;
+              setGraphWidth(clampGraphWidth(widthDrag.current.width + event.clientX - widthDrag.current.x));
+            }}
+            onPointerUp={(event) => {
+              widthDrag.current = null;
+              setResizingGraph(false);
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }}
+            onPointerCancel={() => {
+              widthDrag.current = null;
+              setResizingGraph(false);
+            }}
+            onDoubleClick={() => setGraphWidth(null)}
+          >
+            <span
+              className={cn(
+                'h-full w-0.5 rounded-full bg-border transition-colors group-hover/resize:bg-primary/60',
+                resizingGraph && '!bg-primary',
+              )}
+            />
+          </span>
         </span>
         {graphColumns.message && (
           <span className="min-w-0 flex-1 truncate">
@@ -550,7 +621,7 @@ export function CommitGraph() {
             >
               {filtersActive ? (
                 <Button variant="ghost" size="sm" onClick={() => setFilters(path, { branch: '' })}>
-                  Clear filters
+                  清除筛选
                 </Button>
               ) : null}
             </PaneEmpty>
@@ -587,6 +658,7 @@ export function CommitGraph() {
                     laneWidth={laneWidth}
                     columns={graphColumns}
                     showTail={graphTail}
+                    graphOverflow={graphOverflow}
                     headBranch={headBranch}
                     worktrees={worktreeBranches}
                     resettableBranches={localBranchNames}
@@ -610,6 +682,13 @@ export function CommitGraph() {
           </div>
         )}
       </div>
+      <GraphScrollbar
+        scrollRef={scrollRef}
+        overflow={graphOverflow}
+        left={graphColumns.refs ? GRAPH_LEFT_WITH_REFS : GRAPH_LEFT_WITHOUT_REFS}
+        width={gutterWidth}
+        resetKey={path}
+      />
 
       {refMenu && (
         <DropdownMenu open onOpenChange={(o) => !o && setRefMenu(null)}>
@@ -652,12 +731,45 @@ export function CommitGraph() {
                 <DropdownMenuSeparator />
               </>
             )}
+            {refMenu.ref.kind === 'tag' && (
+              <>
+                <DropdownMenuItem
+                  onClick={() =>
+                    void act(`检出 ${refMenu.ref.shorthand}`, () => ipc.checkoutDetached(path, refMenu.ref.shorthand), {
+                      kind: 'checkout',
+                    })
+                  }
+                >
+                  <Check /> 检出提交（游离状态）
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => pushTag(refMenu.ref.shorthand)}>
+                  <Cloud /> 推送到远端
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  destructive
+                  onClick={() => {
+                    const tag = refMenu.ref.shorthand;
+                    void act(`删除标签 ${tag}`, () => ipc.tagDelete(path, tag));
+                  }}
+                >
+                  <Trash2 /> 删除标签 {refMenu.ref.shorthand}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             {refMenu.ref.kind !== 'tag' && refMenu.ref.kind !== 'stash' && (
               <>
-                <DropdownMenuItem onClick={() => checkoutRef(refMenu.ref)}>
+                <DropdownMenuItem disabled={refMenuIsHead} onClick={() => checkoutRef(refMenu.ref)}>
                   <Check /> 检出 {refMenu.ref.shorthand}
                 </DropdownMenuItem>
+                {refMenuCanOpenWorktree && (
+                  <DropdownMenuItem onClick={() => openDialog('createWorktree', { branch: refMenu.ref.shorthand })}>
+                    <FolderTree /> 在新工作树中打开…
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
+                  disabled={refMenuIsHead}
                   onClick={() =>
                     void act(`合并 ${refMenu.ref.shorthand}`, () => ipc.merge(path, refMenu.ref.shorthand, true), {
                       kind: 'merge',
@@ -687,6 +799,7 @@ export function CommitGraph() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
+                  disabled={refMenuIsHead}
                   onClick={() =>
                     void act(`变基到 ${refMenu.ref.shorthand}`, () => ipc.rebase(path, refMenu.ref.shorthand), {
                       kind: 'rebase',
@@ -702,8 +815,9 @@ export function CommitGraph() {
                 )}
                 {refMenu.ref.kind === 'localBranch' && needsSync(refMenu.ref.shorthand) && (
                   <>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      disabled={!branches.find((b) => !b.isRemote && b.name === refMenu.ref.shorthand)?.upstream}
+                      disabled={!refMenuBranch?.upstream}
                       onClick={() =>
                         void act(`拉取 ${refMenu.ref.shorthand}`, () =>
                           ipc.pullBranch(path, refMenu.ref.shorthand),
@@ -714,6 +828,30 @@ export function CommitGraph() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => void pushBranch(refMenu.ref.shorthand)}>
                       <ArrowUpFromLine /> 推送
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => openDialog('createBranch', refMenu.commit.oid)}>
+                  <GitBranchPlus /> 在此处新建分支…
+                </DropdownMenuItem>
+                {refMenu.ref.kind === 'localBranch' && (
+                  <>
+                    <DropdownMenuItem onClick={() => openDialog('rename', refMenu.ref.shorthand)}>
+                      <Pencil /> 重命名 {refMenu.ref.shorthand}…
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      destructive
+                      disabled={refMenuIsHead}
+                      onClick={() => {
+                        const branch = refMenu.ref.shorthand;
+                        void act(`删除分支 ${branch}`, () => ipc.deleteBranch(path, branch, false), {
+                          kind: 'branchDelete',
+                          extra: { branch, oid: refMenu.commit.oid },
+                        });
+                      }}
+                    >
+                      <Trash2 /> 删除 {refMenu.ref.shorthand}
                     </DropdownMenuItem>
                   </>
                 )}
