@@ -162,7 +162,7 @@ function sideHint(state: RepoState | undefined, side: Side): string {
         ? '你正在变基到的分支。变基进行中时，Git 把这一侧称为 HEAD。'
         : '你的提交，将重新应用在它之上。';
     case 'cherrypick':
-      return side === 'current' ? '你当前分支的现状。' : '正在被拣选的提交。';
+      return side === 'current' ? '你当前分支的现状。' : '正在被摘取的提交。';
     case 'revert':
       return side === 'current' ? '你当前分支的现状。' : '还原操作想要撤销的内容。';
     default:
@@ -175,7 +175,7 @@ function finishHint(state: RepoState | undefined): string {
     case 'rebase':
       return '在工具栏中继续变基以完成操作。';
     case 'cherrypick':
-      return '提交以完成拣选。';
+      return '提交以完成摘取。';
     case 'revert':
       return '提交以完成还原。';
     default:

@@ -536,7 +536,7 @@ export function FileHistoryPanel({ file }: { file: string }) {
                 toast.success('已复制哈希');
               }}
             >
-              <Copy /> 复制 hash
+              <Copy /> 将提交 ID 复制到剪贴板
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

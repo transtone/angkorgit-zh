@@ -64,31 +64,33 @@ export function CommitGraph() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [refMenu, setRefMenu] = useState<RefMenuState | null>(null);
-  const [refMenuFf, setRefMenuFf] = useState<boolean | null>(null);
+  const [refMenuFf, setRefMenuFf] = useState<{
+    head: string; source: string; current: boolean; selected: boolean;
+  } | null>(null);
   const [searchDraft, setSearchDraft] = useState(find?.text ?? '');
   const [authorDraft, setAuthorDraft] = useState(find?.author ?? '');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const path = repo?.path ?? '';
   const refMenuSource =
-    refMenu && (refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch') ? refMenu.ref.shorthand : null;
+    refMenu && (refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch')
+      ? refMenu.ref.kind === 'remoteBranch' ? refMenu.ref.name : refMenu.ref.shorthand
+      : null;
+  const currentBranch = repo?.headBranch;
   useEffect(() => {
     setRefMenuFf(null);
-    if (!refMenuSource) return;
-    const head = useRepo.getState().repo?.headBranch;
-    if (!head || head === refMenuSource) {
-      setRefMenuFf(false);
-      return;
-    }
+    if (!refMenuSource || !currentBranch || currentBranch === refMenuSource) return;
     let cancelled = false;
-    void ipc
-      .mergeCanFastForward(path, head, refMenuSource)
-      .then((ok) => !cancelled && setRefMenuFf(ok))
-      .catch(() => !cancelled && setRefMenuFf(false));
+    void Promise.all([
+      ipc.mergeCanFastForward(path, currentBranch, refMenuSource),
+      ipc.mergeCanFastForward(path, refMenuSource, currentBranch),
+    ])
+      .then(([current, selected]) => !cancelled && setRefMenuFf({ head: currentBranch, source: refMenuSource, current, selected }))
+      .catch(() => !cancelled && setRefMenuFf(null));
     return () => {
       cancelled = true;
     };
-  }, [path, refMenuSource]);
+  }, [path, refMenuSource, currentBranch]);
   const graphFocusSeq = useUi((s) => s.graphFocusSeq);
   useEffect(() => {
     if (graphFocusSeq > 0) scrollRef.current?.focus();
@@ -238,11 +240,16 @@ export function CommitGraph() {
 
   const pushBranch = async (branch: string) => {
     await ensureRepoProfile(path);
-    await act(`Push ${branch}`, () => ipc.push(path, pushRemoteFor(branch), false, false, true, branch));
+    await act(`推送 ${branch}`, () => ipc.push(path, pushRemoteFor(branch), false, false, true, branch));
     void import('@/features/forge/store').then(({ useForge }) => useForge.getState().load(true));
   };
 
   const aheadOf = (branch: string): number => branches.find((b) => !b.isRemote && b.name === branch)?.ahead ?? 0;
+  const needsSync = (name: string): boolean => {
+    const branch = branches.find((b) => !b.isRemote && b.name === name);
+    return !!branch && (!branch.upstream || branch.ahead > 0 || branch.behind > 0);
+  };
+  const pushRefs = menu?.commit.refs.filter((ref) => ref.kind === 'localBranch' && needsSync(ref.shorthand)) ?? [];
 
   const onContextMenu = useCallback((event: React.MouseEvent, commit: CommitInfo) => {
     event.preventDefault();
@@ -501,11 +508,11 @@ export function CommitGraph() {
           </span>
         )}
         <span className="shrink-0 truncate" style={{ width: gutterWidth, marginRight: GUTTER_GAP }}>
-          Graph
+          图表
         </span>
         {graphColumns.message && (
           <span className="min-w-0 flex-1 truncate">
-            Message
+            消息
           </span>
         )}
         {graphColumns.author && (
@@ -648,7 +655,7 @@ export function CommitGraph() {
             {refMenu.ref.kind !== 'tag' && refMenu.ref.kind !== 'stash' && (
               <>
                 <DropdownMenuItem onClick={() => checkoutRef(refMenu.ref)}>
-                  <Check /> Checkout {refMenu.ref.shorthand}
+                  <Check /> 检出 {refMenu.ref.shorthand}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
@@ -658,19 +665,27 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <GitMerge /> 合并到当前分支
+                  <GitMerge /> 将 {refMenu.ref.shorthand} 合并到 {repo?.headBranch ?? '当前分支'}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={refMenuFf !== true}
-                  onClick={() =>
-                    void act(`Fast-forward to ${refMenu.ref.shorthand}`, () => ipc.merge(path, refMenu.ref.shorthand, false), {
-                      kind: 'merge',
-                      extra: { branch: refMenu.ref.shorthand },
-                    })
-                  }
-                >
-                  <FastForward /> 将当前分支快进到此处
-                </DropdownMenuItem>
+                {refMenuFf?.head === currentBranch && refMenuFf?.source === refMenuSource && refMenuFf.current && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      void act(`将 ${currentBranch} 快进到 ${refMenu.ref.shorthand}`, () => ipc.fastForward(path, currentBranch!, refMenuSource!), {
+                        kind: 'merge',
+                      })
+                    }
+                  >
+                    <FastForward /> 将 {currentBranch} 快进到 {refMenu.ref.shorthand}
+                  </DropdownMenuItem>
+                )}
+                {refMenu.ref.kind === 'localBranch' && !worktreeBranches.has(refMenu.ref.shorthand) &&
+                  refMenuFf?.head === currentBranch && refMenuFf?.source === refMenuSource && refMenuFf.selected && (
+                  <DropdownMenuItem
+                    onClick={() => void act(`将 ${refMenu.ref.shorthand} 快进到 ${currentBranch}`, () => ipc.fastForward(path, refMenu.ref.shorthand, currentBranch!))}
+                  >
+                    <FastForward /> 将 {refMenu.ref.shorthand} 快进到 {currentBranch}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() =>
                     void act(`变基到 ${refMenu.ref.shorthand}`, () => ipc.rebase(path, refMenu.ref.shorthand), {
@@ -678,26 +693,27 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <ListRestart /> Rebase current branch onto this
+                  <ListRestart /> 变基 {repo?.headBranch ?? '当前分支'} 于 {refMenu.ref.shorthand}
                 </DropdownMenuItem>
                 {refMenuResetTarget && (
                   <DropdownMenuItem destructive onClick={() => resetToRemote(refMenu.ref, refMenu.commit)}>
-                    <RotateCcw /> Reset {refMenuResetTarget} to this…
+                    <RotateCcw /> 将 {refMenuResetTarget} 重置为此提交…
                   </DropdownMenuItem>
                 )}
-                {refMenu.ref.kind === 'localBranch' && (
+                {refMenu.ref.kind === 'localBranch' && needsSync(refMenu.ref.shorthand) && (
                   <>
                     <DropdownMenuItem
+                      disabled={!branches.find((b) => !b.isRemote && b.name === refMenu.ref.shorthand)?.upstream}
                       onClick={() =>
                         void act(`拉取 ${refMenu.ref.shorthand}`, () =>
                           ipc.pullBranch(path, refMenu.ref.shorthand),
                         )
                       }
                     >
-                      <ArrowDownToLine /> Pull
+                      <ArrowDownToLine /> 拉取
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => void pushBranch(refMenu.ref.shorthand)}>
-                      <ArrowUpFromLine /> Push
+                      <ArrowUpFromLine /> 推送
                     </DropdownMenuItem>
                   </>
                 )}
@@ -710,7 +726,7 @@ export function CommitGraph() {
                 toast.success('名称已复制');
               }}
             >
-              <Copy /> 复制名称
+              <Copy /> {refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch' ? '将分支名称复制到剪贴板' : '将名称复制到剪贴板'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -734,7 +750,7 @@ export function CommitGraph() {
                 requestEditMessage(menu.commit.oid);
               }}
             >
-              <Pencil /> Edit commit message…
+              <Pencil /> 编辑提交消息…
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('createBranch', menu.commit.oid)}>
               <GitBranchPlus /> 在此处新建分支…
@@ -746,14 +762,12 @@ export function CommitGraph() {
               <FolderTree /> 从这里新建工作树…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {menu.commit.refs.some((ref) => ref.kind === 'localBranch') && (
+            {pushRefs.length > 0 && (
               <>
-                {menu.commit.refs
-                  .filter((ref) => ref.kind === 'localBranch')
-                  .map((ref) => (
+                {pushRefs.map((ref) => (
                     <DropdownMenuItem key={ref.name} onClick={() => void pushBranch(ref.shorthand)}>
                       <ArrowUpFromLine />
-                      <span className="max-w-64 truncate">Push {ref.shorthand}</span>
+                      <span className="max-w-64 truncate">推送 {ref.shorthand}</span>
                       {aheadOf(ref.shorthand) > 0 && (
                         <span className="ml-auto pl-3 text-[11px] tabular-nums text-muted">↑{aheadOf(ref.shorthand)}</span>
                       )}
@@ -764,11 +778,11 @@ export function CommitGraph() {
             )}
             {pickSelection ? (
               <DropdownMenuItem onClick={() => openDialog('cherryPick', { oids: pickSelection })}>
-                <ListRestart /> 在当前分支上拣选 {pickSelection.length} 个提交…
+                <ListRestart /> 在当前分支上摘取 {pickSelection.length} 个提交…
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem onClick={() => openDialog('cherryPick', menu.commit.oid)}>
-                <ListRestart /> 拣选到当前分支…
+                <ListRestart /> 摘取到当前分支…
               </DropdownMenuItem>
             )}
             <DropdownMenuItem

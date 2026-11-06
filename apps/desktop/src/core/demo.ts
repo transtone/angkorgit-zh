@@ -260,7 +260,12 @@ export const demoBranches: BranchInfo[] = [
 ];
 
 const demoRefIndex = (name: string): number => {
-  const oid = demoBranches.find((b) => b.name === name)?.targetOid ?? demoTags.find((t) => t.name === name)?.targetOid;
+  const branch = name.startsWith('refs/heads/')
+    ? demoBranches.find((b) => !b.isRemote && b.name === name.slice('refs/heads/'.length))
+    : name.startsWith('refs/remotes/')
+      ? demoBranches.find((b) => b.isRemote && b.name === name.slice('refs/remotes/'.length))
+      : demoBranches.find((b) => b.name === name);
+  const oid = branch?.targetOid ?? demoTags.find((t) => t.name === name)?.targetOid;
   return oid ? ALL_COMMITS.findIndex((c) => c.oid === oid) : -1;
 };
 

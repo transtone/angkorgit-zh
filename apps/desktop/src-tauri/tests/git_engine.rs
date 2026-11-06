@@ -189,6 +189,203 @@ fn stage_and_unstage_many_files() {
 }
 
 #[test]
+fn strict_fast_forward_current_preserves_local_changes_and_uses_exact_source() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    let base = commit_all(&repo, "base");
+    core::branch_create(repo.path(), "feature", None, true).unwrap();
+    repo.write("b.txt", "feature\n");
+    let tip = commit_all(&repo, "feature");
+    core::checkout_branch(repo.path(), "master").unwrap();
+    let git = git2::Repository::open(repo.path()).unwrap();
+    git.reference(
+        "refs/remotes/origin/feature",
+        git2::Oid::from_str(&tip).unwrap(),
+        true,
+        "test",
+    )
+    .unwrap();
+    git.reference(
+        "refs/heads/origin/feature",
+        git2::Oid::from_str(&base).unwrap(),
+        true,
+        "test",
+    )
+    .unwrap();
+    repo.write("a.txt", "staged\n");
+    core::stage_file(repo.path(), "a.txt").unwrap();
+    repo.write("a.txt", "unstaged\n");
+    repo.write("untracked.txt", "keep\n");
+
+    let outcome = core::branch_fast_forward(
+        repo.path(),
+        "refs/heads/master",
+        "refs/remotes/origin/feature",
+    )
+    .unwrap();
+    assert_eq!(outcome.status, "fast_forward");
+    assert_eq!(git.head().unwrap().name(), Some("refs/heads/master"));
+    assert_eq!(git.head().unwrap().target().unwrap().to_string(), tip);
+    assert_eq!(repo.read("b.txt"), "feature\n");
+    assert_eq!(repo.read("a.txt"), "unstaged\n");
+    assert_eq!(repo.read("untracked.txt"), "keep\n");
+    let staged = git
+        .index()
+        .unwrap()
+        .get_path(std::path::Path::new("a.txt"), 0)
+        .unwrap();
+    assert_eq!(git.find_blob(staged.id).unwrap().content(), b"staged\n");
+    assert_eq!(git.state(), git2::RepositoryState::Clean);
+}
+
+#[test]
+fn strict_fast_forward_noncurrent_only_moves_target_ref() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    let base = commit_all(&repo, "base");
+    core::branch_create(repo.path(), "target", None, false).unwrap();
+    core::branch_create(repo.path(), "source", None, true).unwrap();
+    repo.write("a.txt", "source\n");
+    let tip = commit_all(&repo, "source");
+    core::checkout_branch(repo.path(), "master").unwrap();
+    repo.write("a.txt", "staged\n");
+    core::stage_file(repo.path(), "a.txt").unwrap();
+    repo.write("a.txt", "unstaged\n");
+    repo.write("untracked.txt", "keep\n");
+    let git = git2::Repository::open(repo.path()).unwrap();
+    let head = std::fs::read(git.path().join("HEAD")).unwrap();
+    let index = std::fs::read(git.path().join("index")).unwrap();
+
+    let outcome = core::branch_fast_forward(repo.path(), "target", "refs/heads/source").unwrap();
+    assert_eq!(outcome.status, "fast_forward");
+    assert_eq!(
+        git.refname_to_id("refs/heads/target").unwrap().to_string(),
+        tip
+    );
+    assert_eq!(git.head().unwrap().name(), Some("refs/heads/master"));
+    assert_eq!(git.head().unwrap().target().unwrap().to_string(), base);
+    assert_eq!(std::fs::read(git.path().join("HEAD")).unwrap(), head);
+    assert_eq!(std::fs::read(git.path().join("index")).unwrap(), index);
+    assert_eq!(repo.read("a.txt"), "unstaged\n");
+    assert_eq!(repo.read("untracked.txt"), "keep\n");
+}
+
+#[test]
+fn strict_fast_forward_refuses_diverged_and_ahead_targets() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    commit_all(&repo, "base");
+    core::branch_create(repo.path(), "base", None, false).unwrap();
+    core::branch_create(repo.path(), "feature", None, true).unwrap();
+    repo.write("feature.txt", "feature\n");
+    commit_all(&repo, "feature");
+    core::checkout_branch(repo.path(), "master").unwrap();
+    repo.write("master.txt", "master\n");
+    let tip = commit_all(&repo, "master");
+    let git = git2::Repository::open(repo.path()).unwrap();
+    let index = std::fs::read(git.path().join("index")).unwrap();
+    let fingerprint = core::ref_fingerprint(repo.path()).unwrap();
+
+    for source in ["feature", "base"] {
+        assert!(core::branch_fast_forward(repo.path(), "master", source).is_err());
+        assert_eq!(core::ref_fingerprint(repo.path()).unwrap(), fingerprint);
+        assert_eq!(git.head().unwrap().target().unwrap().to_string(), tip);
+        assert_eq!(std::fs::read(git.path().join("index")).unwrap(), index);
+        assert_eq!(repo.read("master.txt"), "master\n");
+        assert!(!repo.dir.join("feature.txt").exists());
+        assert_eq!(git.state(), git2::RepositoryState::Clean);
+    }
+}
+
+#[test]
+fn strict_fast_forward_equal_tips_is_a_noop() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    commit_all(&repo, "base");
+    core::branch_create(repo.path(), "feature", None, false).unwrap();
+    repo.write("a.txt", "local\n");
+    let git = git2::Repository::open(repo.path()).unwrap();
+    let index = std::fs::read(git.path().join("index")).unwrap();
+    let fingerprint = core::ref_fingerprint(repo.path()).unwrap();
+    let outcome = core::branch_fast_forward(repo.path(), "master", "feature").unwrap();
+    assert_eq!(outcome.status, "up_to_date");
+    assert_eq!(core::ref_fingerprint(repo.path()).unwrap(), fingerprint);
+    assert_eq!(std::fs::read(git.path().join("index")).unwrap(), index);
+    assert_eq!(repo.read("a.txt"), "local\n");
+}
+
+#[test]
+fn strict_fast_forward_refuses_occupied_worktrees_in_both_directions() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    let base = commit_all(&repo, "base");
+    core::branch_create(repo.path(), "occupied", None, false).unwrap();
+    core::branch_create(repo.path(), "source", None, true).unwrap();
+    repo.write("a.txt", "source\n");
+    commit_all(&repo, "source");
+    core::checkout_branch(repo.path(), "master").unwrap();
+    let (dir, _cleanup) = worktree_target(&repo, "ff-occupied");
+    let linked = add_worktree(&repo, &dir, "occupied", false);
+    let fingerprint = core::ref_fingerprint(repo.path()).unwrap();
+    for (path, target) in [(repo.path(), "occupied"), (linked.as_str(), "master")] {
+        let err = core::branch_fast_forward(path, target, "refs/heads/source").unwrap_err();
+        assert!(err.to_string().contains("工作树"), "{err}");
+        assert_eq!(core::ref_fingerprint(repo.path()).unwrap(), fingerprint);
+    }
+    let git = git2::Repository::open(&linked).unwrap();
+    assert_eq!(git.head().unwrap().target().unwrap().to_string(), base);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.txt")).unwrap(),
+        "base\n"
+    );
+    assert_eq!(repo.read("a.txt"), "base\n");
+}
+
+#[test]
+fn strict_fast_forward_safe_checkout_refuses_overwriting_local_edits() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    let base = commit_all(&repo, "base");
+    core::branch_create(repo.path(), "feature", None, true).unwrap();
+    repo.write("a.txt", "feature\n");
+    commit_all(&repo, "feature");
+    core::checkout_branch(repo.path(), "master").unwrap();
+    repo.write("a.txt", "local\n");
+    let git = git2::Repository::open(repo.path()).unwrap();
+    let index = std::fs::read(git.path().join("index")).unwrap();
+    assert!(core::branch_fast_forward(repo.path(), "master", "feature").is_err());
+    assert_eq!(git.head().unwrap().target().unwrap().to_string(), base);
+    assert_eq!(std::fs::read(git.path().join("index")).unwrap(), index);
+    assert_eq!(repo.read("a.txt"), "local\n");
+}
+
+#[test]
+fn strict_fast_forward_rejects_nonbranch_sources_and_remote_targets() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    let base = commit_all(&repo, "base");
+    core::tag_create(repo.path(), "tag", Some(&base), None).unwrap();
+    let git = git2::Repository::open(repo.path()).unwrap();
+    git.reference(
+        "refs/remotes/origin/master",
+        git2::Oid::from_str(&base).unwrap(),
+        true,
+        "test",
+    )
+    .unwrap();
+    let fingerprint = core::ref_fingerprint(repo.path()).unwrap();
+    for (target, source) in [
+        ("master", "refs/tags/tag"),
+        ("master", base.as_str()),
+        ("refs/remotes/origin/master", "master"),
+        ("missing", "master"),
+    ] {
+        assert!(core::branch_fast_forward(repo.path(), target, source).is_err());
+        assert_eq!(core::ref_fingerprint(repo.path()).unwrap(), fingerprint);
+    }
+}
+
+#[test]
 fn branch_create_checkout_merge_ff_and_normal() {
     let repo = TempRepo::new();
     repo.write("a.txt", "base\n");

@@ -33,7 +33,7 @@ export const DropdownMenuItem = React.forwardRef<
   <Menu.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors',
+      'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none transition-colors',
       'focus:bg-surface-raised data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:text-muted',
       destructive ? 'text-danger focus:text-danger [&_svg]:text-danger' : 'text-foreground',
       className,
@@ -51,7 +51,7 @@ export const DropdownMenuCheckboxItem = React.forwardRef<
     <Menu.CheckboxItem
       ref={ref}
       className={cn(
-        'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none transition-colors',
+        'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-xs text-foreground outline-none transition-colors',
         'focus:bg-surface-raised data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:text-muted',
         className,
       )}
@@ -69,7 +69,7 @@ export const DropdownMenuCheckboxItem = React.forwardRef<
     <Menu.CheckboxItem
       ref={ref}
       className={cn(
-        'relative flex cursor-default select-none items-center rounded-md py-1.5 pl-7 pr-2 text-sm text-foreground outline-none focus:bg-surface-raised',
+        'relative flex cursor-default select-none items-center rounded-md py-1.5 pl-7 pr-2 text-xs text-foreground outline-none focus:bg-surface-raised',
         className,
       )}
       {...props}
@@ -112,7 +112,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<
   <Menu.SubTrigger
     ref={ref}
     className={cn(
-      'flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none focus:bg-surface-raised data-[state=open]:bg-surface-raised [&_svg]:size-4 [&_svg]:text-muted',
+      'flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-xs text-foreground outline-none focus:bg-surface-raised data-[state=open]:bg-surface-raised [&_svg]:size-4 [&_svg]:text-muted',
       className,
     )}
     {...props}

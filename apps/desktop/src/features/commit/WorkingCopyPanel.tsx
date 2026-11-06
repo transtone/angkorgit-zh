@@ -1028,11 +1028,13 @@ export function WorkingCopyPanel() {
                 冲突 <span className="font-normal text-faint">{conflicts.length}</span>
               </span>
               <Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => openConflict(conflicts[0])}>
-                Resolve
+                解决冲突
               </Button>
             </div>
             <p className="mb-1 px-2 text-[11px] text-faint">
-              Resolve each file, then commit to finish the {repo?.state === 'merge' ? 'merge' : repo?.state === 'rebase' ? 'rebase' : 'operation'}.
+              {repo?.state === 'rebase'
+                ? '逐个解决文件冲突，然后在工具栏中继续变基。'
+                : `逐个解决文件冲突，然后提交以完成${repo?.state === 'merge' ? '合并' : '当前操作'}。`}
             </p>
             <div className="mb-3 flex flex-col">
               {conflicts.map((file) => (
@@ -1248,7 +1250,7 @@ export function WorkingCopyPanel() {
           <DropdownMenuContent align="start" side="bottom">
             {menuMulti ? (
               <>
-                <DropdownMenuLabel>{menuMulti.paths.length} files selected</DropdownMenuLabel>
+                <DropdownMenuLabel>已选中 {menuMulti.paths.length} 个文件</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => void stageMany(menuMulti.paths, menuMulti.staged)}>
                   {menuMulti.staged ? <Minus /> : <Plus />}
                   {menuMulti.staged ? `取消暂存 ${menuMulti.paths.length} 个文件` : `暂存 ${menuMulti.paths.length} 个文件`}
@@ -1295,7 +1297,7 @@ export function WorkingCopyPanel() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => openEditor(fileMenu.file.path)}>
-              <Pencil /> Edit file
+              <Pencil /> 编辑文件
             </DropdownMenuItem>
             {editor && (
               <DropdownMenuItem onClick={() => void openInEditor(editor.id, `${path}/${fileMenu.file.path}`)}>

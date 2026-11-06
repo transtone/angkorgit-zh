@@ -228,7 +228,7 @@ function RepoSwitcher() {
 const STATE_LABELS: Record<string, string> = {
   rebase: '变基进行中',
   merge: '合并进行中',
-  cherrypick: '拣选进行中',
+  cherrypick: '摘取进行中',
   revert: '还原进行中',
   bisect: '二分查找进行中',
 };

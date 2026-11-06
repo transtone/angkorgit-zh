@@ -535,7 +535,7 @@ export const CommitRow = memo(function CommitRow({
       {columns.message ? (
         <>
           {isMergeCommit && <GitMerge className="size-3.5 shrink-0 text-faint" />}
-          <span className={cn('min-w-0 flex-1 truncate', isMergeCommit && !selected && 'text-muted')}>
+          <span className={cn('min-w-0 flex-1 truncate text-[12px]', isMergeCommit && !selected && 'text-muted')}>
             {commit.summary || <span className="text-faint">（无消息）</span>}
           </span>
         </>

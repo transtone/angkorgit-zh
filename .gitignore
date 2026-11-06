@@ -36,3 +36,4 @@ zh-dict/pending.tsv
 .npmrc
 scripts/
 docs/
+bun.lock

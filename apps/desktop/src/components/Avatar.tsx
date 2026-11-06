@@ -79,7 +79,7 @@ export const Avatar = memo(function Avatar({
     }
     void emailHash(email).then((hash) => {
       if (!cancelled) {
-        const resolved = `https://www.gravatar.com/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404`;
+        const resolved = `https://www.cravatar.cn/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404`;
         urlCache.set(`${normalizeEmail(email)}|${size}`, resolved);
         setUrl(resolved);
       }

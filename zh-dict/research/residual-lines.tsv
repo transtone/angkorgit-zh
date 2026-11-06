@@ -627,7 +627,7 @@ e2e	tests/e2e/smoke.spec.ts	282	WorkingCopyFileListItemContainerFactory.tsx	stri
 e2e	tests/e2e/smoke.spec.ts	283	tooltip	string
 e2e	tests/e2e/smoke.spec.ts	288	iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==	string
 e2e	tests/e2e/smoke.spec.ts	289	base64	string
-e2e	tests/e2e/smoke.spec.ts	291	**://www.gravatar.com/**	string
+e2e	tests/e2e/smoke.spec.ts	291	**://www.cravatar.cn/**	string
 e2e	tests/e2e/smoke.spec.ts	292	image/png	string
 e2e	tests/e2e/smoke.spec.ts	298	img[src*="gravatar"]	string
 e2e	tests/e2e/smoke.spec.ts	304	angkorgit	string
@@ -3888,7 +3888,7 @@ ui	apps/desktop/src/components/Avatar.tsx	18	SHA-256	string
 ui	apps/desktop/src/components/Avatar.tsx	31	${normalizeEmail(email)}|${size}	template
 ui	apps/desktop/src/components/Avatar.tsx	47	(() => cachedUrl(email, size));	jsx-text
 ui	apps/desktop/src/components/Avatar.tsx	49	(null);	jsx-text
-ui	apps/desktop/src/components/Avatar.tsx	64	https://www.gravatar.com/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404	attr:resolved
+ui	apps/desktop/src/components/Avatar.tsx	64	https://www.cravatar.cn/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404	attr:resolved
 ui	apps/desktop/src/components/Avatar.tsx	65	${normalizeEmail(email)}|${size}	template
 ui	apps/desktop/src/components/Avatar.tsx	77	relative flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-semibold text-white	string
 ui	apps/desktop/src/components/Avatar.tsx	83	hsl(${avatarHue(email)} 45% 45%)	template

@@ -424,6 +424,16 @@ pub async fn checkout_detached(path: String, rev: String) -> AppResult<()> {
 }
 
 #[tauri::command]
+pub async fn branch_fast_forward(
+    path: String,
+    target: String,
+    source: String,
+) -> AppResult<OpOutcome> {
+    blocking(move || submodule::synced(&path, || branch::fast_forward(&path, &target, &source)))
+        .await
+}
+
+#[tauri::command]
 pub async fn branch_merge(path: String, name: String, noFf: Option<bool>) -> AppResult<OpOutcome> {
     blocking(move || {
         submodule::synced(&path, || branch::merge(&path, &name, noFf.unwrap_or(false)))

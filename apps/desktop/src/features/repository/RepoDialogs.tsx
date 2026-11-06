@@ -117,19 +117,19 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
           kind: 'cherryPick',
           label:
             oids.length === 1
-              ? `拣选 ${oids[0].slice(0, 8)}`
-              : `拣选 ${oids.length} 个提交`,
+              ? `摘取 ${oids[0].slice(0, 8)}`
+              : `摘取 ${oids.length} 个提交`,
           action: () =>
             oids.length === 1
               ? ipc.cherryPick(path, oids[0], cherryPickRecordOrigin)
               : ipc.cherryPickMany(path, oids, cherryPickRecordOrigin),
           shouldRecord: (r) => (r as OpOutcome | undefined)?.status === 'ok',
         })) as OpOutcome | undefined;
-        toastOutcome(outcome, '拣选完成');
+        toastOutcome(outcome, '摘取完成');
         closeDialog();
         await onDone();
       } catch (error) {
-        toast.error(`拣选失败：${(error as { message?: string }).message ?? error}`);
+        toast.error(`摘取失败：${(error as { message?: string }).message ?? error}`);
       } finally {
         setBusy(false);
       }
@@ -307,7 +307,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
         >
           <DialogHeader>
             <DialogTitle>
-              {pickOids.length > 1 ? `拣选 ${pickOids.length} 个提交` : '拣选提交'}
+              {pickOids.length > 1 ? `摘取 ${pickOids.length} 个提交` : '摘取提交'}
             </DialogTitle>
             <DialogDescription>
               {pickOids.length > 1
@@ -344,7 +344,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
               取消
             </Button>
             <Button ref={cherryPickRef} disabled={busy} onClick={submitCherryPick}>
-              {pickOids.length > 1 ? `拣选 ${pickOids.length} 个提交` : '拣选'}
+              {pickOids.length > 1 ? `摘取 ${pickOids.length} 个提交` : '摘取'}
             </Button>
           </DialogFooter>
         </DialogContent>

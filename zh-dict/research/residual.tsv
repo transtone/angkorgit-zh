@@ -210,7 +210,7 @@ e2e	the sidebar comes back after a relaunch that happened with a diff open	skip	
 test	checks out same-repo branches with tracking and fork PRs via refs/pull	verify	protect-mixed	含受保护片段（URL/哈希/路径/版本），译时须原样保留	test-name			tests/unit/forge.test.ts:196	1
 ui	focus:outline-none focus:ring-1 focus:ring-inset focus:ring-primary/40	skip	css	Tailwind/CSS 类	string			apps/desktop/src/features/conflicts/ConflictResolver.tsx:1207	1
 ui	group flex items-center gap-3 rounded-md px-2.5 py-2 transition-colors	skip	css	Tailwind/CSS 类	string			apps/desktop/src/features/repository/WelcomePage.tsx:239	1
-ui	https://www.gravatar.com/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404	skip	protect	命中保护正则	attr:resolved			apps/desktop/src/components/Avatar.tsx:64	1
+ui	https://www.cravatar.cn/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404	skip	protect	命中保护正则	attr:resolved			apps/desktop/src/components/Avatar.tsx:64	1
 ui	rounded-md border border-border bg-surface shadow-sm transition-colors	skip	css	Tailwind/CSS 类	string			apps/desktop/src/features/commit/WorkingCopyPanel.tsx:1218	1
 ui	具有 read:repository:bitbucket + write:repository:bitbucket 权限范围的 API 令牌	translate	new	待译	string			apps/desktop/src/features/settings/AccountsTab.tsx:80	1
 website	border-border text-muted hover:bg-surface-raised hover:text-foreground	skip	css	Tailwind/CSS 类	string			apps/website/src/layouts/DocsLayout.astro:21	1
@@ -1070,7 +1070,7 @@ core	./forge/providers/gitlab	skip	code	URL/路径/模板/选择器/函数式（
 core	/repos/${repoPath}/pulls	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	template			packages/core/src/forge/providers/github.ts:133	1
 core	\n\nINCOMING (theirs):\n	translate	new	待译	tmpl-seg			packages/core/src/ai/capabilities.ts:64	1
 core	http://localhost:1234/v1	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	ternary			packages/core/src/ai/models.ts:60	3
-e2e	**://www.gravatar.com/**	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	string			tests/e2e/smoke.spec.ts:291	1
+e2e	**://www.cravatar.cn/**	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	string			tests/e2e/smoke.spec.ts:291	1
 e2e	[data-selected-file-row]	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	string			tests/e2e/smoke.spec.ts:791	2
 meta	@angkorgit/design-system	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	json			apps/desktop/package.json:16	1
 rust	/nonexistent/signing_key	skip	code	URL/路径/模板/选择器/函数式（无空格代码串）	rust			apps/desktop/src-tauri/tests/git_engine.rs:1610	1

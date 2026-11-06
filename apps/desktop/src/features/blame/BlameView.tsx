@@ -166,7 +166,7 @@ export function BlameView({
               <UserRoundSearch /> 在此提交上溯源
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!menu.hunk.committed} onClick={() => onBlameAt(`${menu.hunk.oid}^`)}>
-              <UserRoundSearch /> Blame before this commit
+              <UserRoundSearch /> 溯源到此提交之前
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -176,7 +176,7 @@ export function BlameView({
                 toast.success('已复制哈希');
               }}
             >
-              <Copy /> 复制 hash
+              <Copy /> 将提交 ID 复制到剪贴板
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

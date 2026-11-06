@@ -69,7 +69,7 @@ export function WipRow({
       <span className="rounded border border-dashed border-primary/50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-primary">
         WIP
       </span>
-      <span className="min-w-0 truncate text-muted">
+      <span className="min-w-0 truncate text-[12px] text-muted">
         {counts.total}个未提交的更改
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-1">

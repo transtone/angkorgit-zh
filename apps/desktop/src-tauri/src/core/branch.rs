@@ -196,6 +196,65 @@ pub fn checkout_detached(path: &str, rev: &str) -> AppResult<()> {
     Ok(())
 }
 
+pub fn fast_forward(path: &str, target: &str, source: &str) -> AppResult<OpOutcome> {
+    let repo = super::repo::open(path)?;
+    if target.starts_with("refs/") && !target.starts_with("refs/heads/") {
+        return Err(AppError::other("目标必须是本地分支"));
+    }
+    let local_name = target.strip_prefix("refs/heads/").unwrap_or(target);
+    let target_ref = repo
+        .find_branch(local_name, BranchType::Local)?
+        .into_reference();
+    let refname = target_ref
+        .name()
+        .ok_or_else(|| AppError::other("目标分支名称无效"))?;
+    let target_oid = target_ref
+        .target()
+        .ok_or_else(|| AppError::other("目标必须是本地直接分支"))?;
+    let source_ref = if source.starts_with("refs/") {
+        repo.find_reference(source)?
+    } else {
+        resolve_branch_ref(&repo, source)?
+    };
+    let source_ref = source_ref.resolve()?;
+    if !source_ref
+        .name()
+        .is_some_and(|name| name.starts_with("refs/heads/") || name.starts_with("refs/remotes/"))
+    {
+        return Err(AppError::other("来源必须是本地或远端跟踪分支"));
+    }
+    let source_commit = source_ref.peel_to_commit()?;
+    refuse_if_checked_out_elsewhere(&repo, local_name)?;
+    if target_oid == source_commit.id() {
+        return Ok(OpOutcome {
+            status: "up_to_date".into(),
+            message: format!("{target} 已与 {source} 保持最新"),
+        });
+    }
+    if !repo.graph_descendant_of(source_commit.id(), target_oid)? {
+        return Err(AppError::other(format!(
+            "无法将 {target} 严格快进到 {source}：目标分支包含来源分支没有的提交"
+        )));
+    }
+    if repo.head()?.name() == Some(refname) {
+        let mut builder = CheckoutBuilder::new();
+        builder.safe();
+        repo.checkout_tree(source_commit.as_object(), Some(&mut builder))?;
+    }
+    // Refuse to overwrite a target moved by another process since the ancestor check.
+    repo.reference_matching(
+        refname,
+        source_commit.id(),
+        true,
+        target_oid,
+        &format!("fast-forward {target} to {source}"),
+    )?;
+    Ok(OpOutcome {
+        status: "fast_forward".into(),
+        message: format!("已将 {target} 快进到 {source}"),
+    })
+}
+
 pub fn merge(path: &str, branch: &str, no_ff: bool) -> AppResult<OpOutcome> {
     let repo = super::repo::open(path)?;
     let reference = resolve_branch_ref(&repo, branch)?;

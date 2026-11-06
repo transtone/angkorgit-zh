@@ -219,6 +219,29 @@ test('a file history row can open the full commit in the graph', async ({ page }
   await expect(page.locator('[role="row"][aria-selected="true"]')).toContainText(short.slice(0, 7));
 });
 
+test('工作副本冲突提示使用中文并区分变基与提交', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const resolve = page.getByRole('button', { name: '解决冲突', exact: true });
+  await expect(resolve).toBeVisible();
+  for (const [state, hint] of [
+    ['merge', '逐个解决文件冲突，然后提交以完成合并。'],
+    ['rebase', '逐个解决文件冲突，然后在工具栏中继续变基。'],
+    ['clean', '逐个解决文件冲突，然后提交以完成当前操作。'],
+  ] as const) {
+    await page.evaluate(async (state) => {
+      const { useRepo } = await import('/src/features/repository/store.ts');
+      const repo = useRepo.getState().repo;
+      if (!repo) throw new Error('Repository not loaded');
+      useRepo.setState({ repo: { ...repo, state } });
+    }, state);
+    await expect(page.getByText(hint, { exact: true })).toBeVisible();
+  }
+  await resolve.click();
+  await expect(page.getByRole('dialog', { name: /解决冲突：src\/features\/graph\/drawGraph\.ts/ })).toBeVisible();
+});
+
 test('冲突解决器将所选行合并为干净的结果', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
@@ -353,13 +376,90 @@ test('right-clicking a branch tip offers to push that branch', async ({ page }) 
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').nth(0).click({ button: 'right' });
-  const pushItem = page.getByRole('menuitem', { name: /^Push main/ });
+  const pushItem = page.getByRole('menuitem', { name: /^推送 main/ });
   await expect(pushItem).toBeVisible();
   await expect(pushItem).toContainText('↑2');
   await page.keyboard.press('Escape');
   await page.getByRole('row').nth(3).click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: /拣选到当前分支/ })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /^Push/ })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: /摘取到当前分支/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^推送/ })).toHaveCount(0);
+});
+
+test('local branch menus push the selected branch without checking it out', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  for (const entry of ['sidebar', 'ref', 'commit'] as const) {
+    const selectedBranch = entry === 'sidebar' ? 'develop' : 'feature/diff-viewer';
+    await page.evaluate(async (selectedBranch) => {
+      const [{ ipc }, { useRepo }] = await Promise.all([
+        import('/src/core/ipc.ts'),
+        import('/src/features/repository/store.ts'),
+      ]);
+      const tracker = window as unknown as { __branchPush: string[] | null };
+      tracker.__branchPush = null;
+      useRepo.setState({
+        remotes: [
+          { name: 'origin', url: 'git@github.com:demo/angkorgit.git' },
+          { name: 'gitlab', url: 'git@gitlab.com:demo/angkorgit.git' },
+        ],
+        branches: useRepo.getState().branches.map((branch) =>
+          branch.name === selectedBranch ? { ...branch, upstream: `gitlab/${selectedBranch}`, ahead: 1 } : branch),
+      });
+      ipc.push = async (_path, remote, force, _tags, _upstream, branch) => {
+        if (force) throw new Error('Unexpected force push');
+        tracker.__branchPush = [remote, branch ?? ''];
+        return { status: 'ok', message: '推送完成' };
+      };
+      ipc.checkout = async () => { throw new Error('Push must not check out a branch'); };
+    }, selectedBranch);
+    if (entry === 'sidebar') {
+      await page.getByRole('complementary', { name: '分支与引用' })
+        .getByText(selectedBranch, { exact: true }).first().click({ button: 'right' });
+    } else if (entry === 'ref') {
+      await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+    } else {
+      await page.getByRole('row').filter({ has: page.getByTitle(/^feature\/diff-viewer · local/) }).click({ button: 'right' });
+    }
+    await page.getByRole('menuitem', { name: entry === 'commit' ? `推送 ${selectedBranch}` : /^推送/ }).click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __branchPush: string[] | null }).__branchPush))
+      .toEqual(['gitlab', selectedBranch]);
+    await expect.poll(() => page.evaluate(async () => {
+      const { useRepo } = await import('/src/features/repository/store.ts');
+      return useRepo.getState().repo?.headBranch;
+    })).toBe('main');
+  }
+});
+
+test('synchronized local branches hide push and pull in every context menu', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.evaluate(async () => {
+    const { useRepo } = await import('/src/features/repository/store.ts');
+    useRepo.setState({ branches: useRepo.getState().branches.map((branch) =>
+      branch.isRemote ? branch : { ...branch, upstream: `origin/${branch.name}`, ahead: 0, behind: 0 }) });
+  });
+  for (const entry of ['sidebar', 'ref', 'commit'] as const) {
+    if (entry === 'sidebar') {
+      await page.getByRole('complementary', { name: '分支与引用' }).getByText('main', { exact: true }).first().click({ button: 'right' });
+    } else if (entry === 'ref') {
+      await page.getByTitle(/^main · local/).first().click({ button: 'right' });
+    } else {
+      await page.getByRole('row').first().click({ button: 'right' });
+    }
+    await expect(page.getByRole('menu')).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /^(推送|拉取)/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+  }
+  await page.evaluate(async () => {
+    const { useRepo } = await import('/src/features/repository/store.ts');
+    useRepo.setState({ branches: useRepo.getState().branches.map((branch) =>
+      branch.name === 'develop' ? { ...branch, upstream: null } : branch) });
+  });
+  await page.getByRole('complementary', { name: '分支与引用' }).getByText('develop', { exact: true }).click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: '推送', exact: true })).toBeEnabled();
 });
 
 test('交互式变基对话框可从提交右键菜单打开', async ({ page }) => {
@@ -382,13 +482,13 @@ test('cherry-pick opens a dialog with the source reference option', async ({ pag
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByRole('row').nth(3).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: /拣选到当前分支/ }).click();
+  await page.getByRole('menuitem', { name: /摘取到当前分支/ }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('拣选提交')).toBeVisible();
+  await expect(dialog.getByText('摘取提交')).toBeVisible();
   await expect(dialog.getByRole('checkbox')).toBeChecked();
   await expect(dialog.getByText(/cherry picked from commit/)).toBeVisible();
-  await dialog.getByRole('button', { name: '拣选', exact: true }).click();
+  await dialog.getByRole('button', { name: '摘取', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(page.getByText('Cherry-picked (demo)')).toBeVisible();
 });
@@ -401,14 +501,14 @@ test('multi-select cherry-pick lists every commit in the dialog', async ({ page 
   await page.getByRole('row').nth(2).click({ modifiers: ['ControlOrMeta'] });
   await page.getByRole('row').nth(2).click({ button: 'right' });
   await page
-    .getByRole('menuitem', { name: /在当前分支上拣选 2 个提交…/ })
+    .getByRole('menuitem', { name: /在当前分支上摘取 2 个提交…/ })
     .click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('heading', { name: '拣选 2 个提交' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: '摘取 2 个提交' })).toBeVisible();
   await expect(dialog.getByText(/从旧到新/)).toBeVisible();
   await expect(dialog.locator('.font-mono')).toHaveCount(2);
-  await dialog.getByRole('button', { name: '拣选 2 个提交' }).click();
+  await dialog.getByRole('button', { name: '摘取 2 个提交' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(page.getByText('Cherry-picked 2 commits (demo)')).toBeVisible();
 });
@@ -551,7 +651,7 @@ test('打开并关闭 diff 后头像保持可见', async ({ page }) => {
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64',
   );
-  await page.route('**://www.gravatar.com/**', (route) =>
+  await page.route('**://www.cravatar.cn/**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: pixel }),
   );
 
@@ -1488,8 +1588,8 @@ test('hovering a crowded ref cell stacks every ref in place, folded ones include
   expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
   expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height);
   await second.click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: 'Checkout release/0.4' })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /Reset .* to this/ })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: '检出 release/0.4' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /将 .* 重置为此提交/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menuitem')).toHaveCount(0);
 });
@@ -1525,7 +1625,7 @@ test('a separated origin chip offers the reset from its right-click menu too', a
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await page.getByTitle(/origin\/main — double-click to reset main to it/).first().click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Reset main to this…' }).click();
+  await page.getByRole('menuitem', { name: '将 main 重置为此提交…' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('将分支重置到其远端？')).toBeVisible();
   await dialog.getByRole('button', { name: '取消' }).click();
@@ -1546,24 +1646,102 @@ test('arrow keys move the working copy diff from file to file', async ({ page })
   await expect(page.locator('section[aria-label="文件差异：src/data/palette-seed.sql"]')).toBeVisible();
 });
 
-test('branch menus offer a fast-forward entry next to merge, disabled when the current branch is ahead', async ({ page }) => {
+test('branch menus hide unavailable fast-forwards and advance the selected branch to main', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  await page.getByText('develop', { exact: true }).click({ button: 'right' });
-  const sidebarMenu = page.getByRole('menu');
-  await expect(sidebarMenu.getByRole('menuitem', { name: '合并到当前分支' })).toBeEnabled();
-  const sidebarFf = sidebarMenu.getByRole('menuitem', { name: '将当前分支快进到此处' });
-  await expect(sidebarFf).toBeVisible();
-  await expect(sidebarFf).toHaveAttribute('aria-disabled', 'true');
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('menu')).toHaveCount(0);
+  expect(await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    return [
+      await ipc.mergeCanFastForward('', 'develop', 'refs/remotes/origin/main'),
+      await ipc.mergeCanFastForward('', 'main', 'refs/heads/main'),
+    ];
+  })).toEqual([true, false]);
+  await page.evaluate(async () => {
+    const [{ ipc }, { useRepo }] = await Promise.all([
+      import('/src/core/ipc.ts'),
+      import('/src/features/repository/store.ts'),
+    ]);
+    useRepo.setState({ worktrees: [] });
+    const tracker = window as unknown as { __fastForwardCalls: string[][] };
+    tracker.__fastForwardCalls = [];
+    ipc.fastForward = async (_path, target, source) => {
+      tracker.__fastForwardCalls.push([target, source]);
+      return { status: 'fast_forward', message: '快进完成' };
+    };
+    ipc.merge = async () => { throw new Error('Fast-forward must not use merge'); };
+  });
+  const sidebar = page.getByRole('complementary', { name: '分支与引用' });
+  const branch = 'develop';
+  await sidebar.getByText(branch, { exact: true }).click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: `将 ${branch} 快进到 main`, exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: `将 main 快进到 ${branch}`, exact: true })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: `将 ${branch} 快进到 main`, exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __fastForwardCalls: string[][] }).__fastForwardCalls))
+    .toEqual([['develop', 'main']]);
+  // Refresh restores demo worktrees; release the branch for the graph action too.
+  await page.evaluate(async () => {
+    const { useRepo } = await import('/src/features/repository/store.ts');
+    useRepo.setState({ worktrees: [] });
+  });
   await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
-  const graphMenu = page.getByRole('menu');
-  await expect(graphMenu.getByRole('menuitem', { name: '合并到当前分支' })).toBeEnabled();
-  const graphFf = graphMenu.getByRole('menuitem', { name: '将当前分支快进到此处' });
-  await expect(graphFf).toBeVisible();
-  await expect(graphFf).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('menuitem', { name: '将 feature/diff-viewer 快进到 main', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '将 main 快进到 feature/diff-viewer', exact: true })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: '将 feature/diff-viewer 快进到 main', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __fastForwardCalls: string[][] }).__fastForwardCalls))
+    .toEqual([['develop', 'main'], ['feature/diff-viewer', 'main']]);
+});
+
+test('fast-forward menus hide self, diverged and occupied branches', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const sidebar = page.getByRole('complementary', { name: '分支与引用' });
+  const fastForward = page.getByRole('menuitem', { name: /快进/ });
+  for (const branch of ['main', 'feature/diff-viewer']) {
+    await sidebar.getByText(branch, { exact: true }).first().click({ button: 'right' });
+    await expect(page.getByRole('menu')).toBeVisible();
+    await expect(fastForward).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+  }
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    ipc.mergeCanFastForward = async () => false;
+  });
+  await sidebar.getByText('develop', { exact: true }).click({ button: 'right' });
+  await expect(page.getByRole('menu')).toBeVisible();
+  await expect(fastForward).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+  await expect(page.getByRole('menu')).toBeVisible();
+  await expect(fastForward).toHaveCount(0);
+});
+
+test('both branch menus use strict fast-forward when the current branch is behind', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    const tracker = window as unknown as { __fastForwardCalls: string[][] };
+    tracker.__fastForwardCalls = [];
+    ipc.mergeCanFastForward = async (_path, target, source) => target === 'main' && source !== 'main';
+    ipc.fastForward = async (_path, target, source) => {
+      tracker.__fastForwardCalls.push([target, source]);
+      return { status: 'fast_forward', message: '快进完成' };
+    };
+    ipc.merge = async () => { throw new Error('Fast-forward must not use merge'); };
+  });
+  const branch = 'develop';
+  await page.getByRole('complementary', { name: '分支与引用' }).getByText(branch, { exact: true }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: `将 main 快进到 ${branch}`, exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __fastForwardCalls: string[][] }).__fastForwardCalls))
+    .toEqual([['main', branch]]);
+  await page.getByTitle(/^feature\/diff-viewer · local/).first().click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '将 main 快进到 feature/diff-viewer', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __fastForwardCalls: string[][] }).__fastForwardCalls))
+    .toEqual([['main', branch], ['main', 'feature/diff-viewer']]);
 });
 
 test('the remote menu and the palette open the repository page in the browser', async ({ page }) => {
@@ -1792,7 +1970,7 @@ test('right-clicking a commit file offers the working copy file actions', async 
   await expect(menu.getByRole('menuitem', { name: /Show in Finder|在文件管理器中显示/ })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: '复制路径' })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: '复制绝对路径' })).toBeVisible();
-  await expect(menu.getByRole('menuitem', { name: /Apply this file/ })).toHaveCount(0);
+  await expect(menu.getByRole('menuitem', { name: /将此文件应用到工作副本/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
 });

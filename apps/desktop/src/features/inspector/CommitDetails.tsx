@@ -1140,11 +1140,11 @@ export function CommitDetails({
             {stash && fileMenu.changed && (
               <>
                 <DropdownMenuItem onClick={() => void restoreFromStash([fileMenu.path])}>
-                  <ArchiveRestore /> Apply this file to the working copy
+                  <ArchiveRestore /> 将此文件应用到工作副本
                 </DropdownMenuItem>
                 {picked.size > 1 && picked.has(fileMenu.path) && (
                   <DropdownMenuItem onClick={() => void restoreFromStash([...picked])}>
-                    <ArchiveRestore /> Apply {picked.size} selected files
+                    <ArchiveRestore /> 应用选中的 {picked.size} 个文件
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -1154,7 +1154,7 @@ export function CommitDetails({
               disabled={fileMenu.deleted}
               onClick={() => useUi.getState().openEditor(fileMenu.path)}
             >
-              <Pencil /> Edit file
+              <Pencil /> 编辑文件
             </DropdownMenuItem>
             {editor && (
               <DropdownMenuItem
@@ -1179,7 +1179,7 @@ export function CommitDetails({
                 void ipc
                   .openPath(`${repoPath}/${fileMenu.path}`)
                   .catch((error) =>
-                    toast.error(`Could not open the file: ${(error as { message?: string }).message ?? error}`),
+                    toast.error(`无法打开文件：${(error as { message?: string }).message ?? error}`),
                   )
               }
             >
@@ -1191,7 +1191,7 @@ export function CommitDetails({
                 void ipc
                   .revealPath(`${repoPath}/${fileMenu.path}`)
                   .catch((error) =>
-                    toast.error(`Could not reveal the file: ${(error as { message?: string }).message ?? error}`),
+                    toast.error(`无法显示文件位置：${(error as { message?: string }).message ?? error}`),
                   )
               }
             >

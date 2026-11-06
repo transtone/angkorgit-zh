@@ -112,7 +112,7 @@
 177	docs	README.md	docs/assets/graph.png	S4 路径/标识符
 178	docs	README.md	docs/assets/worktree.png	S4 路径/标识符
 181	docs	README.md	packages/core	S4 路径/标识符
-186	e2e	tests/e2e/smoke.spec.ts	**://www.gravatar.com/**	S4 路径/标识符
+186	e2e	tests/e2e/smoke.spec.ts	**://www.cravatar.cn/**	S4 路径/标识符
 187	e2e	tests/e2e/smoke.spec.ts	000096aaaaaa	S7 哈希/base64
 189	e2e	tests/e2e/smoke.spec.ts	aside button[title="feature"]	S12 选择器/SVG
 190	e2e	tests/e2e/smoke.spec.ts	aside button[title="feature"] span.truncate	S12 选择器/SVG

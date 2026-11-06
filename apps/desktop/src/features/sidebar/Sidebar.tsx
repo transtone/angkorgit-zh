@@ -66,7 +66,7 @@ import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
 import { useSettings } from '@/features/settings/store';
-import { forgeNoun, pullRequestCheckoutSpec, remoteWebUrl } from '@angkorgit/core';
+import { forgeNoun, pickRemote, pullRequestCheckoutSpec, remoteWebUrl } from '@angkorgit/core';
 import type { BranchInfo, PullRequestInfo, RemoteInfo, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo } from '@angkorgit/core';
 import { capCount, isMac } from '@/shared/utils';
 import { killTerminalSession } from '@/features/terminal/sessions';
@@ -254,7 +254,9 @@ export function Sidebar() {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropAction, setDropAction] = useState<{ source: string; target: string; canFf?: boolean } | null>(null);
   const [branchMenu, setBranchMenu] = useState<{ x: number; y: number; branch: BranchInfo } | null>(null);
-  const [branchMenuFf, setBranchMenuFf] = useState<boolean | null>(null);
+  const [branchMenuFf, setBranchMenuFf] = useState<{
+    head: string; source: string; current: boolean; selected: boolean;
+  } | null>(null);
   const [subMenu, setSubMenu] = useState<{ x: number; y: number; sub: SubmoduleInfo } | null>(null);
   const [remoteMenu, setRemoteMenu] = useState<{ x: number; y: number; remote: RemoteInfo } | null>(null);
   const [worktreeMenu, setWorktreeMenu] = useState<{ x: number; y: number; worktree: WorktreeInfo } | null>(null);
@@ -526,24 +528,23 @@ export function Sidebar() {
       return next;
     });
 
-  const branchMenuSource = branchMenu?.branch.isHead ? null : (branchMenu?.branch.name ?? null);
+  const branchMenuSource = !branchMenu || branchMenu.branch.isHead ? null
+    : branchMenu.branch.isRemote ? `refs/remotes/${branchMenu.branch.name}` : branchMenu.branch.name;
+  const currentBranch = repo?.headBranch;
   useEffect(() => {
     setBranchMenuFf(null);
-    if (!branchMenuSource) return;
-    const head = useRepo.getState().repo?.headBranch;
-    if (!head) {
-      setBranchMenuFf(false);
-      return;
-    }
+    if (!branchMenuSource || !currentBranch || currentBranch === branchMenuSource) return;
     let cancelled = false;
-    void ipc
-      .mergeCanFastForward(path, head, branchMenuSource)
-      .then((ok) => !cancelled && setBranchMenuFf(ok))
-      .catch(() => !cancelled && setBranchMenuFf(false));
+    void Promise.all([
+      ipc.mergeCanFastForward(path, currentBranch, branchMenuSource),
+      ipc.mergeCanFastForward(path, branchMenuSource, currentBranch),
+    ])
+      .then(([current, selected]) => !cancelled && setBranchMenuFf({ head: currentBranch, source: branchMenuSource, current, selected }))
+      .catch(() => !cancelled && setBranchMenuFf(null));
     return () => {
       cancelled = true;
     };
-  }, [path, branchMenuSource]);
+  }, [path, branchMenuSource, currentBranch]);
 
   if (!repo) return null;
 
@@ -743,7 +744,7 @@ export function Sidebar() {
     >
       <button
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        onDoubleClick={() => void act(`Checkout ${branch.name}`, () => ipc.checkout(path, branch.name), { kind: 'checkout' })}
+        onDoubleClick={() => void act(`检出 ${branch.name}`, () => ipc.checkout(path, branch.name), { kind: 'checkout' })}
         title={`${branch.name} — double-click to check out ${branch.name.split('/').slice(1).join('/')} from it (fast-forwards the local branch when it is behind)`}
       >
         <HeadMark active={false} />
@@ -1279,7 +1280,7 @@ export function Sidebar() {
                 void act(`更新 ${sub.name}`, () => ipc.submoduleUpdate(path, sub.name));
               }}
             >
-              <ListRestart /> Update (checkout recorded commit)
+              <ListRestart /> 更新（检出记录的提交）
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -1304,7 +1305,7 @@ export function Sidebar() {
               #{prMenu.pr.number} {prMenu.pr.title}
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => checkoutPullRequest(prMenu.pr)}>
-              <Check /> Checkout
+              <Check /> 检出
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void openExternal(prMenu.pr.url)}>
               <Cloud /> 在浏览器中打开
@@ -1334,7 +1335,7 @@ export function Sidebar() {
                 void act(`检出 ${tag.name}`, () => ipc.checkoutDetached(path, tag.name), { kind: 'checkout' });
               }}
             >
-              <Check /> Checkout (detached)
+              <Check /> 检出提交（游离状态）
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
@@ -1342,7 +1343,7 @@ export function Sidebar() {
                 void act(`推送标签 ${tag.name}`, () => ipc.pushTag(path, remotes[0]?.name ?? 'origin', tag.name));
               }}
             >
-              <Cloud /> Push to remote
+              <Cloud /> 推送到远端
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -1352,7 +1353,7 @@ export function Sidebar() {
                 void act(`删除标签 ${tag.name}`, () => ipc.tagDelete(path, tag.name));
               }}
             >
-              <Trash2 /> Delete
+              <Trash2 /> 删除标签 {tagMenu.tag.name}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -1371,7 +1372,7 @@ export function Sidebar() {
                 void act('应用暂存', () => ipc.stashApply(path, stash.index));
               }}
             >
-              <Play /> Apply
+              <Play /> 应用暂存（保留）
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
@@ -1379,7 +1380,7 @@ export function Sidebar() {
                 void act('弹出暂存', () => ipc.stashPop(path, stash.index));
               }}
             >
-              <Undo2 /> Pop
+              <Undo2 /> 弹出暂存
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -1389,7 +1390,7 @@ export function Sidebar() {
                 void act('丢弃暂存', () => ipc.stashDrop(path, stash.index));
               }}
             >
-              <Trash2 /> Delete
+              <Trash2 /> 丢弃暂存
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -1428,7 +1429,7 @@ export function Sidebar() {
                 <DropdownMenuItem destructive onClick={() => void removeWorktree(worktreeMenu.worktree)}>
                   {worktreeMenu.worktree.isMissing ? (
                     <>
-                      <Eraser /> Forget missing worktree
+                      <Eraser /> 移除缺失工作树的记录
                     </>
                   ) : (
                     <>
@@ -1455,7 +1456,7 @@ export function Sidebar() {
                 void act(`获取 ${r.name}`, () => ipc.fetch(path, r.name, true, true));
               }}
             >
-              <ArrowDownToLine /> Fetch {remoteMenu.remote.name}
+              <ArrowDownToLine /> 获取 {remoteMenu.remote.name}
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={remoteWebUrl(remoteMenu.remote.url) === null}
@@ -1555,7 +1556,7 @@ export function Sidebar() {
             <DropdownMenuLabel className="max-w-64 truncate font-mono">{branchMenu.branch.name}</DropdownMenuLabel>
             {branchMenuHeld ? (
               <DropdownMenuItem onClick={() => openWorktree(branchMenuHeld)}>
-                <FolderTree /> Switch to worktree {branchMenuHeld.name}
+                <FolderTree /> 切换到工作树 {branchMenuHeld.name}
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
@@ -1566,7 +1567,7 @@ export function Sidebar() {
                   })
                 }
               >
-                <Check /> Checkout
+                <Check /> 检出
               </DropdownMenuItem>
             )}
             {!branchMenu.branch.isHead && !branchMenuHeld && (
@@ -1582,18 +1583,27 @@ export function Sidebar() {
                 })
               }
             >
-              <GitMerge /> 合并到当前分支
+              <GitMerge /> 将 {branchMenu.branch.name} 合并到 {repo?.headBranch ?? '当前分支'}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={branchMenu.branch.isHead || branchMenuFf !== true}
-              onClick={() =>
-                void act(`Fast-forward to ${branchMenu.branch.name}`, () => ipc.merge(path, branchMenu.branch.name, false), {
-                  kind: 'merge',
-                })
-              }
-            >
-              <FastForward /> 将当前分支快进到此处
-            </DropdownMenuItem>
+            {branchMenuFf?.head === currentBranch && branchMenuFf?.source === branchMenuSource && branchMenuFf.current && (
+              <DropdownMenuItem
+                onClick={() =>
+                  void act(`将 ${currentBranch} 快进到 ${branchMenu.branch.name}`, () => ipc.fastForward(path, currentBranch!, branchMenuSource!), {
+                    kind: 'merge',
+                  })
+                }
+              >
+                <FastForward /> 将 {currentBranch} 快进到 {branchMenu.branch.name}
+              </DropdownMenuItem>
+            )}
+            {!branchMenu.branch.isRemote && !branchMenuHeld &&
+              branchMenuFf?.head === currentBranch && branchMenuFf?.source === branchMenuSource && branchMenuFf.selected && (
+              <DropdownMenuItem
+                onClick={() => void act(`将 ${branchMenu.branch.name} 快进到 ${currentBranch}`, () => ipc.fastForward(path, branchMenu.branch.name, currentBranch!))}
+              >
+                <FastForward /> 将 {branchMenu.branch.name} 快进到 {currentBranch}
+              </DropdownMenuItem>
+            )}
             {!branchMenu.branch.isRemote && (
               <DropdownMenuItem
                 disabled={branchMenu.branch.isHead}
@@ -1603,10 +1613,11 @@ export function Sidebar() {
                   })
                 }
               >
-                <ListRestart /> Rebase current onto this
+                <ListRestart /> 变基 {repo?.headBranch ?? '当前分支'} 于 {branchMenu.branch.name}
               </DropdownMenuItem>
             )}
-            {!branchMenu.branch.isRemote && (
+            {!branchMenu.branch.isRemote &&
+              (!branchMenu.branch.upstream || branchMenu.branch.ahead > 0 || branchMenu.branch.behind > 0) && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -1615,17 +1626,17 @@ export function Sidebar() {
                     void act(`拉取 ${branchMenu.branch.name}`, () => ipc.pullBranch(path, branchMenu.branch.name))
                   }
                 >
-                  <ArrowDownToLine /> Pull
+                  <ArrowDownToLine /> 拉取
                   {branchMenu.branch.behind > 0 && <Badge tone="info">↓{capCount(branchMenu.branch.behind)}</Badge>}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
                     void act(`推送 ${branchMenu.branch.name}`, () =>
-                      ipc.push(path, remotes[0]?.name ?? 'origin', false, false, true, branchMenu.branch.name),
+                      ipc.push(path, pickRemote(remotes, branchMenu.branch.upstream)?.name ?? 'origin', false, false, true, branchMenu.branch.name),
                     )
                   }
                 >
-                  <ArrowUpFromLine /> Push
+                  <ArrowUpFromLine /> 推送
                   {branchMenu.branch.ahead > 0 && <Badge tone="primary">↑{capCount(branchMenu.branch.ahead)}</Badge>}
                 </DropdownMenuItem>
               </>
@@ -1637,7 +1648,7 @@ export function Sidebar() {
             {!branchMenu.branch.isRemote && (
               <>
                 <DropdownMenuItem onClick={() => openDialog('rename', branchMenu.branch.name)}>
-                  <Pencil /> Rename…
+                  <Pencil /> 重命名 {branchMenu.branch.name}…
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   destructive
@@ -1650,7 +1661,7 @@ export function Sidebar() {
                     )
                   }
                 >
-                  <Trash2 /> Delete
+                  <Trash2 /> 删除 {branchMenu.branch.name}
                 </DropdownMenuItem>
               </>
             )}
@@ -1684,10 +1695,10 @@ export function Sidebar() {
               <GitMerge className="shrink-0" />
               <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
                 <span className="max-w-full truncate">
-                  Merge {dropAction?.source} into {dropAction?.target}
+                  将 {dropAction?.source} 合并到 {dropAction?.target}
                 </span>
                 <span className="text-[11px] font-normal opacity-75">
-                  Records a merge commit on {dropAction?.target}
+                  在 {dropAction?.target} 上创建合并提交
                 </span>
               </span>
             </Button>
@@ -1717,7 +1728,7 @@ export function Sidebar() {
                 <ListRestart className="shrink-0" />
                 <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
                   <span className="max-w-full truncate">
-                    Rebase {dropAction.source} onto {dropAction.target}
+                    变基 {dropAction.source} 于 {dropAction.target}
                   </span>
                   <span className="text-[11px] font-normal text-muted">
                     重放 {dropAction.source} 在 {dropAction.target} 之上的提交——这会重写历史

@@ -485,6 +485,10 @@ export const ipc = {
     if (!isTauri()) return { status: 'ok', message: `Merged ${name} (demo)` };
     return invoke('branch_merge', { path, name, noFf });
   },
+  async fastForward(path: string, target: string, source: string): Promise<OpOutcome> {
+    if (!isTauri()) return { status: 'fast_forward', message: `已将 ${target} 快进到 ${source}` };
+    return invoke('branch_fast_forward', { path, target, source });
+  },
   async mergeAbort(path: string): Promise<void> {
     if (!isTauri()) return;
     return invoke('merge_abort', { path });
