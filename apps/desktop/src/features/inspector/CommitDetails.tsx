@@ -297,6 +297,9 @@ export function CommitDetails({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [messageAiBusy, setMessageAiBusy] = useState(false);
+  const messageAiRunRef = useRef(0);
+  const currentBranch = useRepo((s) => s.status?.branch ?? null);
   const draftSummaryRef = useRef<HTMLTextAreaElement>(null);
   const draftBodyRef = useRef<HTMLTextAreaElement>(null);
   const [descHeight, setDescHeight] = useState<number | null>(null);
@@ -325,10 +328,16 @@ export function CommitDetails({
     setDraft(joinCommitMessage(commit.summary, commit.body));
     setEditing(true);
   }, [canReword, commit.summary, commit.body]);
+  const stopMessageAi = () => {
+    messageAiRunRef.current += 1;
+    setMessageAiBusy(false);
+  };
   useEffect(() => {
     setEditing(false);
     setSaving(false);
     setDescHeight(null);
+    messageAiRunRef.current += 1;
+    setMessageAiBusy(false);
   }, [commit.oid]);
   useEffect(() => {
     if (editing) draftSummaryRef.current?.focus();
@@ -347,8 +356,9 @@ export function CommitDetails({
     focusRequests.editMessageConsumed = editMessageRequest.seq;
     startEditing();
   }, [editMessageRequest, commit.oid, startEditing]);
-  const canSave = draftParts.summary.trim().length > 0 && draft.trim() !== originalMessage.trim() && !saving;
+  const canSave = draftParts.summary.trim().length > 0 && draft.trim() !== originalMessage.trim() && !saving && !messageAiBusy;
   const cancelEditing = () => {
+    stopMessageAi();
     setEditing(false);
     setDraft('');
   };
@@ -364,6 +374,7 @@ export function CommitDetails({
       });
       if (!ok) return;
     }
+    stopMessageAi();
     setSaving(true);
     try {
       const newOid = await useUndo.getState().tracked({
@@ -378,9 +389,48 @@ export function CommitDetails({
       await reloadGraph(repoPath);
       select(newOid);
     } catch (error) {
-      toast.error(`Could not update the message: ${(error as { message?: string }).message ?? error}`);
+      toast.error(`无法更新提交消息：${(error as { message?: string }).message ?? error}`);
     } finally {
       setSaving(false);
+    }
+  };
+  const generateDraftMessage = async () => {
+    draftSummaryRef.current?.focus();
+    if (messageAiBusy) {
+      stopMessageAi();
+      return;
+    }
+    if (!aiConfigured()) {
+      toast.info('请先在设置中配置 AI 提供方');
+      return;
+    }
+    const run = ++messageAiRunRef.current;
+    const stillRunning = () => messageAiRunRef.current === run;
+    setMessageAiBusy(true);
+    try {
+      const fullDiffs = await ipc.diffCommit(repoPath, commit.oid);
+      if (!stillRunning()) return;
+      const patch = patchTextOfAll(fullDiffs);
+      if (!patch.trim()) {
+        toast.info('此次提交没有可用于生成消息的文本更改');
+        return;
+      }
+      const generated = await aiCapabilities.generateCommitMessage(getAiProvider(), patch, {
+        style: useSettings.getState().aiStyle.commit,
+        branch: currentBranch,
+      });
+      if (!stillRunning()) return;
+      if (!generated.trim()) {
+        toast.error('AI 提供方返回了空回答——请重试或检查设置中的模型');
+        return;
+      }
+      setDraft(generated);
+    } catch (error) {
+      if (stillRunning()) {
+        toast.error(`AI 请求失败：${(error as { message?: string } | null)?.message ?? String(error)}`);
+      }
+    } finally {
+      if (stillRunning()) setMessageAiBusy(false);
     }
   };
   const onEditorKeyDown = (e: React.KeyboardEvent) => {
@@ -666,23 +716,42 @@ export function CommitDetails({
             )}
             onKeyDown={onEditorKeyDown}
           >
-            <Textarea
-              ref={draftSummaryRef}
-              value={draftParts.summary}
-              onChange={(e) => setDraft(joinCommitMessage(e.target.value, draftParts.body))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
-                  e.preventDefault();
-                  draftBodyRef.current?.focus();
-                }
-              }}
-              placeholder="摘要"
-              aria-label="提交摘要"
-              rows={1}
-              autoCapitalize="off"
-              spellCheck
-              className="min-h-9 resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-2 text-sm font-medium leading-snug text-foreground shadow-none placeholder:font-normal placeholder:text-faint focus-visible:border-0 focus-visible:ring-0"
-            />
+            <div className="relative flex items-start">
+              <Textarea
+                ref={draftSummaryRef}
+                value={draftParts.summary}
+                onChange={(e) => setDraft(joinCommitMessage(e.target.value, draftParts.body))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    draftBodyRef.current?.focus();
+                  }
+                }}
+                placeholder="摘要"
+                aria-label="提交摘要"
+                rows={1}
+                autoCapitalize="off"
+                spellCheck
+                readOnly={messageAiBusy}
+                className="min-h-9 resize-none overflow-hidden rounded-none border-0 bg-transparent py-2 pl-3 pr-9 text-sm font-medium leading-snug text-foreground shadow-none placeholder:font-normal placeholder:text-faint focus-visible:border-0 focus-visible:ring-0"
+              />
+              <Hint label={messageAiBusy ? '停止生成' : '用 AI 生成消息'}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={messageAiBusy ? '停止生成提交消息' : '用 AI 生成提交消息'}
+                  className="absolute right-1.5 top-1.5"
+                  disabled={saving}
+                  onClick={() => void generateDraftMessage()}
+                >
+                  {messageAiBusy ? (
+                    <Logo size={14} animated="loop" className="logo-draw-loop" />
+                  ) : (
+                    <Sparkles className="size-3.5 text-primary" />
+                  )}
+                </Button>
+              </Hint>
+            </div>
             <div className="mx-3 h-px bg-border-subtle" />
             <Textarea
               ref={draftBodyRef}
@@ -696,6 +765,7 @@ export function CommitDetails({
               }}
               placeholder="提交说明"
               aria-label="提交说明"
+              readOnly={messageAiBusy}
               autoCapitalize="off"
               spellCheck
               rows={Math.min(12, Math.max(3, draftParts.body.split('\n').length + 1))}

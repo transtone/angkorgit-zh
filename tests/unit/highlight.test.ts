@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { DiffLine } from '@angkorgit/core';
 import {
+  diffFirstLine,
   embeddedDiffLanguages,
   embeddedLanguages,
   highlightLineState,
   languageOf,
+  languageOfShebang,
   supportsBlockComments,
 } from '@/shared/highlight';
 
@@ -178,5 +180,71 @@ describe('astro frontmatter', () => {
     const template = embeddedDiffLanguages([hunk([ctx(40, 40, '<e />'), add(41, '<f />')])], 'astro');
     expect(template!.size).toBe(0);
     expect(embeddedDiffLanguages([hunk(lines)], 'css')).toBeNull();
+  });
+});
+
+describe('languageOfShebang', () => {
+  it('reads the interpreter from a direct shebang', () => {
+    expect(languageOfShebang('#!/usr/bin/python3')).toBe('python');
+    expect(languageOfShebang('#!/bin/bash')).toBe('bash');
+    expect(languageOfShebang('#!/bin/sh')).toBe('bash');
+    expect(languageOfShebang('#!/usr/bin/ruby')).toBe('ruby');
+    expect(languageOfShebang('#!/usr/local/bin/php8.3')).toBe('php');
+  });
+
+  it('skips env, its flags and variable assignments', () => {
+    expect(languageOfShebang('#!/usr/bin/env python3')).toBe('python');
+    expect(languageOfShebang('#!/usr/bin/env -S deno run --allow-net')).toBe('javascript');
+    expect(languageOfShebang('#!/usr/bin/env -S PYTHONUNBUFFERED=1 python')).toBe('python');
+    expect(languageOfShebang('#!/usr/bin/env node')).toBe('javascript');
+    expect(languageOfShebang('#!/usr/bin/env ts-node')).toBe('typescript');
+  });
+
+  it('ignores lines that are not a shebang or name an unknown interpreter', () => {
+    expect(languageOfShebang('# not a shebang')).toBeNull();
+    expect(languageOfShebang('#!/usr/bin/env')).toBeNull();
+    expect(languageOfShebang('#!/usr/bin/perl')).toBeNull();
+    expect(languageOfShebang('')).toBeNull();
+    expect(languageOfShebang(null)).toBeNull();
+    expect(languageOfShebang(undefined)).toBeNull();
+  });
+});
+
+describe('languageOf with a first line', () => {
+  it('uses the shebang only when the name and extension say nothing', () => {
+    expect(languageOf('bin/deploy', '#!/usr/bin/env bash')).toBe('bash');
+    expect(languageOf('scripts/migrate', '#!/usr/bin/env python3')).toBe('python');
+    expect(languageOf('scripts/migrate', 'import os')).toBeNull();
+    expect(languageOf('scripts/migrate')).toBeNull();
+    expect(languageOf('tool.rb', '#!/usr/bin/env python3')).toBe('ruby');
+    expect(languageOf('Dockerfile', '#!/bin/sh')).toBe('dockerfile');
+  });
+});
+
+describe('diffFirstLine', () => {
+  const line = (kind: DiffLine['kind'], oldLineNo: number | null, newLineNo: number | null, content: string): DiffLine => ({
+    kind,
+    oldLineNo,
+    newLineNo,
+    content,
+  });
+  const hunk = (lines: DiffLine[]) => ({ header: '', oldStart: 1, oldLines: 0, newStart: 1, newLines: 0, lines });
+
+  it('prefers the new side of line 1 over the old side', () => {
+    const diff = {
+      hunks: [hunk([line('deletion', 1, null, '#!/bin/sh'), line('addition', null, 1, '#!/usr/bin/env bash'), line('context', 2, 2, 'set -e')])],
+    };
+    expect(diffFirstLine(diff)).toBe('#!/usr/bin/env bash');
+  });
+
+  it('falls back to the old side when the file was deleted', () => {
+    const diff = { hunks: [hunk([line('deletion', 1, null, '#!/usr/bin/env python3'), line('deletion', 2, null, 'print(1)')])] };
+    expect(diffFirstLine(diff)).toBe('#!/usr/bin/env python3');
+  });
+
+  it('returns null when the diff starts past line 1', () => {
+    const diff = { hunks: [hunk([line('context', 40, 40, 'x'), line('addition', null, 41, 'y')])] };
+    expect(diffFirstLine(diff)).toBeNull();
+    expect(diffFirstLine({ hunks: [] })).toBeNull();
   });
 });

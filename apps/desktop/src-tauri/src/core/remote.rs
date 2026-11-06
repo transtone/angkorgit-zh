@@ -597,6 +597,7 @@ fn group_update_inner(
     };
     let upstream_ref = tracking_ref.as_deref().unwrap_or(&merge_ref);
     let old = head.peel_to_commit()?.id();
+    let submodules = super::submodule::at_recorded_commit(&repo);
     let fetched = if remote != "." {
         match group_fetch(
             &repo,
@@ -653,6 +654,12 @@ fn group_update_inner(
             format!("{branch_name} 已分叉（领先 {ahead}，落后 {behind}），无法快进"),
         ));
     }
+    if !submodules.is_empty() {
+        super::submodule::download_missing(&repo, &target.tree()?, &submodules, &|| {
+            !control.is_cancelled()
+        });
+        control.ensure_active()?;
+    }
     let current = repo.head()?;
     if current.name() != Some(refname.as_str())
         || current.target() != Some(old)
@@ -680,6 +687,7 @@ fn group_update_inner(
                  重试前请检查 HEAD 与工作树更改。"
                 ))
             })?;
+        super::submodule::follow_recorded(path, &submodules, false);
         Ok(GroupUpdateResult {
             status: "ok".into(),
             message: format!("已将 {branch_name} 快进 {behind} 个提交"),
@@ -927,7 +935,7 @@ pub fn pull(path: &str, remote_name: &str, mode: Option<&str>) -> AppResult<OpOu
     super::branch::merge(path, &upstream_name, false)
 }
 
-fn pull_source(
+pub(super) fn pull_source(
     repo: &Repository,
     branch: &git2::Branch,
     branch_name: &str,
@@ -958,7 +966,7 @@ fn pull_source(
     )))
 }
 
-fn pull_rebase_configured(repo: &Repository) -> bool {
+pub(super) fn pull_rebase_configured(repo: &Repository) -> bool {
     repo.config()
         .ok()
         .and_then(|config| config.get_string("pull.rebase").ok())

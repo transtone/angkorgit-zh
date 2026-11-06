@@ -3,7 +3,7 @@ import { FileText, ImageOff } from 'lucide-react';
 import { imageMimeFor, type DiffHunk, type DiffLine, type FileDiff } from '@angkorgit/core';
 import { cn, PaneEmpty } from '@angkorgit/design-system';
 import { useUi } from '@/features/ui/store';
-import { languageOf } from '@/shared/highlight';
+import { languageOf, diffFirstLine } from '@/shared/highlight';
 import { CodeLine, gutter, lineBg, pairHunkLines, prepareLineStates, wrapUnavailable, type SearchRanges } from './diffShared';
 import { ACTIVE_CHANGE_CLASS, flattenDiff, VirtualInlineDiff, VirtualSplitDiff, type LineMenuInfo } from './VirtualDiff';
 import { rowInRange, type RowRange } from './DiffMinimap';
@@ -218,7 +218,7 @@ export function DiffViewer({
   const diffView = useUi((s) => s.diffView);
   const useWord = useUi((s) => s.wordDiff);
   const wrapLines = useUi((s) => s.wrapLines);
-  const language = useMemo(() => languageOf(diff.path), [diff.path]);
+  const language = useMemo(() => languageOf(diff.path, diffFirstLine(diff)), [diff]);
   prepareLineStates(diff, language);
   const split = diffView === 'split';
   const wrap = stacked ? wrapLines || split : wrapLines && !wrapUnavailable(diff);

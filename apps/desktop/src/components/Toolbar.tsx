@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
 import { PushRejectedDialog } from './PushRejectedDialog';
+import { PullCheckDialog, pullWarningOf, pullWarningText } from './PullCheckDialog';
 import {
+  AlertTriangle,
   ArrowDownToLine,
   ArrowUpFromLine,
   Check,
@@ -411,6 +413,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const remotes = useRepo((s) => s.remotes);
   const headUpstream = useRepo((s) => s.branches.find((b) => !b.isRemote && b.isHead)?.upstream ?? null);
   const stashes = useRepo((s) => s.stashes);
+  const pullPreview = useRepo((s) => s.pullPreview);
   const busy = useRepo((s) => s.busy);
   const setBusy = useRepo((s) => s.setBusy);
   const toggleTerminal = useUi((s) => s.toggleTerminal);
@@ -430,6 +433,9 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const editor = preferredEditor(editors, editorId);
 
   const [pushRejected, setPushRejected] = useState(false);
+  const [pullCheck, setPullCheck] = useState(false);
+  const pullWarning = pullWarningOf(pullPreview);
+  const pullWarningLine = pullPreview ? pullWarningText(pullPreview) : null;
 
   const run = async (label: string, op: () => Promise<{ status: string; message: string } | void>) => {
     if (busy) return;
@@ -522,6 +528,20 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         }}
       />
 
+      <PullCheckDialog
+        open={pullCheck}
+        preview={pullPreview}
+        onClose={() => setPullCheck(false)}
+        onPull={() => {
+          setPullCheck(false);
+          void run('拉取', () => ipc.pull(repo.path, remote));
+        }}
+        onStash={(paths) => {
+          setPullCheck(false);
+          openDialog('createStash', { paths });
+        }}
+      />
+
       <Separator orientation="vertical" className="mx-2 h-6" />
 
       <Hint label={remotes.length === 0 ? '未配置远端' : remotes.length > 1 ? `获取全部远端（${remotes.map((r) => r.name).join('、')}）` : `获取 ${remote}`}>
@@ -548,17 +568,31 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         </span>
       </Hint>
       <div className="flex items-center">
-        <Hint label={`从 ${remote} 拉取${status?.behind ? ` (${status.behind} behind)` : ''} · merge or rebase per pull.rebase`}>
+        <Hint
+          className="max-w-[28rem]"
+          label={
+            <span className="flex flex-col gap-0.5">
+              <span>{`从 ${remote} 拉取${status?.behind ? ` (${status.behind} behind)` : ''} · merge or rebase per pull.rebase`}</span>
+              {pullWarningLine && <span className="text-danger">{pullWarningLine}</span>}
+            </span>
+          }
+        >
           <Button
             variant="ghost"
             size="sm"
             className="rounded-r-none"
             disabled={!!busy}
-            onClick={() => void run('拉取', () => ipc.pull(repo.path, remote))}
+            onClick={() => (pullWarning ? setPullCheck(true) : void run('拉取', () => ipc.pull(repo.path, remote)))}
           >
             <ArrowDownToLine />
             拉取
             {status && status.behind > 0 && <Badge tone="info">{capCount(status.behind)}</Badge>}
+            {pullWarning && (
+              <>
+                <AlertTriangle className="text-danger" data-pull-warning={pullWarning} aria-hidden />
+                <span className="sr-only">{pullWarning === 'local' ? '，本地更改会阻碍拉取' : '，将发生冲突'}</span>
+              </>
+            )}
           </Button>
         </Hint>
         <DropdownMenu>

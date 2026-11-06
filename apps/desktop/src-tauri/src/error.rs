@@ -12,6 +12,12 @@ pub enum AppError {
     NoRepository,
     #[error("操作将产生冲突：{0}")]
     Conflict(String),
+    #[error("The {hook} hook failed (exit code {status}).")]
+    Hook {
+        hook: String,
+        status: i32,
+        output: String,
+    },
 }
 
 const HTTP_STATUS_MARKER: &str = "unexpected http status code: ";
@@ -86,6 +92,14 @@ impl AppError {
             AppError::Other(_) => "other",
             AppError::NoRepository => "no_repository",
             AppError::Conflict(_) => "conflict",
+            AppError::Hook { .. } => "hook_failed",
+        }
+    }
+
+    fn detail(&self) -> Option<String> {
+        match self {
+            AppError::Hook { output, .. } if !output.is_empty() => Some(output.clone()),
+            _ => None,
         }
     }
 }
@@ -94,6 +108,8 @@ impl AppError {
 struct ErrorPayload<'a> {
     code: &'a str,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    detail: Option<String>,
 }
 
 impl Serialize for AppError {
@@ -101,6 +117,7 @@ impl Serialize for AppError {
         ErrorPayload {
             code: self.code(),
             message: self.message(),
+            detail: self.detail(),
         }
         .serialize(serializer)
     }
@@ -171,6 +188,24 @@ mod tests {
             "denied",
         ));
         assert_eq!(denied.code(), "io");
+    }
+
+    #[test]
+    fn hook_failures_carry_the_hook_output_as_detail() {
+        let error = AppError::Hook {
+            hook: "pre-commit".into(),
+            status: 3,
+            output: "lint: bad file".into(),
+        };
+        let payload = serde_json::to_value(&error).unwrap();
+        assert_eq!(payload["code"], "hook_failed");
+        assert_eq!(
+            payload["message"],
+            "The pre-commit hook failed (exit code 3)."
+        );
+        assert_eq!(payload["detail"], "lint: bad file");
+        let plain = serde_json::to_value(AppError::other("boom")).unwrap();
+        assert!(plain.get("detail").is_none());
     }
 
     #[test]

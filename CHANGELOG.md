@@ -6,6 +6,67 @@
 
 ## [未发布]
 
+### Added
+- **Commits run your Git hooks.** `pre-commit` and `commit-msg` now run when you
+  commit or amend, from `.git/hooks` or `core.hooksPath` (Husky and similar setups
+  included), the same as `git commit` does, with the commit's author in
+  `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL` and `GIT_AUTHOR_DATE`. A failing hook stops the
+  commit and shows its output, a hook that reformats and re-stages files gets its
+  changes committed, and a hook that edits the message is respected. **Skip hooks**
+  next to Amend commits without them, like `--no-verify`, and appears only in
+  repositories that have hooks.
+  Running hooks needs Git 2.36 or newer on your PATH; without it the commit still goes
+  through and AngKorGit tells you the hooks did not run. (#82)
+- **Write an earlier commit's message with AI.** The commit message editor in the
+  inspector has the same sparkle button as the commit box: it sends that commit's
+  changes to your AI provider and fills in a new summary and description, following
+  your commit style and branch prefix rules. Edit it, then Save message as before;
+  the button stops a run that is taking too long.
+
+### Fixed
+- Closing a tab right after switching to it (⌘W / Ctrl+W) no longer brings the
+  closed tab back a moment later.
+
+## [0.25.0] — 2026-10-28
+
+The know-before-you-pull release. Pull now tells you ahead of time when it would
+conflict or stop at your uncommitted edits, submodules move with the commit the
+repository records instead of showing up as a stray change, and scripts without an
+extension are highlighted from their shebang.
+
+### Added
+- **Scripts without an extension get syntax highlighting from their shebang.** A file
+  named `deploy` or `migrate` whose first line is `#!/usr/bin/env bash`, `python3`,
+  `node`, `deno`, `bun`, `ruby`, `php`, `swift` or `ts-node` is highlighted as that
+  language in diffs and blame. The name and extension still win when they say
+  something. (#81)
+- **Pull tells you before it goes wrong.** After a fetch, AngKorGit tries the
+  pull in memory. When it would conflict, the Pull button carries a warning, its
+  tooltip names the files, and clicking it says what will happen before anything
+  moves. When uncommitted edits would stop the pull, it names those files and
+  offers to stash just them. It follows `pull.rebase`, so a rebase that would stop
+  on one of your commits is caught too.
+
+### Changed
+- **Submodules follow the commit your repository records.** A pull, checkout,
+  merge, rebase, cherry-pick, revert, hard reset or stash pop that moves a
+  submodule's recorded commit now checks the submodule out at the new commit,
+  fetching it first when it is missing, and the group Pull all does the same. A
+  submodule you had moved to another commit yourself, or one with edited files, is
+  left alone. Before, the submodule stayed on the old commit and showed up as an
+  uncommitted change, and committing everything would have undone the update.
+
+### Fixed
+- A submodule checked out at a different commit than the repository records (after
+  a pull in the terminal, say) gets an **Update submodule** button on its row and in
+  its menu, and its tooltip names both commits. Discard on that row checks out the
+  recorded commit instead of failing with "Submodule changes must be discarded
+  inside the submodule repository".
+- **A repository tab stopped updating when files changed.** Switching tabs while
+  the previous repository was still setting up its file watcher (slow for a repo
+  with a large `node_modules`) could leave the new tab watching the old folder, or
+  watching nothing, until it was reopened.
+
 ## [0.24.0] — 2026-10-16
 
 标签栏版本。分组可以一键获取或拉取组内的全部仓库，标签页像浏览器那样共享窄窗口，
@@ -1777,7 +1838,8 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/cheat2001/angkorgit/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/cheat2001/angkorgit/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/cheat2001/angkorgit/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/cheat2001/angkorgit/compare/v0.21.1...v0.22.0

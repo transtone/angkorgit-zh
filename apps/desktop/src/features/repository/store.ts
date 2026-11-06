@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { pickRemote } from '@angkorgit/core';
 import type {
   BranchInfo,
+  PullPreview,
   RecentRepository,
   RemoteInfo,
   RepositoryInfo,
@@ -24,6 +26,7 @@ interface RepoState {
   worktrees: WorktreeInfo[];
   conflicts: string[];
   unpushed: string[];
+  pullPreview: PullPreview | null;
   recents: RecentRepository[];
   busy: string | null;
   opening: string | null;
@@ -37,6 +40,7 @@ interface RepoState {
   close: () => void;
   refresh: () => Promise<void>;
   refreshStatus: () => Promise<void>;
+  loadPullPreview: () => Promise<void>;
   setBusy: (label: string | null) => void;
   setProfileId: (profileId: string | null) => void;
   markFetched: () => void;
@@ -46,6 +50,7 @@ interface RepoState {
 let openSeq = 0;
 let fullSeq = 0;
 let statusSeq = 0;
+let previewSeq = 0;
 
 export const useRepo = create<RepoState>((set, get) => ({
   repo: null,
@@ -59,6 +64,7 @@ export const useRepo = create<RepoState>((set, get) => ({
   worktrees: [],
   conflicts: [],
   unpushed: [],
+  pullPreview: null,
   recents: [],
   busy: null,
   opening: null,
@@ -101,6 +107,7 @@ export const useRepo = create<RepoState>((set, get) => ({
         worktrees: [],
         conflicts: [],
         unpushed: [],
+        pullPreview: null,
       });
     } else {
       set({ repo, profileId: null, lastFetchAt: null, fetchFailures: [], opening: null, refreshing: true });
@@ -112,6 +119,7 @@ export const useRepo = create<RepoState>((set, get) => ({
       })
       .catch(() => undefined);
     void import('@/features/ui/store').then(({ useUi }) => {
+      if (seq !== openSeq || get().repo?.path !== repo.path) return;
       useUi.getState().addRepoTab(repo.path);
       useUi.getState().markWorktreeTab(repo.path, repo.isWorktree, repo.mainPath);
     });
@@ -136,6 +144,7 @@ export const useRepo = create<RepoState>((set, get) => ({
       worktrees: [],
       conflicts: [],
       unpushed: [],
+      pullPreview: null,
       opening: null,
       refreshing: false,
       profileId: null,
@@ -180,6 +189,7 @@ export const useRepo = create<RepoState>((set, get) => ({
     } else {
       set({ repo: info, branches, tags, stashes, remotes, submodules, worktrees, unpushed });
     }
+    void get().loadPullPreview();
   },
 
   refreshStatus: async () => {
@@ -190,6 +200,23 @@ export const useRepo = create<RepoState>((set, get) => ({
     const [status, conflicts] = await Promise.all([ipc.status(path), ipc.conflicts(path)]);
     if (get().repo?.path !== path || statusEpoch !== statusSeq) return;
     set((state) => ({ status, conflicts, statusVersion: state.statusVersion + 1 }));
+    void get().loadPullPreview();
+  },
+
+  loadPullPreview: async () => {
+    const { repo, remotes, branches } = get();
+    if (!repo) return;
+    const path = repo.path;
+    const headUpstream = branches.find((b) => !b.isRemote && b.isHead)?.upstream ?? null;
+    const remote = pickRemote(remotes, headUpstream)?.name;
+    const seq = ++previewSeq;
+    if (!remote) {
+      set({ pullPreview: null });
+      return;
+    }
+    const pullPreview = await ipc.pullPreview(path, remote).catch(() => null);
+    if (get().repo?.path !== path || seq !== previewSeq) return;
+    set({ pullPreview });
   },
 
   setBusy: (busy) => set({ busy }),

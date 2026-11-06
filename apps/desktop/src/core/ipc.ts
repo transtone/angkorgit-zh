@@ -22,6 +22,7 @@ import type {
   RemoteInfo,
   RepositoryInfo,
   StashInfo,
+  PullPreview,
   StatusSummary,
   SubmoduleInfo,
   TagInfo,
@@ -39,6 +40,12 @@ export interface OpOutcome {
 export interface IpcError {
   code: string;
   message: string;
+  detail?: string;
+}
+
+export interface CommitOutcome {
+  oid: string;
+  hookWarning: string | null;
 }
 
 export interface GeneratedKey {
@@ -129,6 +136,83 @@ function demoNothingStaged(): boolean {
     return false;
   }
 }
+const DEMO_HOOKS = 'angkorgit-demo-hooks';
+const DEMO_HOOKS_DELAY = 'angkorgit-demo-hooks-delay';
+
+function demoHooks(): 'pass' | 'fail' | null {
+  try {
+    const value = localStorage.getItem(DEMO_HOOKS);
+    return value === 'pass' || value === 'fail' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function demoHooksDelay(): number {
+  try {
+    const ms = Number(localStorage.getItem(DEMO_HOOKS_DELAY));
+    return ms > 0 ? ms : 200;
+  } catch {
+    return 200;
+  }
+}
+
+async function demoCommitOutcome(oid: string, noVerify: boolean): Promise<CommitOutcome> {
+  await delay(demoHooksDelay());
+  if (demoHooks() === 'fail' && !noVerify) {
+    const failure: IpcError = {
+      code: 'hook_failed',
+      message: 'The pre-commit hook failed (exit code 1).',
+      detail: [
+        '\u001b[31m✖\u001b[39m eslint --fix:',
+        '',
+        'src/features/graph/CommitGraph.tsx',
+        "  42:7  error  'unusedLane' is assigned a value but never used  no-unused-vars",
+        '',
+        '✖ 1 problem (1 error, 0 warnings)',
+        'husky - pre-commit script failed (code 1)',
+      ].join('\n'),
+    };
+    throw failure;
+  }
+  return { oid, hookWarning: null };
+}
+
+const DEMO_SUBMODULE_DRIFT = 'angkorgit-demo-submodule-drift';
+
+function demoSubmoduleDrift(): boolean {
+  try {
+    return localStorage.getItem(DEMO_SUBMODULE_DRIFT) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function clearDemoSubmoduleDrift(): void {
+  try {
+    localStorage.removeItem(DEMO_SUBMODULE_DRIFT);
+  } catch {
+    return;
+  }
+}
+
+const DEMO_PULL_PREVIEW = 'angkorgit-demo-pull-preview';
+
+function demoPullScenario(): 'conflicts' | 'local' | null {
+  try {
+    const value = localStorage.getItem(DEMO_PULL_PREVIEW);
+    return value === 'conflicts' || value === 'local' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function demoStatusNow(): StatusSummary {
+  const base = demoNothingStaged() ? demo.demoUnstagedStatus() : demo.demoStatus;
+  const status = demoPullScenario() ? { ...base, behind: 3 } : base;
+  return demoSubmoduleDrift() ? { ...status, files: [...status.files, demo.demoDriftedSubmodule] } : status;
+}
+
 let demoCli: CliToolStatus | null = null;
 
 function demoAiKeys(): Record<string, string> {
@@ -180,7 +264,7 @@ export const ipc = {
     return invoke('repo_clone', { url, into, branch: branch ?? null });
   },
   async status(path: string): Promise<StatusSummary> {
-    if (!isTauri()) return demoNothingStaged() ? demo.demoUnstagedStatus() : demo.demoStatus;
+    if (!isTauri()) return demoStatusNow();
     return invoke('repo_status', { path });
   },
   async stateCleanup(path: string): Promise<void> {
@@ -297,16 +381,17 @@ export const ipc = {
     if (!isTauri()) return;
     return invoke('delete_file', { path, file });
   },
-  async commit(path: string, message: string): Promise<string> {
-    if (!isTauri()) {
-      await delay(200);
-      return 'demo-commit-oid';
-    }
-    return invoke('commit_create', { path, message });
+  async commit(path: string, message: string, noVerify = false): Promise<CommitOutcome> {
+    if (!isTauri()) return demoCommitOutcome('demo-commit-oid', noVerify);
+    return invoke('commit_create', { path, message, noVerify });
   },
-  async amend(path: string, message: string | null): Promise<string> {
-    if (!isTauri()) return 'demo-amend-oid';
-    return invoke('commit_amend', { path, message });
+  async amend(path: string, message: string | null, noVerify = false): Promise<CommitOutcome> {
+    if (!isTauri()) return demoCommitOutcome('demo-amend-oid', noVerify);
+    return invoke('commit_amend', { path, message, noVerify });
+  },
+  async commitHooks(path: string): Promise<string[]> {
+    if (!isTauri()) return demoHooks() ? ['pre-commit'] : [];
+    return invoke('commit_hooks', { path });
   },
   async reword(path: string, oid: string, message: string): Promise<string> {
     if (!isTauri()) {
@@ -499,6 +584,10 @@ export const ipc = {
     }
     return invoke('repository_group_update', { path, pull, runId });
   },
+  async pullPreview(path: string, remote: string): Promise<PullPreview | null> {
+    if (!isTauri()) return demo.demoPullPreview(demoPullScenario(), remote);
+    return invoke('pull_preview', { path, remote });
+  },
   async pull(path: string, remote: string, mode?: 'merge' | 'rebase'): Promise<OpOutcome> {
     if (!isTauri()) {
       await delay(400);
@@ -581,7 +670,7 @@ export const ipc = {
     return invoke('submodule_list', { path });
   },
   async submoduleUpdate(path: string, name: string): Promise<void> {
-    if (!isTauri()) return;
+    if (!isTauri()) return clearDemoSubmoduleDrift();
     return invoke('submodule_update', { path, name });
   },
 
@@ -711,9 +800,9 @@ export const ipc = {
     if (!isTauri()) return;
     return invoke('watch_repo', { path });
   },
-  async watchStop(): Promise<void> {
+  async watchStop(path: string): Promise<void> {
     if (!isTauri()) return;
-    return invoke('watch_stop');
+    return invoke('watch_stop', { path });
   },
 
   async credentialStore(host: string, username: string, password: string): Promise<void> {

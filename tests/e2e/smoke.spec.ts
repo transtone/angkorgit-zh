@@ -921,6 +921,177 @@ test('mod+enter with nothing staged asks to stage instead of committing', async 
   await expect(summary).toHaveValue('fix: nothing staged');
 });
 
+test('a failing pre-commit hook shows its output and the commit can skip the hooks', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('angkorgit-demo-hooks', 'fail'));
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  const skip = page.getByRole('checkbox', { name: '跳过钩子' });
+  await expect(skip).not.toBeChecked();
+  const summary = page.getByLabel('提交摘要');
+  const commitButton = page.getByRole('button', { name: /^提交 \d+ 个文件$/ });
+  await summary.fill('fix: lint me');
+  await commitButton.click();
+
+  const dialog = page.locator('[data-hook-failed]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('The pre-commit hook failed (exit code 1).');
+  await expect(dialog).toContainText('未创建任何提交。');
+  const output = dialog.locator('[data-hook-output]');
+  await expect(output).toContainText("'unusedLane' is assigned a value but never used");
+  expect(await output.textContent()).not.toContain('\u001b');
+  await dialog.locator('[data-hook-actions]').getByRole('button', { name: '关闭' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(summary).toHaveValue('fix: lint me');
+  await expect(page.getByText('已提交', { exact: true })).toHaveCount(0);
+
+  await commitButton.click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '跳过钩子提交' }).click();
+  await expect(page.getByText('已提交', { exact: true })).toBeVisible();
+  await expect(summary).toHaveValue('');
+
+  await summary.fill('fix: skip on purpose');
+  await skip.check();
+  await commitButton.click();
+  await expect(summary).toHaveValue('');
+  await expect(skip).not.toBeChecked();
+  await expect(dialog).toBeHidden();
+});
+
+test('a hook that fails after a tab switch stays with its repository and offers no retry in the other tab', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('angkorgit-demo-hooks', 'fail');
+    localStorage.setItem('angkorgit-demo-hooks-delay', '2500');
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.getByRole('option', { name: 'temple-ui' }).click();
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveCount(2);
+  await page.keyboard.press('ControlOrMeta+1');
+  await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+
+  const summary = page.getByLabel('提交摘要');
+  await summary.fill('fix: started in angkorgit');
+  await page.getByRole('button', { name: /^提交 \d+ 个文件$/ }).click();
+  await expect(page.getByRole('button', { name: '正在运行钩子…' })).toBeVisible();
+
+  await page.keyboard.press('ControlOrMeta+2');
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: '正在运行钩子…' })).toHaveCount(0);
+  await summary.fill('feat: temple draft');
+
+  await expect(page.getByText('angkorgit 中未创建任何提交。', { exact: false })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-hook-failed]')).toHaveCount(0);
+  await expect(page.getByText('已提交', { exact: true })).toHaveCount(0);
+  await expect(summary).toHaveValue('feat: temple draft');
+
+  await page.keyboard.press('ControlOrMeta+1');
+  const dialog = page.locator('[data-hook-failed]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('The pre-commit hook failed (exit code 1).');
+  await dialog.locator('[data-hook-actions]').getByRole('button', { name: '关闭' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+  await expect(summary).toHaveValue('fix: started in angkorgit');
+});
+
+test('a commit hook keeps the commit busy and reports its failure while a graph commit is selected', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('angkorgit-demo-hooks', 'fail');
+    localStorage.setItem('angkorgit-demo-hooks-delay', '3000');
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  const summary = page.getByLabel('提交摘要');
+  await summary.fill('fix: lint me');
+  await page.getByRole('button', { name: /^提交 \d+ 个文件$/ }).click();
+  const running = page.getByRole('button', { name: '正在运行钩子…' });
+  await expect(running).toBeVisible();
+
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  await expect(summary).toHaveCount(0);
+  await page.getByRole('button', { name: '返回工作副本' }).click();
+  await expect(running).toBeVisible();
+  await expect(running).toBeDisabled();
+
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  await expect(summary).toHaveCount(0);
+  const dialog = page.locator('[data-hook-failed]');
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await expect(dialog).toContainText('The pre-commit hook failed (exit code 1).');
+  await expect(dialog.locator('[data-hook-output]')).toContainText("'unusedLane' is assigned a value but never used");
+  await dialog.locator('[data-hook-actions]').getByRole('button', { name: '关闭' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole('button', { name: '返回工作副本' }).click();
+  await expect(summary).toHaveValue('fix: lint me');
+  await expect(page.getByRole('button', { name: /^提交 \d+ 个文件$/ })).toBeEnabled();
+  await expect(running).toHaveCount(0);
+});
+
+test('Commit without hooks never claims to run hooks and keeps text typed while it runs', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('angkorgit-demo-hooks', 'fail');
+    localStorage.setItem('angkorgit-demo-hooks-delay', '1500');
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  const summary = page.getByLabel('提交摘要');
+  const description = page.getByLabel('提交说明');
+  const commitButton = page.getByRole('button', { name: /^提交 \d+ 个文件$/ });
+  await summary.fill('fix: lint me');
+  await commitButton.click();
+  const dialog = page.locator('[data-hook-failed]');
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.locator('[data-hook-actions]').getByRole('button', { name: '跳过钩子提交' }).click();
+
+  await expect(commitButton).toBeDisabled();
+  await expect(page.getByRole('button', { name: '正在运行钩子…' })).toHaveCount(0);
+  await description.fill('typed while the commit ran');
+  await expect(page.getByText('已提交', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(summary).toHaveValue('fix: lint me');
+  await expect(description).toHaveValue('typed while the commit ran');
+});
+
+test('the commit box has no Skip hooks box when the repository has no hooks', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel('提交摘要')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: '跳过钩子' })).toHaveCount(0);
+});
+
+test('a submodule left at an older commit offers Update submodule instead of Discard', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('angkorgit-demo-submodule-drift', '1'));
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  const row = page.locator('[data-submodule-drift]');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('libfoo');
+  await expect(row.getByRole('button', { name: '丢弃 vendor/libfoo' })).toHaveCount(0);
+
+  await row.click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: '更新子模块至 efec64c' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '丢弃更改…' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  await row.hover();
+  await row.getByRole('button', { name: '更新子模块 vendor/libfoo' }).click();
+  await expect(page.getByText('已在 vendor/libfoo 中检出 efec64c')).toBeVisible();
+  await expect(page.locator('[data-submodule-drift]')).toHaveCount(0);
+});
+
 test('a file filter that hides the staged files leaves Commit enabled with the full count', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
@@ -1275,6 +1446,7 @@ test('暂存文件不提供“全部文件”布局，即使记住的是该布�
   await page.getByRole('row').nth(2).click();
   // 等暂存专用的“应用”按钮消失，避免它和文件行都命中 GraphRow.tsx。
   await expect(page.getByLabel(/^从暂存中应用/)).toHaveCount(0);
+  await expect(inspector.getByText('这是一个暂存。', { exact: false })).toHaveCount(0);
   await page.getByLabel('提交文件').getByRole('button', { name: /GraphRow\.tsx/ }).click();
   await expect(page.locator('[data-all-changes]')).toBeVisible();
 });
@@ -2087,6 +2259,43 @@ test('a diff selection keeps its lines after scrolling away and back', async ({ 
   }
 });
 
+test('the AI button writes a new summary and description while editing an earlier commit message', async ({ page }) => {
+  let prompt = '';
+  let holdAnswer = true;
+  let releaseAnswer: (() => void) | null = null;
+  await page.route('**/api/chat', async (route) => {
+    prompt = route.request().postData() ?? '';
+    if (holdAnswer) await new Promise<void>((resolve) => { releaseAnswer = resolve; });
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ message: { content: 'perf(graph): mount only visible rows\n\nRows outside the viewport stay unmounted.' } }),
+    });
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const inspector = page.getByRole('complementary', { name: '检查器' });
+  const summary = inspector.getByLabel('提交摘要');
+
+  await page.getByText('feat(graph): virtualize commit rows').first().click();
+  await expect(inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows' })).toBeVisible();
+  await inspector.getByRole('button', { name: '编辑提交消息' }).click();
+  await inspector.getByRole('button', { name: '用 AI 生成提交消息' }).click();
+  await expect(summary).toBeFocused();
+  await summary.press('Escape');
+  await expect(inspector.getByRole('heading', { name: 'feat(graph): virtualize commit rows' })).toBeVisible();
+  releaseAnswer?.();
+
+  holdAnswer = false;
+  await inspector.getByRole('button', { name: '编辑提交消息' }).click();
+  await inspector.getByRole('button', { name: '用 AI 生成提交消息' }).click();
+  await expect(summary).toHaveValue('perf(graph): mount only visible rows');
+  await expect(inspector.getByLabel('提交说明')).toHaveValue('Rows outside the viewport stay unmounted.');
+  expect(prompt).toContain('+++ ');
+  await inspector.getByRole('button', { name: '保存消息' }).click();
+  await expect(inspector.getByRole('heading', { name: 'perf(graph): mount only visible rows' })).toBeVisible();
+});
+
 test('an unpushed commit message can be edited in place and a pushed one asks before rewriting', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
@@ -2323,7 +2532,7 @@ test('dragging a diff selection past the bottom edge keeps growing it and copies
   });
   const box = await scroller.boundingBox();
   if (!box) throw new Error('diff scroller not laid out');
-  const startRow = () =>
+  const findStart = () =>
     scroller.evaluate((el) => {
       const bounds = el.getBoundingClientRect();
       const rows = [...el.querySelectorAll<HTMLElement>('[data-diff-row]')];
@@ -2335,8 +2544,9 @@ test('dragging a diff selection past the bottom edge keeps growing it and copies
       const rect = row.getBoundingClientRect();
       return { text: row.textContent ?? '', x: rect.left + 30, y: rect.top + rect.height / 2 };
     });
-  await expect.poll(startRow).not.toBeNull();
-  const start = (await startRow())!;
+  await expect.poll(findStart).not.toBeNull();
+  const start = await findStart();
+  if (!start) throw new Error('no diff row to start from');
 
   const below = { x: start.x + 200, y: box.y + box.height + 30 };
   await page.mouse.move(start.x, start.y);
@@ -3274,4 +3484,45 @@ test("what's new opens from the welcome footer and the status bar and its unread
   await expect(page.getByRole('dialog').getByRole('heading', { name: '更新内容' })).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).last().click();
   await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('pull warns before a conflicting pull and before one that would stop at local edits', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('angkorgit-demo-pull-preview') === null) localStorage.setItem('angkorgit-demo-pull-preview', 'conflicts');
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+
+  const pull = page.getByRole('button', { name: /^拉取/ }).first();
+  await expect(page.locator('[data-pull-warning="conflicts"]')).toBeVisible();
+  await pull.hover();
+  await expect(page.getByText('拉取将在 2 个文件中产生冲突：GraphRow.tsx、layout.ts')).toBeVisible();
+
+  await pull.click();
+  const check = page.locator('[data-pull-check="conflicts"]');
+  await expect(check.getByText('此次拉取将产生冲突')).toBeVisible();
+  await expect(check.locator('[data-pull-check-file]')).toHaveCount(2);
+  await check.getByRole('button', { name: '取消' }).click();
+  await expect(check).toBeHidden();
+
+  await pull.click();
+  await page.locator('[data-pull-check="conflicts"]').getByRole('button', { name: '拉取并解决冲突' }).click();
+  await expect(page.getByText('已是最新（演示）')).toBeVisible();
+
+  await page.evaluate(() => localStorage.setItem('angkorgit-demo-pull-preview', 'local'));
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.locator('[data-pull-warning="local"]')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: /^拉取/ }).first().click();
+  const local = page.locator('[data-pull-check="local"]');
+  await expect(local.getByText('本地更改会阻碍拉取')).toBeVisible();
+  await local.getByRole('button', { name: '暂存 2 个文件…' }).click();
+  await expect(page.getByText('仅这 2 个文件被暂存', { exact: false })).toBeVisible();
+
+  await page.evaluate(() => localStorage.setItem('angkorgit-demo-pull-preview', 'off'));
+  await page.reload();
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-pull-warning]')).toHaveCount(0);
 });

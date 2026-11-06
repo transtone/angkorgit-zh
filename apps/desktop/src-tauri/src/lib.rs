@@ -18,8 +18,9 @@ mod watcher;
 pub mod test_api {
     pub use crate::core::blame::blame_file;
     pub use crate::core::branch::{
-        can_fast_forward, checkout_branch, cherry_pick, cherry_pick_many, create as branch_create,
-        list as branches, merge, rebase, rebase_commits, rebase_interactive, reset,
+        can_fast_forward, checkout_branch, checkout_detached, cherry_pick, cherry_pick_many,
+        create as branch_create, list as branches, merge, rebase, rebase_commits,
+        rebase_interactive, reset,
     };
     pub use crate::core::commit::{amend, commit, merge_message, revert, reword};
     pub use crate::core::conflict::{
@@ -38,10 +39,12 @@ pub mod test_api {
         file_history, list as history, position as history_position, search as history_search,
         unpushed,
     };
+    pub use crate::core::hooks::{commit_hooks, runner_available as hook_runner_available};
     pub use crate::core::misc::{
         stash_create, stash_files, stash_list, stash_pop, stash_restore_files, tag_create,
         tag_delete, tag_list,
     };
+    pub use crate::core::pull_preview::pull_preview;
     pub use crate::core::remote::{
         add as remote_add, checkout_remote_ref, fetch, group_update, group_update_controlled,
         list as remote_list, pull, push,
@@ -51,12 +54,16 @@ pub mod test_api {
     };
     pub use crate::core::scan::{scan as scan_repositories, SCAN_MAX_DEPTH};
     pub use crate::core::stage::{
-        discard_all, discard_line, discard_staged_all, discard_staged_file, stage_all, stage_file,
-        stage_files, stage_hunk, stage_line, unstage_all, unstage_file, unstage_files,
-        unstage_hunk, unstage_line,
+        discard_all, discard_file, discard_line, discard_staged_all, discard_staged_file,
+        stage_all, stage_file, stage_files, stage_hunk, stage_line, unstage_all, unstage_file,
+        unstage_files, unstage_hunk, unstage_line,
+    };
+    pub use crate::core::submodule::{
+        list as submodule_list, synced as submodule_synced, update as submodule_update,
     };
     pub use crate::core::types::HistoryQuery;
     pub use crate::core::types::HistorySearchQuery;
+    pub use crate::core::types::PullPreview;
     pub use crate::core::types::RebaseTodoEntry;
     pub use crate::core::types::WorktreeAddRequest;
     pub use crate::core::worktree::{
@@ -156,6 +163,7 @@ pub fn run() {
             commands::delete_file,
             commands::commit_create,
             commands::commit_amend,
+            commands::commit_hooks,
             commands::commit_reword,
             commands::history_unpushed,
             commands::fonts_list,
@@ -190,6 +198,7 @@ pub fn run() {
             commands::remote_remove,
             commands::remote_fetch,
             commands::remote_pull,
+            commands::pull_preview,
             commands::repository_group_update,
             commands::repository_group_start,
             commands::repository_group_cancel,

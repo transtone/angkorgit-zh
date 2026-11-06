@@ -1,4 +1,4 @@
-import type { DiffHunk, DiffLine } from '@angkorgit/core';
+import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
 import hljs from 'highlight.js/lib/core';
 import typescript from 'highlight.js/lib/languages/typescript';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -262,13 +262,59 @@ function fileName(path: string): string {
   return (slash >= 0 ? path.slice(slash + 1) : path).toLowerCase();
 }
 
-export function languageOf(path: string): string | null {
+const SHEBANG_TO_LANG: Record<string, string> = {
+  python: 'python',
+  bash: 'bash',
+  sh: 'bash',
+  zsh: 'bash',
+  ksh: 'bash',
+  dash: 'bash',
+  node: 'javascript',
+  nodejs: 'javascript',
+  deno: 'javascript',
+  bun: 'javascript',
+  'ts-node': 'typescript',
+  tsx: 'typescript',
+  ruby: 'ruby',
+  php: 'php',
+  swift: 'swift',
+};
+
+export function languageOfShebang(firstLine: string | null | undefined): string | null {
+  if (!firstLine || !firstLine.startsWith('#!')) return null;
+  const words = firstLine.slice(2).trim().split(/\s+/).filter(Boolean);
+  let index = 0;
+  let program = fileName(words[index] ?? '');
+  if (program === 'env') {
+    index = 1;
+    while (index < words.length && (words[index].startsWith('-') || words[index].includes('='))) index += 1;
+    program = fileName(words[index] ?? '');
+  }
+  const key = program.toLowerCase().replace(/[\d.]+$/, '');
+  return SHEBANG_TO_LANG[key] ?? null;
+}
+
+export function diffFirstLine(diff: Pick<FileDiff, 'hunks'>): string | null {
+  let oldFirst: string | null = null;
+  for (const hunk of diff.hunks) {
+    for (const line of hunk.lines) {
+      if (line.newLineNo === 1) return line.content;
+      if (line.oldLineNo === 1 && oldFirst === null) oldFirst = line.content;
+    }
+  }
+  return oldFirst;
+}
+
+export function languageOf(path: string, firstLine?: string | null): string | null {
   const name = fileName(path);
   const byName = BASENAME_TO_LANG[name];
   if (byName) return byName;
   const dot = name.lastIndexOf('.');
-  if (dot <= 0) return null;
-  return EXT_TO_LANG[name.slice(dot + 1)] ?? null;
+  if (dot > 0) {
+    const byExtension = EXT_TO_LANG[name.slice(dot + 1)];
+    if (byExtension) return byExtension;
+  }
+  return languageOfShebang(firstLine);
 }
 
 const MAX_HIGHLIGHT_LENGTH = 5000;

@@ -64,7 +64,7 @@ export function BlameView({
       });
   }, [path, file, rev, onResolvedRev]);
 
-  const language = useMemo(() => languageOf(file), [file]);
+  const language = useMemo(() => languageOf(file, blame?.lines[0]), [file, blame]);
   const lineLanguages = useMemo(() => (blame ? embeddedLanguages(blame.lines, language) : null), [blame, language]);
   const hunkOfLine = useMemo(() => {
     const map: (BlameHunk | undefined)[] = [];

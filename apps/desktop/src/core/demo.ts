@@ -7,6 +7,7 @@ import type {
   CommitFileInfo,
   CommitInfo,
   FileDiff,
+  FileStatus,
   HistoryPage,
   HistoryQuery,
   HttpRequest,
@@ -15,6 +16,7 @@ import type {
   RepositoryInfo,
   RepositoryScan,
   StashInfo,
+  PullPreview,
   StatusSummary,
   TagInfo,
   WorktreeInfo,
@@ -225,6 +227,17 @@ export const demoStatus: StatusSummary = {
   branch: 'main',
   ahead: 2,
   behind: 0,
+};
+
+export const demoDriftedSubmodule: FileStatus = {
+  path: 'vendor/libfoo',
+  origPath: null,
+  staged: null,
+  unstaged: 'modified',
+  submodule: {
+    recorded: 'efec64ccb163d16cdc069fd9bb4c747660b4db68',
+    checkedOut: 'd0da29a09729307ba78cc0dfe69a439b95f068fd',
+  },
 };
 
 export function demoUnstagedStatus(): StatusSummary {
@@ -830,4 +843,23 @@ export function demoFileContents(file: string): FileDiff {
     additions: 0,
     deletions: 0,
   };
+}
+
+export function demoPullPreview(scenario: 'conflicts' | 'local' | null, remote: string): PullPreview {
+  const source = `${remote}/main`;
+  if (scenario === 'conflicts') {
+    return {
+      source,
+      ahead: 2,
+      behind: 3,
+      rebase: false,
+      conflicts: ['src/features/graph/GraphRow.tsx', 'src/features/graph/layout.ts'],
+      localChanges: [],
+    };
+  }
+  if (scenario === 'local') {
+    const edited = demoStatus.files.filter((f) => f.unstaged === 'modified').map((f) => f.path);
+    return { source, ahead: 2, behind: 3, rebase: false, conflicts: [], localChanges: edited.slice(0, 2) };
+  }
+  return { source, ahead: demoStatus.ahead, behind: demoStatus.behind, rebase: false, conflicts: [], localChanges: [] };
 }
