@@ -15,7 +15,6 @@
     "node": ">=20"
   },
   "scripts": {
-    "upstream:sync": "bun scripts/upstream-sync.mjs",
     "dev": "pnpm --filter @angkorgit/desktop dev",
     "tauri": "pnpm --filter @angkorgit/desktop tauri",
     "tauri:dev": "pnpm --filter @angkorgit/desktop tauri dev",
