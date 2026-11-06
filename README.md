@@ -135,17 +135,20 @@
 1. **上游更新检测**（`upstream-watch.yml`，每天）：发现上游 `cheat2001/angkorgit` 新提交时创建 Issue，GitHub 邮件通知。
 2. **同步并汉化（PR）**（`localize.yml`，手动触发）：合并上游 → 应用 `zh-dict/dict.tsv` → 跑 `pnpm check:copy` → 开出 PR。
 3. 在 PR 里补齐新增英文串，CI（typecheck / 单元测试 / Playwright / Rust）全绿后合并。
-4. **发布中文版**（`release-zh.yml`，手动触发）：先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名与 `latest.json`）。
+4. **发布中文版**（`release-zh.yml`，手动触发）：使用 Bun 安装依赖，先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名、`latest.json` 与 `SHA256SUMS`）。
+
+发布前，将根目录及桌面端 `package.json`、`tauri.conf.json`、`Cargo.toml` 和 `Cargo.lock` 中应用的版本统一为新版本，并合并到要发布的提交。在仓库 Actions 中运行「发布中文版」，输入该版本号；`dry_run` 会执行版本、tag 检查和前端测试，不构建或发布安装包。已有 tag 只有在指向同一提交时才允许重试，工作流不会移动 tag。
+
+仓库必须配置 Secret `TAURI_SIGNING_PRIVATE_KEY`（Tauri updater 私钥）；有密码时还需 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。私钥对应的公钥必须写入 `apps/desktop/src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`。工作流会检查密钥是否存在，测试通过后使用 Windows runner 的原生 Strawberry Perl 构建 OpenSSL，并运行 Rust 测试。发布产物也会保存在该次 Actions 的 artifact 中。
 
 上游新引入的英文串会进入 `zh-dict/pending.tsv`（构建产物，不入库），翻译后补进 `dict.tsv` 即可。
 详见 [docs/Localization.md](docs/Localization.md)。
 
 - **遥测数据、强制账号、云服务**：不会向外部发送任何追踪数据，无需注册任何平台。
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.26.0/AngKorGit_0.26.0_x64-setup.exe -o "$env:TEMP\AngKorGit-setup.exe"; Start-Process "$env:TEMP\AngKorGit-setup.exe"
 
 本仓库的 [Releases 发行页面](https://github.com/transtone/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
 
-- **Windows**：下载 `AngKorGit_0.25.0_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名。
+- **Windows**：下载最新版本的 `AngKorGit_<版本号>_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名；可用 `SHA256SUMS` 校验下载文件。
 - **macOS / Linux**：本次未发布这两个平台的中文安装包。可自行编译中文源码，或到[上游发行页面](https://github.com/cheat2001/angkorgit/releases)下载未汉化的原版。不要使用不存在的本仓库 DMG/AppImage 下载地址。
 
 > **提示**：由于未购买商业代码签名证书，Windows SmartScreen 或 macOS Gatekeeper 首次启动时可能会弹出未知开发者提示，在 Windows 下点击“更多信息 → 仍要运行”，在 macOS 下于“系统设置 → 隐私与安全性”中点击“仍然打开”即可。

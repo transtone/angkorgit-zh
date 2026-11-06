@@ -6,6 +6,16 @@
 
 ## [未发布]
 
+## [0.26.1] — 2026-11-06
+
+### 修复
+- 恢复上游更新覆盖的中文文案，修复合并遗留的快进菜单、推送远端选择及按钮显示问题。
+- 更新检查、版本获取和下载地址统一为 `transtone/angkorgit-zh`。
+- 修复中文版自动发布流程，发布 Windows EXE、MSI、更新签名及 `latest.json`。
+
+### 更新说明
+- 当前 fork 使用独立的更新签名密钥；此前版本需手动安装本版一次，后续版本可通过应用内更新。
+
 ## [0.26.0] — 2026-11-06
 
 The hooks release. Commits and pushes now run your Git hooks the way `git` does, the

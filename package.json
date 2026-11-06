@@ -1,6 +1,6 @@
 {
   "name": "angkorgit-zh",
-  "version": "0.26.0",
+  "version": "0.26.1",
   "private": true,
   "description": "AngKorGit —— 一款受吴哥窟匠心启发的现代、快速、美观的跨平台 Git 客户端",
   "license": "MIT",
@@ -15,7 +15,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm --filter @angkorgit/desktop dev",
+    "dev": "bun run --filter @angkorgit/desktop dev",
     "tauri": "pnpm --filter @angkorgit/desktop tauri",
     "tauri:dev": "pnpm --filter @angkorgit/desktop tauri dev",
     "tauri:build": "bun run --filter @angkorgit/desktop tauri build",
@@ -23,7 +23,7 @@
     "install:mac": "pkill -x angkorgit || true; sleep 1; rm -rf /Applications/AngKorGit.app && ditto apps/desktop/src-tauri/target/release/bundle/macos/AngKorGit.app /Applications/AngKorGit.app && open -a /Applications/AngKorGit.app",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "bun run --filter '*' typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",

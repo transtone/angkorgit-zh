@@ -1,10 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "AngKorGit",
-  "version": "0.26.0",
+  "version": "0.26.1",
   "identifier": "dev.angkorgit.app",
   "build": {
-    "beforeDevCommand": "pnpm dev:vite",
+    "beforeDevCommand": "bun run dev:vite",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
@@ -33,7 +33,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBREY0MjJCMEI1OEFBQkUKUldTK3FsZ0xLMExmR2pOREwrMnVQTDZRclovTm9ZZUR4OWU3cytJSzdSWTFOS1ltbkZyTmVTZk4K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFBRjBBQzYxM0Y3QjM0QjAKUldTd05Icy9ZYXp3cWp5cWcxTnZiZUVmNjhMbjczaXR0TXM0WW4xQ1RJd3prWGhnTmM1ZWlKNUIK",
       "endpoints": [
         "https://github.com/transtone/angkorgit-zh/releases/latest/download/latest.json"
       ]

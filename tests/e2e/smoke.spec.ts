@@ -658,7 +658,7 @@ test('打开并关闭 diff 后头像保持可见', async ({ page }) => {
   const visibleAvatars = () =>
     page.evaluate(
       () =>
-        [...document.querySelectorAll('img[src*="gravatar"]')].filter(
+        [...document.querySelectorAll('img[src*="cravatar.cn/avatar/"]')].filter(
           (img) => getComputedStyle(img).opacity === '1',
         ).length,
     );
