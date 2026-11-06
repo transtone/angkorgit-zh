@@ -7,7 +7,7 @@
     ① 校验工作区干净、分支就绪
     ② 自动添加 upstream remote（缺失时）→ fetch upstream main → merge（冲突按策略处理）
     ③ 版本号 4 处一致性校验（可选 -BumpVersion 统一升级）
-    ④ fork URL 替换（tauri.conf.json updater 端点 / site.ts / README.md 的 cheat2001 地址 → -ForkRepo）
+    ④ fork URL 替换（tauri.conf.json updater 端点 / check.ts 发布页 / site.ts 仓库地址 → -ForkRepo）
     ⑤ 字典式中文化（zh-dict/dict.tsv + protect.txt + skip-files.txt）
     ⑥ 未翻译英文串 → zh-dict/pending.tsv 待译清单
     ⑦ git add -A + 提交（无改动则跳过，幂等）
@@ -40,7 +40,7 @@
   额外对 CLAUDE.md 做词库替换（默认排除：内容大、翻译价值低）。
 
 .PARAMETER ForkRepo
-  fork 仓库 "owner/repo"，用于替换上游 URL（默认 wuwuzhazha/angkorgit-zh）。
+  fork 仓库 "owner/repo"，用于替换上游 URL（默认 transtone/angkorgit-zh）。
 
 .PARAMETER UpstreamUrl
   上游仓库地址（默认 https://github.com/cheat2001/angkorgit.git）。
@@ -94,7 +94,7 @@ param(
   [switch]$SkipSync,
   [switch]$SkipLocalize,
   [switch]$IncludeClaudeMd,
-  [string]$ForkRepo = 'wuwuzhazha/angkorgit-zh',
+  [string]$ForkRepo = 'transtone/angkorgit-zh',
   [string]$UpstreamUrl = 'https://github.com/cheat2001/angkorgit.git',
   [string]$UpstreamRemote = 'upstream',
   [string]$UpstreamBranch = 'main',
@@ -370,13 +370,14 @@ function Update-ForkUrls {
   param([string]$ForkRepo)
   $files = @(
     'apps/desktop/src-tauri/tauri.conf.json',
+    'apps/desktop/src/features/updater/check.ts',
     'apps/website/src/lib/site.ts'
   )
   foreach ($rel in $files) {
     $abs = Join-Path $Repo ($rel.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
     if (-not (Test-Path -LiteralPath $abs)) { continue }
     $raw = [System.IO.File]::ReadAllText($abs)
-    $new = [regex]::Replace($raw, 'cheat2001/angkorgit|wuwuzhazha/angkorgit(?!-zh)', $ForkRepo)
+    $new = [regex]::Replace($raw, 'cheat2001/angkorgit|wuwuzhazha/angkorgit(?:-zh)?', $ForkRepo)
     if ($new -ne $raw) {
       [System.IO.File]::WriteAllText($abs, $new, $script:Utf8NoBom)
       Write-Log "fork URL 已替换：$rel（指向 $ForkRepo）"

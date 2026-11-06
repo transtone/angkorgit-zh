@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wuwuzhazha/angkorgit-zh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/wuwuzhazha/angkorgit-zh/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/transtone/angkorgit-zh/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/transtone/angkorgit-zh/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="许可证：MIT" src="https://img.shields.io/badge/license-MIT-D97706.svg" /></a>
   <img alt="平台支持" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-374151.svg" />
   <img alt="构建框架" src="https://img.shields.io/badge/built%20with-Tauri%20v2%20%2B%20Rust-D97706.svg" />
-  <a href="https://github.com/wuwuzhazha/angkorgit-zh"><img alt="Fork 仓库" src="https://img.shields.io/badge/fork-angkorgit--zh-8B5CF6.svg" /></a>
+  <a href="https://github.com/transtone/angkorgit-zh"><img alt="Fork 仓库" src="https://img.shields.io/badge/fork-angkorgit--zh-8B5CF6.svg" /></a>
 </p>
 
 ---
@@ -38,7 +38,7 @@
    - 每次本地化执行后，自动通过 TypeScript 严格编译器校验（`tsc --noEmit` 0 错误）与 Rust 编译拦截。
 3. **自动化同步与一键构建流水线（`scripts/sync-localize.ps1`）**
    - **自动合流**：自动 fetch 上游并执行智能合并（提供 merge、ours 等分支策略）。
-   - **端点与仓库重定向**：自动将 Tauri Updater 升级检查端点与仓库地址重定向到 `wuwuzhazha/angkorgit-zh`。
+   - **端点与仓库重定向**：自动将 Tauri Updater 升级检查端点与仓库地址重定向到 `transtone/angkorgit-zh`。
    - **增量翻译回扫**：同步后自动扫描上游最新引入的新英文文案，提取生成待译清单 `pending.tsv`，支撑敏捷增量更新。
    - **安全发版**：默认安全 dry-run，凭据零泄露，杜绝任何 `--force` 危险操作。
 
@@ -143,7 +143,7 @@
 - **遥测数据、强制账号、云服务**：不会向外部发送任何追踪数据，无需注册任何平台。
 curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.26.0/AngKorGit_0.26.0_x64-setup.exe -o "$env:TEMP\AngKorGit-setup.exe"; Start-Process "$env:TEMP\AngKorGit-setup.exe"
 
-本仓库的 [Releases 发行页面](https://github.com/wuwuzhazha/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
+本仓库的 [Releases 发行页面](https://github.com/transtone/angkorgit-zh/releases) 提供 **Windows x64 中文版**：
 
 - **Windows**：下载 `AngKorGit_0.25.0_x64-setup.exe`（NSIS 安装程序）或对应的 `.msi` 安装包。应用内自动更新指向本仓库，更新包带有校验签名。
 - **macOS / Linux**：本次未发布这两个平台的中文安装包。可自行编译中文源码，或到[上游发行页面](https://github.com/cheat2001/angkorgit/releases)下载未汉化的原版。不要使用不存在的本仓库 DMG/AppImage 下载地址。

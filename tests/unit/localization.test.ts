@@ -71,8 +71,15 @@ describe('Chinese localization of the upstream collaboration update', () => {
     expect(lock.match(/name = "angkorgit"\r?\nversion = "([^"]+)"/)?.[1]).toBe(root.version);
     expect(config.plugins.updater.pubkey).toBe(source('zh-dict/updater-pubkey.txt').trim());
     expect(config.plugins.updater.endpoints).toEqual([
-      'https://github.com/wuwuzhazha/angkorgit-zh/releases/latest/download/latest.json',
+      'https://github.com/transtone/angkorgit-zh/releases/latest/download/latest.json',
     ]);
+    expect(source('apps/desktop/src/features/updater/check.ts')).toContain(
+      "const RELEASES_URL = 'https://github.com/transtone/angkorgit-zh/releases/latest';",
+    );
+    const site = source('apps/website/src/lib/site.ts');
+    expect(site).toContain('https://api.github.com/repos/transtone/angkorgit-zh/releases/latest');
+    expect(site).toContain("repo: 'https://github.com/transtone/angkorgit-zh'");
+    expect(site).toContain('https://github.com/transtone/angkorgit-zh/releases/download/v${version}/${asset}');
   });
 
   it('localizes the whole-tree fetch results and keeps remote names intact', () => {

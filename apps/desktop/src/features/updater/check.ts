@@ -3,7 +3,7 @@ import { isTauri, openExternal } from '@/core/ipc';
 
 const CHECK_TIMEOUT_MS = 15_000;
 const DOWNLOAD_TIMEOUT_MS = 60_000;
-const RELEASES_URL = 'https://github.com/wuwuzhazha/angkorgit-zh/releases/latest';
+const RELEASES_URL = 'https://github.com/transtone/angkorgit-zh/releases/latest';
 
 let inFlight: Promise<void> | null = null;
 let loud = false;

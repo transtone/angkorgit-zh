@@ -18,7 +18,7 @@
     "dev": "pnpm --filter @angkorgit/desktop dev",
     "tauri": "pnpm --filter @angkorgit/desktop tauri",
     "tauri:dev": "pnpm --filter @angkorgit/desktop tauri dev",
-    "tauri:build": "pnpm --filter @angkorgit/desktop tauri build",
+    "tauri:build": "bun run --filter @angkorgit/desktop tauri build",
     "release:mac": "pnpm tauri:build && open apps/desktop/src-tauri/target/release/bundle/dmg",
     "install:mac": "pkill -x angkorgit || true; sleep 1; rm -rf /Applications/AngKorGit.app && ditto apps/desktop/src-tauri/target/release/bundle/macos/AngKorGit.app /Applications/AngKorGit.app && open -a /Applications/AngKorGit.app",
     "build": "pnpm -r build",

@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev:vite",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -35,7 +35,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBREY0MjJCMEI1OEFBQkUKUldTK3FsZ0xLMExmR2pOREwrMnVQTDZRclovTm9ZZUR4OWU3cytJSzdSWTFOS1ltbkZyTmVTZk4K",
       "endpoints": [
-        "https://github.com/wuwuzhazha/angkorgit-zh/releases/latest/download/latest.json"
+        "https://github.com/transtone/angkorgit-zh/releases/latest/download/latest.json"
       ]
     }
   },
