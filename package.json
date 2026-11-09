@@ -4,35 +4,29 @@
   "private": true,
   "description": "AngKorGit —— 一款受吴哥窟匠心启发的现代、快速、美观的跨平台 Git 客户端",
   "license": "MIT",
-  "packageManager": "pnpm@10.32.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ]
-  },
+  "packageManager": "bun@1.4.4",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev": "bun run --filter @angkorgit/desktop dev",
-    "tauri": "pnpm --filter @angkorgit/desktop tauri",
-    "tauri:dev": "pnpm --filter @angkorgit/desktop tauri dev",
+    "tauri": "bun run --filter @angkorgit/desktop tauri",
+    "tauri:dev": "bun run --filter @angkorgit/desktop tauri dev",
     "tauri:build": "bun run --filter @angkorgit/desktop tauri build",
-    "release:mac": "pnpm tauri:build && open apps/desktop/src-tauri/target/release/bundle/dmg",
+    "release:mac": "bun run tauri:build && open apps/desktop/src-tauri/target/release/bundle/dmg",
     "install:mac": "pkill -x angkorgit || true; sleep 1; rm -rf /Applications/AngKorGit.app && ditto apps/desktop/src-tauri/target/release/bundle/macos/AngKorGit.app /Applications/AngKorGit.app && open -a /Applications/AngKorGit.app",
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
+    "build": "bun run --filter '*' build",
+    "lint": "bun run --workspaces --if-present lint",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
     "check:copy": "node scripts/check-copy.mjs",
     "check:dict": "node scripts/check-dict.mjs",
-    "website": "pnpm --filter @angkorgit/website dev",
-    "website:build": "pnpm --filter @angkorgit/website build",
-    "website:preview": "pnpm --filter @angkorgit/website preview",
-    "website:images": "pnpm --filter @angkorgit/website images",
+    "website": "bun run --filter @angkorgit/website dev",
+    "website:build": "bun run --filter @angkorgit/website build",
+    "website:preview": "bun run --filter @angkorgit/website preview",
+    "website:images": "bun run --filter @angkorgit/website images",
     "icons": "node scripts/generate-icons.mjs"
   },
   "devDependencies": {

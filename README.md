@@ -133,7 +133,7 @@
 本仓库不再无人值守地自动发布，汉化采用「自动检测 → 自动准备 PR → 人工校对合并 → 手动发布」：
 
 1. **上游更新检测**（`upstream-watch.yml`，每天）：发现上游 `cheat2001/angkorgit` 新提交时创建 Issue，GitHub 邮件通知。
-2. **同步并汉化（PR）**（`localize.yml`，手动触发）：合并上游 → 应用 `zh-dict/dict.tsv` → 跑 `pnpm check:copy` → 开出 PR。
+2. **同步并汉化（PR）**（`localize.yml`，手动触发）：合并上游 → 应用 `zh-dict/dict.tsv` → 跑 `bun run check:copy` → 开出 PR。
 3. 在 PR 里补齐新增英文串，CI（typecheck / 单元测试 / Playwright / Rust）全绿后合并。
 4. **发布中文版**（`release-zh.yml`，手动触发）：使用 Bun 安装依赖，先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名、`latest.json` 与 `SHA256SUMS`）。
 
@@ -155,36 +155,36 @@
 
 ## 🛠️ 从源码编译构建
 
-构建前请准备开发环境：[Node 20+](https://nodejs.org)、[pnpm 10+](https://pnpm.io)、[Rust 稳定版](https://rustup.rs) 以及 [Tauri v2 系统依赖](https://v2.tauri.app/start/prerequisites/)。Windows 还需要 Visual Studio C++ 生成工具和加入 `PATH` 的原生 Windows Perl（例如 Strawberry Perl），用于构建 OpenSSL。安装已构建的应用不需要 Perl。
+构建前请准备开发环境：[Node 20+](https://nodejs.org)、[Bun 1.4.4](https://bun.sh)、[Rust 稳定版](https://rustup.rs) 以及 [Tauri v2 系统依赖](https://v2.tauri.app/start/prerequisites/)。Windows 还需要 Visual Studio C++ 生成工具和加入 `PATH` 的原生 Windows Perl（例如 Strawberry Perl），用于构建 OpenSSL。安装已构建的应用不需要 Perl。
 
 ```bash
 # 1. 安装项目依赖
-pnpm install
+bun install --frozen-lockfile
 
 # 2. 生成应用占位图标
-pnpm icons
+bun run icons
 
 # 3. 运行桌面应用（开发模式）
-pnpm tauri:dev
+bun run tauri:dev
 ```
 
 纯前端演示模式（直接在普通浏览器中调试 UI，无需 Rust 工具链）：
 
 ```bash
-pnpm dev            # 访问 http://localhost:1420
+bun run dev            # 访问 http://localhost:1420
 ```
 
 编译正式安装包：
 
 ```bash
-pnpm tauri:build    # 产物输出至 apps/desktop/src-tauri/target/release/bundle/
+bun run tauri:build    # 产物输出至 apps/desktop/src-tauri/target/release/bundle/
 ```
 
 运行自动化测试：
 
 ```bash
-pnpm test                                  # vitest 单元测试
-pnpm test:e2e                              # Playwright 端到端测试
+bun run test                                  # vitest 单元测试
+bun run test:e2e                              # Playwright 端到端测试
 cd apps/desktop/src-tauri && cargo test   # Rust Git 引擎集成测试
 ```
 

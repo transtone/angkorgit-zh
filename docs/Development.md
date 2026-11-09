@@ -2,7 +2,7 @@
 
 ## 环境要求
 
-- Node 20+ 与 pnpm 10+；仓库通过 `packageManager` 固定 pnpm 的精确版本。
+- Node 20+ 与 Bun 1.4.4；仓库通过 `packageManager` 固定 Bun 版本。使用 `bun.lock` 锁定依赖，安装脚本信任名单在 `trustedDependencies`。
 - 通过 [rustup](https://rustup.rs) 安装 Rust stable。
 - Tauri v2 系统依赖，详见[官方清单](https://v2.tauri.app/start/prerequisites/)：
   - **macOS**：Xcode 命令行工具。
@@ -15,21 +15,21 @@
 
 | 命令 | 用途 |
 | --- | --- |
-| `pnpm install --frozen-lockfile` | 按锁文件安装工作区依赖 |
-| `pnpm icons` | 生成占位图标；已有正式图标时不必执行 |
-| `pnpm tauri:dev` | 启动完整桌面应用，前端与 Rust 均支持热重载 |
-| `pnpm dev` | 在浏览器中运行前端，使用内置演示数据 |
-| `pnpm check:copy` / `pnpm check:dict` | 检查中英文混排与词典格式 |
-| `pnpm typecheck` | 检查各包的 TypeScript 类型 |
-| `pnpm test` / `pnpm test:watch` | 运行单元测试或持续测试 |
-| `pnpm test:e2e` | 使用 Playwright 验证演示模式 |
+| `bun install --frozen-lockfile` | 按锁文件安装工作区依赖 |
+| `bun run icons` | 生成占位图标；已有正式图标时不必执行 |
+| `bun run tauri:dev` | 启动完整桌面应用，前端与 Rust 均支持热重载 |
+| `bun run dev` | 在浏览器中运行前端，使用内置演示数据 |
+| `bun run check:copy` / `bun run check:dict` | 检查中英文混排与词典格式 |
+| `bun run typecheck` | 检查各包的 TypeScript 类型 |
+| `bun run test` / `bun run test:watch` | 运行单元测试或持续测试 |
+| `bun run test:e2e` | 使用 Playwright 验证演示模式 |
 | `cd apps/desktop/src-tauri && cargo test` | 在临时仓库中运行 Rust 引擎测试 |
-| `pnpm tauri:build` | 构建当前系统的正式安装包 |
-| `pnpm release:mac` | 在 macOS 上构建并打开 DMG 目录 |
-| `pnpm install:mac` | 在 macOS 上替换 `/Applications/AngKorGit.app` 并启动；会覆盖已有应用 |
-| `pnpm website` | 启动网站开发服务器，默认地址为 `http://localhost:4321/` |
-| `pnpm website:build` / `pnpm website:preview` | 构建或预览静态网站 |
-| `pnpm website:images` | 从 `docs/assets` 重新生成 WebP 截图与 `og.png` |
+| `bun run tauri:build` | 构建当前系统的正式安装包 |
+| `bun run release:mac` | 在 macOS 上构建并打开 DMG 目录 |
+| `bun run install:mac` | 在 macOS 上替换 `/Applications/AngKorGit.app` 并启动；会覆盖已有应用 |
+| `bun run website` | 启动网站开发服务器，默认地址为 `http://localhost:4321/` |
+| `bun run website:build` / `bun run website:preview` | 构建或预览静态网站 |
+| `bun run website:images` | 从 `docs/assets` 重新生成 WebP 截图与 `og.png` |
 
 ## 演示模式
 

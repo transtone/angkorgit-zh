@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepositoryInfo, StatusSummary } from '@angkorgit/core';
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +20,10 @@ function deferred<T>() {
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
+
+afterEach(async () => {
+  await vi.dynamicImportSettled();
+});
 
 beforeEach(() => {
   useRepo.getState().close();
@@ -43,6 +47,9 @@ describe('project switching', () => {
     const next = deferred<StatusSummary>();
     mocks.status.mockReturnValueOnce(next.promise);
     await useRepo.getState().open('A');
+    await vi.dynamicImportSettled();
+    expect(mocks.addRepoTab).toHaveBeenLastCalledWith('A');
+    expect(mocks.markWorktreeTab).toHaveBeenCalled();
     expect(useRepo.getState().repo?.path).toBe('A');
     expect(useRepo.getState().status).toEqual(status('A'));
     expect(useRepo.getState().lastFetchAt).toBe(fetchedAt);

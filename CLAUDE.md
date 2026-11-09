@@ -38,7 +38,9 @@ craftsmanship from Cambodia 🇰🇭.
 | Key libs | @tanstack/react-virtual, react-resizable-panels, cmdk, sonner, @xterm/xterm, highlight.js (lib/core + 26 langs) | |
 | Rust deps | tauri-plugin-dialog/opener, portable-pty, keyring 3, notify-debouncer-mini, reqwest (rustls), which 7, base64, thiserror | |
 
-## 3. Monorepo layout (pnpm workspaces)
+## 3. Monorepo layout (Bun workspaces)
+
+The Chinese fork uses Bun 1.4.4 (`packageManager: bun@1.4.4`) for workspace scripts, CI and releases. Install with `bun install --frozen-lockfile`; commit `bun.lock`. `trustedDependencies` owns install-script approvals. `pnpm-lock.yaml` and `pnpm-workspace.yaml` remain for upstream compatibility; active installs use `bun.lock`. For the command table below, use `bun run <script>` instead of historical `pnpm <script>`; use `bun install` for installation.
 
 ```
 angkorgit/

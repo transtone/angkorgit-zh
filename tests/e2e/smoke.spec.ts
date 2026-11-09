@@ -3487,8 +3487,10 @@ test('repositories can be grouped on the welcome page and a group opens as tabs'
   await expect(frontendChip).toHaveText('前端1');
   await expect(tabs).toHaveCount(1);
   await page.keyboard.press('ControlOrMeta+1');
-  await expect(tabs).toHaveCount(1);
   await expect(page.locator('[data-tab-path="/Users/demo/projects/angkorgit"]')).toHaveAttribute('aria-selected', 'true');
+  // The active tab in the collapsed group and the expanded backend tab both remain visible.
+  await expect(tabs).toHaveCount(2);
+  await expect(page.locator('[data-tab-path="/Users/demo/projects/temple-ui"]')).toBeVisible();
   await frontendChip.click({ button: 'right' });
   await page.getByRole('menuitem', { name: '展开所有分组' }).click();
   await expect(tabs).toHaveCount(2);

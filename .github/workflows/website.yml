@@ -29,16 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
       - name: Optimize screenshots
-        run: pnpm website:images
+        run: bun run website:images
       - name: Build static site
-        run: pnpm website:build
+        run: bun run website:build
         env:
           SITE_URL: https://wuwuzhazha.github.io/angkorgit-zh/
           SITE_BASE: /${{ github.event.repository.name }}

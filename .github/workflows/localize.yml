@@ -115,13 +115,13 @@ jobs:
             cat "$RUNNER_TEMP/upstream.txt"
             echo '```'
             echo
-            echo "### 混排文案检查（\`pnpm check:copy\`）"
+            echo "### 混排文案检查（\`bun run check:copy\`）"
             echo
             echo '```text'
             cat "$RUNNER_TEMP/copycheck.txt" 2>/dev/null || echo "（未生成）"
             echo '```'
             echo
-            echo "### 词典检查（\`pnpm check:dict\`）"
+            echo "### 词典检查（\`bun run check:dict\`）"
             echo
             echo '```text'
             cat "$RUNNER_TEMP/dictcheck.txt" 2>/dev/null || echo "（未生成）"
@@ -133,9 +133,9 @@ jobs:
             echo
             echo "### 合并前请确认"
             echo
-            echo "- [ ] \`pnpm check:copy\` 干净（无半中半英）"
-            echo "- [ ] \`pnpm typecheck && pnpm test\` 通过"
-            echo "- [ ] \`pnpm test:e2e\` 通过（由本 PR 的 CI 执行）"
+            echo "- [ ] \`bun run check:copy\` 干净（无半中半英）"
+            echo "- [ ] \`bun run typecheck && bun run test\` 通过"
+            echo "- [ ] \`bun run test:e2e\` 通过（由本 PR 的 CI 执行）"
             echo "- [ ] 新增英文串已补进 \`zh-dict/dict.tsv\`"
           } > "$RUNNER_TEMP/pr-body.md"
 

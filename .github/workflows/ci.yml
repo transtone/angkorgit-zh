@@ -43,31 +43,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check:copy
-      - run: pnpm check:dict
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm --filter @angkorgit/desktop build
+      - run: bun install --frozen-lockfile
+      - run: bun run check:copy
+      - run: bun run check:dict
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run --filter @angkorgit/desktop build
 
   e2e:
     name: Playwright (demo mode)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - run: bun install --frozen-lockfile
+      - run: bun x playwright install --with-deps chromium
+      - run: bun run test:e2e
 
   rust:
     name: Rust engine (check, clippy, git integration tests)
