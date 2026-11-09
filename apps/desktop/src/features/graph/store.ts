@@ -4,6 +4,7 @@ import { GraphLayout, type GraphRow } from '@angkorgit/core';
 import { ipc } from '@/core/ipc';
 
 const PAGE_SIZE = 200;
+const ROW_HEIGHT = 32;
 
 interface GraphFilters {
   branch: string;
@@ -36,6 +37,13 @@ interface GraphState {
   layout: GraphLayout;
   lastPath: string | null;
   pendingScrollIndex: number | null;
+  scrollTop: number;
+  scrollLeft: number;
+
+  activate: (path: string) => void;
+  forget: (path: string) => void;
+  setScrollTop: (scrollTop: number) => void;
+  setScrollLeft: (scrollLeft: number) => void;
 
   reload: (path: string) => Promise<void>;
   loadMore: (path: string) => Promise<void>;
@@ -68,7 +76,23 @@ const withActiveMatch = (find: FindState | null, oid: string | null): FindState 
   return index === -1 || index === find.active ? find : { ...find, active: index };
 };
 
+type GraphSnapshot = Pick<GraphState,
+  'commits' | 'rows' | 'maxLane' | 'hasMore' | 'error' | 'filters' | 'find' |
+  'locatedOid' | 'selectedOid' | 'selectedOids' | 'layout' | 'pendingScrollIndex' | 'scrollTop' | 'scrollLeft'>;
+
+const emptySnapshot = (): GraphSnapshot => ({
+  commits: [], rows: [], maxLane: 0, hasMore: true, error: null,
+  filters: emptyFilters(), find: null, locatedOid: null, selectedOid: null,
+  selectedOids: [], layout: new GraphLayout(), pendingScrollIndex: null, scrollTop: 0, scrollLeft: 0,
+});
+
 export const useGraph = create<GraphState>((set, get) => {
+  const snapshots = new Map<string, GraphSnapshot>();
+  const invalidate = () => {
+    requestSeq += 1;
+    findSeq += 1;
+    selectSeq += 1;
+  };
   const appendPage = (page: HistoryPage, layout: GraphLayout) => {
     const { commits } = get();
     layout.add(page.commits);
@@ -83,6 +107,7 @@ export const useGraph = create<GraphState>((set, get) => {
   };
 
   const fetchMore = async (path: string, limit: number): Promise<boolean> => {
+    if (get().lastPath !== path) return false;
     const { commits, filters, layout } = get();
     const seq = ++requestSeq;
     set({ loading: true });
@@ -108,43 +133,42 @@ export const useGraph = create<GraphState>((set, get) => {
   };
 
   return {
-    commits: [],
-    rows: [],
-    maxLane: 0,
-    hasMore: true,
+    ...emptySnapshot(),
     loading: false,
-    error: null,
-    filters: emptyFilters(),
-    find: null,
-    locatedOid: null,
-    selectedOid: null,
-    selectedOids: [],
-    layout: new GraphLayout(),
     lastPath: null,
-    pendingScrollIndex: null,
 
-    reload: async (path: string) => {
-      const samePath = get().lastPath === path;
-      if (!samePath) {
-        findSeq += 1;
-        set({
-          commits: [],
-          rows: [],
-          maxLane: 0,
-          hasMore: true,
-          error: null,
-          selectedOid: null,
-          selectedOids: [],
-          filters: emptyFilters(),
-          find: null,
-          locatedOid: null,
-          layout: new GraphLayout(),
-          lastPath: path,
-          pendingScrollIndex: null,
+    activate: (path) => {
+      const state = get();
+      if (state.lastPath === path) return;
+      if (state.lastPath) {
+        const { commits, rows, maxLane, hasMore, error, filters, find, locatedOid,
+          selectedOid, selectedOids, layout, pendingScrollIndex, scrollTop, scrollLeft } = state;
+        snapshots.set(state.lastPath, {
+          commits, rows, maxLane, hasMore, error, filters,
+          find: find ? { ...find, loading: false } : null,
+          locatedOid, selectedOid, selectedOids, layout, pendingScrollIndex, scrollTop, scrollLeft,
         });
       }
+      invalidate();
+      const snapshot = snapshots.get(path) ?? emptySnapshot();
+      snapshots.delete(path);
+      set({ ...snapshot, lastPath: path, loading: false });
+    },
+
+    forget: (path) => {
+      snapshots.delete(path);
+      if (get().lastPath !== path) return;
+      invalidate();
+      set({ ...emptySnapshot(), lastPath: null, loading: false });
+    },
+
+    setScrollTop: (scrollTop) => set({ scrollTop: Math.max(0, scrollTop) }),
+    setScrollLeft: (scrollLeft) => set({ scrollLeft: Math.max(0, scrollLeft) }),
+
+    reload: async (path: string) => {
+      if (get().lastPath !== path) return;
       const { filters } = get();
-      const loadedCount = samePath && !filters.branch ? get().commits.length : 0;
+      const loadedCount = get().commits.length;
       const seq = ++requestSeq;
       set({ loading: true });
       try {
@@ -156,8 +180,20 @@ export const useGraph = create<GraphState>((set, get) => {
         if (seq !== requestSeq || get().lastPath !== path) return;
         const layout = new GraphLayout();
         layout.add(page.commits);
+        const state = get();
+        const oids = new Set(page.commits.map((commit) => commit.oid));
+        const anchorIndex = Math.floor(state.scrollTop / ROW_HEIGHT);
+        const anchorOid = state.commits[anchorIndex]?.oid;
+        const nextAnchorIndex = anchorOid ? page.commits.findIndex((commit) => commit.oid === anchorOid) : -1;
+        const scrollTop = state.scrollTop > 0 && nextAnchorIndex >= 0
+          ? state.scrollTop + (nextAnchorIndex - anchorIndex) * ROW_HEIGHT
+          : state.scrollTop;
         set({
           commits: page.commits,
+          selectedOid: state.selectedOid && oids.has(state.selectedOid) ? state.selectedOid : null,
+          selectedOids: state.selectedOids.filter((oid) => oids.has(oid)),
+          locatedOid: state.locatedOid && oids.has(state.locatedOid) ? state.locatedOid : null,
+          scrollTop,
           rows: layout.getRows(),
           maxLane: layout.maxLane,
           hasMore: page.hasMore,
@@ -165,6 +201,8 @@ export const useGraph = create<GraphState>((set, get) => {
           loading: false,
           error: null,
         });
+        const find = get().find;
+        if (find) void get().setFind(path, { text: find.text, author: find.author }, -1);
       } catch (error) {
         if (seq === requestSeq) set({ loading: false, error: errorText(error) });
       }
@@ -177,16 +215,15 @@ export const useGraph = create<GraphState>((set, get) => {
     },
 
     setFilters: (path, partial) => {
-      set((s) => ({ filters: { ...s.filters, ...partial } }));
-      void get()
-        .reload(path)
-        .then(() => {
-          const find = get().find;
-          if (find && get().lastPath === path) void get().setFind(path, { text: find.text, author: find.author });
-        });
+      if (get().lastPath !== path) return;
+      findSeq += 1;
+      selectSeq += 1;
+      set((s) => ({ filters: { ...s.filters, ...partial }, scrollTop: 0, pendingScrollIndex: null }));
+      void get().reload(path);
     },
 
     setFind: async (path, query, since) => {
+      if (get().lastPath !== path) return null;
       const text = query.text.trim();
       const author = query.author.trim();
       findSeq += 1;
@@ -229,12 +266,15 @@ export const useGraph = create<GraphState>((set, get) => {
     },
 
     goToMatch: async (path, index) => {
+      if (get().lastPath !== path) return null;
+      const finding = findSeq;
+      const selectedAt = selectSeq;
       const find = get().find;
       const target = find?.matches[index];
       if (!find || !target) return null;
       set({ find: { ...find, active: index } });
       const ok = await ensureLoaded(path, target.index);
-      if (!ok || get().lastPath !== path) return null;
+      if (!ok || get().lastPath !== path || finding !== findSeq || selectedAt !== selectSeq) return null;
       const commits = get().commits;
       const at =
         commits[target.index]?.oid === target.oid
@@ -246,10 +286,14 @@ export const useGraph = create<GraphState>((set, get) => {
     },
 
     revealCommit: async (path, oid) => {
+      if (get().lastPath !== path) return false;
+      const selectedAt = selectSeq;
+      const finding = findSeq;
+      const current = () => get().lastPath === path && selectedAt === selectSeq && finding === findSeq;
       const target = await ipc.historyPosition(path, oid);
-      if (!target || get().lastPath !== path) return false;
+      if (!target || !current()) return false;
       const ok = await ensureLoaded(path, target.index);
-      if (!ok || get().lastPath !== path) return false;
+      if (!ok || !current()) return false;
       const commits = get().commits;
       const at =
         commits[target.index]?.oid === target.oid

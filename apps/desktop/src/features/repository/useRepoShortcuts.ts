@@ -12,14 +12,14 @@ const TAB_DIGIT = /^Digit([1-9])$/;
 
 export async function switchToRepo(path: string, ensureRepoRoute: () => void): Promise<void> {
   const { repo, opening, open } = useRepo.getState();
-  if (opening !== null || repo?.path === path) return;
+  if (repo?.path === path && opening === null) return;
   useUi.getState().setPaletteOpen(false);
   useUi.getState().setRepoSwitcherOpen(false);
   try {
     await open(path);
     ensureRepoRoute();
   } catch (error) {
-    toast.error(`Could not open ${basename(path)}: ${(error as { message?: string }).message ?? error}`);
+    toast.error(`无法打开 ${basename(path)}：${(error as { message?: string }).message ?? error}`);
   }
 }
 

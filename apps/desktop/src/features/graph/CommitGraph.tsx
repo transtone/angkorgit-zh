@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
@@ -52,9 +52,11 @@ const stashIndexOf = (ref: RefInfo) => Number(/\{(\d+)\}/.exec(ref.name)?.[1] ??
 const GRAPH_LEFT_WITH_REFS = 4 + REF_COL_WIDTH;
 const GRAPH_LEFT_WITHOUT_REFS = 16;
 
-export function CommitGraph() {
+export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?: boolean }) {
   const repo = useRepo((s) => s.repo);
   const refresh = useRepo((s) => s.refresh);
+  const refreshing = useRepo((s) => s.refreshing);
+  const refreshError = useRepo((s) => s.refreshError);
   const worktrees = useRepo((s) => s.worktrees);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
@@ -71,6 +73,15 @@ export function CommitGraph() {
   const setGraphTail = useUi((s) => s.setGraphTail);
   const setGraphColumn = useUi((s) => s.setGraphColumn);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollTop = useGraph((s) => s.scrollTop);
+  const blocked = foregroundLoading || (loading && commits.length === 0);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.inert = blocked;
+      if (el.scrollTop !== scrollTop) el.scrollTop = scrollTop;
+    }
+  }, [scrollTop, blocked]);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [refMenu, setRefMenu] = useState<RefMenuState | null>(null);
   const [refMenuFf, setRefMenuFf] = useState<{
@@ -113,6 +124,7 @@ export function CommitGraph() {
 
   const virtualizer = useVirtualizer({
     count: rows.length,
+    initialOffset: scrollTop,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 20,
@@ -212,7 +224,7 @@ export function CommitGraph() {
     ],
     [moveSelection],
   );
-  useShortcuts(keyNav);
+  useShortcuts(blocked ? [] : keyNav);
 
   const act = useCallback(
     async (
@@ -238,6 +250,7 @@ export function CommitGraph() {
           : op;
         const result = (await run()) as { status?: string; message?: string } | undefined;
         toastOutcome(result, `${label} 已完成`);
+        if (useRepo.getState().repo?.path !== path) return;
         await refresh();
         await reload(path);
       } catch (error) {
@@ -488,7 +501,11 @@ export function CommitGraph() {
           </span>
         )}
         <div className="ml-auto flex items-center gap-2 text-xs text-faint">
-          {loading && <Spinner className="size-3.5" />}
+          {(loading || refreshing) && <span role="status" aria-label="正在刷新"><Spinner className="size-3.5" /></span>}
+          {refreshError && !refreshing && (
+            <button className="max-w-48 truncate text-danger" title={refreshError}
+              onClick={() => void refresh().catch(() => undefined)}>刷新失败，重试</button>
+          )}
           <span>
             {commits.length.toLocaleString()}
             {hasMore ? '+' : ''} 个提交
@@ -599,7 +616,11 @@ export function CommitGraph() {
         )}
         {!graphColumns.message && <span className="min-w-0 flex-1" />}
       </div>
-      <div ref={scrollRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none" role="table" aria-label="提交">
+      <div className="relative min-h-0 flex-1" aria-busy={loading || refreshing}>
+      <div ref={scrollRef} tabIndex={-1} className="h-full overflow-y-auto outline-none" role="table" aria-label="提交"
+        onScroll={(event) => {
+          if (useGraph.getState().lastPath === path) useGraph.getState().setScrollTop(event.currentTarget.scrollTop);
+        }}>
         <WipRow gutterWidth={gutterWidth} showRefs={graphColumns.refs} />
         {rows.length === 0 && !loading ? (
           error ? (
@@ -681,6 +702,12 @@ export function CommitGraph() {
             </button>
           </div>
         )}
+      </div>
+      {blocked && (
+        <div data-table-loading role="status" className="absolute inset-0 z-30 flex items-center justify-center gap-2 bg-background/10 text-sm text-muted">
+          <Spinner className="size-4" />{commits.length ? '正在刷新…' : '正在加载…'}
+        </div>
+      )}
       </div>
       <GraphScrollbar
         scrollRef={scrollRef}

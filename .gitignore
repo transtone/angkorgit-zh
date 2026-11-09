@@ -36,5 +36,4 @@ zh-dict/pending.tsv
 # 本机 pnpm 配置（Junction 不可用时的 copy/hoisted 兜底），随机器而异
 .npmrc
 scripts/
-docs/
 bun.lock

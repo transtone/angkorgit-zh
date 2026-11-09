@@ -36,6 +36,9 @@ async function run(): Promise<void> {
             } catch (error) {
               toast.error(`更新失败：${(error as { message?: string }).message ?? error}`, {
                 id: 'updater',
+                duration: Infinity,
+                description: '若更新签名校验失败，请从发布页手动安装一次新版。',
+                action: { label: '打开发布页', onClick: () => void openExternal(RELEASES_URL) },
               });
             }
           })();

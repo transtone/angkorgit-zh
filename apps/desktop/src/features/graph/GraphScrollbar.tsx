@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { cn } from '@angkorgit/design-system';
+import { useGraph } from './store';
 import { GRAPH_SCROLL_VAR } from './GraphRow';
 
 const THUMB_MIN = 24;
@@ -17,7 +18,7 @@ export function GraphScrollbar({
   width: number;
   resetKey: string;
 }) {
-  const offset = useRef(0);
+  const offset = useRef(useGraph.getState().scrollLeft);
   const thumbRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; offset: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -29,16 +30,19 @@ export function GraphScrollbar({
     (next: number) => {
       const clamped = Math.min(Math.max(0, next), overflow);
       offset.current = clamped;
+      if (useGraph.getState().lastPath === resetKey && useGraph.getState().scrollLeft !== clamped) {
+        useGraph.getState().setScrollLeft(clamped);
+      }
       scrollRef.current?.style.setProperty(GRAPH_SCROLL_VAR, `${clamped}px`);
       if (thumbRef.current) {
         thumbRef.current.style.transform = `translateX(${overflow > 0 ? (clamped / overflow) * travel : 0}px)`;
       }
     },
-    [overflow, travel, scrollRef],
+    [overflow, travel, scrollRef, resetKey],
   );
 
   useEffect(() => {
-    offset.current = 0;
+    offset.current = useGraph.getState().scrollLeft;
   }, [resetKey]);
 
   useEffect(() => {

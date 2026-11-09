@@ -40,54 +40,14 @@ import { useShortcuts } from '@/shared/useShortcuts';
 import { useUndo } from '@/features/history/undoStore';
 import { useSettings } from '@/features/settings/store';
 import { ipc, listen } from '@/core/ipc';
-import { Logo, cn } from '@angkorgit/design-system';
-import { basename } from '@/shared/utils';
-
-const OVERLAY_SHOW_DELAY = 250;
-const OVERLAY_MIN_VISIBLE = 450;
+import { cn } from '@angkorgit/design-system';
 const SIDEBAR_DEFAULT_SIZE = 18;
 const INSPECTOR_DEFAULT_SIZE = 28;
 const INSPECTOR_MIN_SIZE = 20;
 
-function useRepoLoadingOverlay(): boolean {
-  const active = useRepo((s) => s.opening !== null || s.refreshing);
-  const [visible, setVisible] = useState(false);
-  const shownAt = useRef(0);
-  useEffect(() => {
-    if (active) {
-      if (visible) return;
-      const timer = window.setTimeout(() => {
-        shownAt.current = Date.now();
-        setVisible(true);
-      }, OVERLAY_SHOW_DELAY);
-      return () => window.clearTimeout(timer);
-    }
-    if (!visible) return;
-    const remaining = Math.max(0, OVERLAY_MIN_VISIBLE - (Date.now() - shownAt.current));
-    const timer = window.setTimeout(() => setVisible(false), remaining);
-    return () => window.clearTimeout(timer);
-  }, [active, visible]);
-  return visible;
-}
-
-function RepoLoadingOverlay() {
-  const visible = useRepoLoadingOverlay();
-  const opening = useRepo((s) => s.opening);
-  const repoName = useRepo((s) => s.repo?.name ?? '');
-  if (!visible) return null;
-  const name = opening ? basename(opening) : repoName;
-  return (
-    <div className="animate-fade-in absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-background/95 backdrop-blur-sm">
-      <Logo size={64} animated="loop" className="logo-draw-loop text-foreground" />
-      {name && (
-        <span className="max-w-md truncate text-sm text-muted">正在打开 {name}…</span>
-      )}
-    </div>
-  );
-}
-
 export function RepositoryPage() {
   const repo = useRepo((s) => s.repo);
+  const [foregroundRefresh, setForegroundRefresh] = useState<string | null>(null);
   const refresh = useRepo((s) => s.refresh);
   const reload = useGraph((s) => s.reload);
   const navigate = useNavigate();
@@ -104,12 +64,16 @@ export function RepositoryPage() {
   const closeCenterDiff = useUi((s) => s.closeCenterDiff);
 
   const repoPath = repo?.path ?? null;
+  const refreshGeneration = useRef(0);
+  useEffect(() => {
+    refreshGeneration.current += 1;
+    setForegroundRefresh(null);
+  }, [repoPath]);
   useEffect(() => {
     if (!repoPath) {
       navigate('/welcome', { replace: true });
       return;
     }
-    useGraph.getState().select(null);
     const ui = useUi.getState();
     ui.closeCenterDiff();
     ui.closeEditor();
@@ -237,8 +201,11 @@ export function RepositoryPage() {
 
   const refreshAll = useCallback(async () => {
     if (!repo) return;
-    await refresh();
-    await reload(repo.path);
+    const path = repo.path;
+    const generation = ++refreshGeneration.current;
+    setForegroundRefresh(path);
+    await Promise.allSettled([refresh(), reload(path)]);
+    if (generation === refreshGeneration.current) setForegroundRefresh(null);
   }, [repo, refresh, reload]);
 
   const shortcuts = useMemo(
@@ -341,7 +308,6 @@ export function RepositoryPage() {
       <RepoTabs />
       <Toolbar onRefresh={refreshAll} />
       <div className="relative min-h-0 flex-1">
-        <RepoLoadingOverlay />
         <PanelGroup direction="horizontal" autoSaveId="angkorgit-main-v2">
           <Panel
             ref={sidebarPanel}
@@ -383,7 +349,7 @@ export function RepositoryPage() {
             <PanelGroup direction="vertical" autoSaveId="angkorgit-center">
               <Panel minSize={30}>
                 <div className={centerDiff || centerEditor || centerFileHistory ? 'hidden' : 'h-full'}>
-                  <CommitGraph key={repo.path} />
+                  <CommitGraph key={repo.path} foregroundLoading={foregroundRefresh === repo.path} />
                 </div>
                 {centerEditor ? (
                   <EditorPanel key={centerEditor} file={centerEditor} />
