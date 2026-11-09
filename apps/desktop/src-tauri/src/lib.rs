@@ -20,15 +20,15 @@ pub mod test_api {
     pub use crate::core::branch::{
         can_fast_forward, checkout_branch, checkout_detached, cherry_pick, cherry_pick_many,
         create as branch_create, fast_forward as branch_fast_forward, list as branches, merge,
-        rebase, rebase_commits, rebase_interactive, reset,
+        rebase, rebase_commits, rebase_continue, rebase_interactive, reset,
     };
     pub use crate::core::commit::{amend, commit, merge_message, revert, reword};
     pub use crate::core::conflict::{
         list as conflict_list, read as conflict_read, resolve as conflict_resolve,
     };
     pub use crate::core::diff::{
-        commit_diff_with, commit_file_diff, commit_file_diff_with, commit_files, file_diff,
-        file_diff_with,
+        commit_diff_with, commit_file_diff, commit_file_diff_with, commit_files,
+        compare_file_diff_with, compare_files, file_diff, file_diff_with,
     };
     pub use crate::core::files::{file_contents, index_files, tree_files};
     pub use crate::core::group_update::{

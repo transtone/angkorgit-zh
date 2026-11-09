@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { cn } from '@angkorgit/design-system';
 import { useGraph } from './store';
-import { GRAPH_SCROLL_VAR } from './GraphRow';
+import { GRAPH_LANES_SELECTOR, GRAPH_NODE_SELECTOR, GRAPH_SCROLL_ATTR, stickyNodeShift } from './GraphRow';
 
 const THUMB_MIN = 24;
 
@@ -33,7 +33,20 @@ export function GraphScrollbar({
       if (useGraph.getState().lastPath === resetKey && useGraph.getState().scrollLeft !== clamped) {
         useGraph.getState().setScrollLeft(clamped);
       }
-      scrollRef.current?.style.setProperty(GRAPH_SCROLL_VAR, `${clamped}px`);
+      const scroller = scrollRef.current;
+      if (scroller) {
+        scroller.setAttribute(GRAPH_SCROLL_ATTR, String(clamped));
+        const transform = clamped > 0 ? `translate3d(${-clamped}px, 0, 0)` : '';
+        for (const layer of scroller.querySelectorAll<HTMLElement>(GRAPH_LANES_SELECTOR)) {
+          if (layer.style.transform !== transform) layer.style.transform = transform;
+        }
+        for (const node of scroller.querySelectorAll<HTMLElement>(GRAPH_NODE_SELECTOR)) {
+          const { nodeX, nodeMin, nodeMax } = node.dataset;
+          const shift = overflow > 0 ? stickyNodeShift(Number(nodeX), Number(nodeMin), Number(nodeMax), clamped) : 0;
+          const next = shift ? `translate3d(${shift}px, 0, 0)` : '';
+          if (node.style.transform !== next) node.style.transform = next;
+        }
+      }
       if (thumbRef.current) {
         thumbRef.current.style.transform = `translateX(${overflow > 0 ? (clamped / overflow) * travel : 0}px)`;
       }
@@ -41,13 +54,14 @@ export function GraphScrollbar({
     [overflow, travel, scrollRef, resetKey],
   );
 
-  useEffect(() => {
-    offset.current = useGraph.getState().scrollLeft;
-  }, [resetKey]);
-
-  useEffect(() => {
+  const appliedKey = useRef(resetKey);
+  useLayoutEffect(() => {
+    if (appliedKey.current !== resetKey) {
+      appliedKey.current = resetKey;
+      offset.current = useGraph.getState().scrollLeft;
+    }
     apply(offset.current);
-  }, [apply, resetKey]);
+  });
 
   useEffect(() => {
     const el = scrollRef.current;

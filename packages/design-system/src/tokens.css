@@ -41,7 +41,8 @@
   --border-subtle: 219 24% 17%;
   --foreground: 216 20% 92%;
   --muted-foreground: 218 12% 62%;
-  --faint-foreground: 219 10% 44%;
+  --faint-foreground: 219 10% 52%;
+  --syntax-comment: 219 10% 44%;
 
   --primary: 32 93% 50%;
   --primary-foreground: 30 90% 8%;
@@ -52,6 +53,7 @@
 
   --diff-add-bg: 142 60% 45%;
   --diff-del-bg: 0 70% 58%;
+  --diff-row-alpha: 0.08;
 
   --syntax-keyword: 292 60% 68%;
   --syntax-string: 95 40% 62%;
@@ -87,7 +89,8 @@
   --border-subtle: 219 20% 91%;
   --foreground: 221 39% 14%;
   --muted-foreground: 218 12% 40%;
-  --faint-foreground: 219 10% 58%;
+  --faint-foreground: 219 10% 46%;
+  --syntax-comment: 219 10% 58%;
 
   --primary: 32 93% 44%;
   --primary-foreground: 0 0% 100%;
@@ -98,6 +101,7 @@
 
   --diff-add-bg: 142 60% 40%;
   --diff-del-bg: 0 70% 52%;
+  --diff-row-alpha: 0.12;
 
   --syntax-keyword: 292 70% 42%;
   --syntax-string: 95 60% 30%;

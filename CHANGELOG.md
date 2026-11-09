@@ -6,6 +6,25 @@
 
 ## [未发布]
 
+## [0.27.0] — 2026-11-09
+
+### 新增
+- 在提交图中选择两次提交进行对比，支持交换起点与终点，并复用文件列表、单文件 Diff 和全部文件视图。
+- Diff 和文件历史的行菜单支持复制 `路径:行号`；点击代码时可包含列号。
+- 搜索支持“仅显示匹配项”，可与作者及分支筛选组合，关闭后恢复完整提交图和原有选择。
+
+### 改进
+- 横向滚动采用独立合成图层，泳道移出视口时将头像及合并节点固定在图表边缘。
+- 改善全部主题的次要文字对比度，减淡 Diff 行背景；Diff 操作在空间足够时显示文字标签。
+- 保留中文版的 12px 提交摘要、紧凑菜单、Cravatar 头像源、严格快进和项目标签缓存切换。
+
+### 修复
+- 继续变基时重新应用因文件阻挡而暂停的提交，避免跳过提交；错误提示明确指出相关文件和提交。
+- 兼容 OpenAI 新模型的令牌预算和温度参数，对拒绝参数与推理预算耗尽作有限重试。
+- 修复主题明暗切换闪烁及同名仓库标签的父目录提示被挤成单个字母的问题。
+- 修复首次加载或手动刷新时搜索快捷键失效，表格加载期间仍可通过 Ctrl+F 聚焦搜索框。
+- 将新增搜索过滤与提交对比状态纳入每项目快照，保留局部透明加载及请求过期保护。
+
 ## [0.26.2] — 2026-11-09
 
 ### 修复
@@ -1889,7 +1908,8 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/cheat2001/angkorgit/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/cheat2001/angkorgit/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/cheat2001/angkorgit/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/cheat2001/angkorgit/compare/v0.23.0...v0.24.0

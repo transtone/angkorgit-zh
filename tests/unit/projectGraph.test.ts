@@ -54,6 +54,41 @@ it('restores repository snapshots synchronously, including selection, filters, f
   expect(graph().scrollLeft).toBe(25);
 });
 
+it('keeps matches-only lists, queries and comparison isolated in repository snapshots', async () => {
+  vi.mocked(ipc.history).mockResolvedValue(page('a1', 'a2'));
+  vi.mocked(ipc.historySearch).mockResolvedValue({ matches: [{ oid: 'a2', index: 8 }], truncated: false });
+  await graph().reload('/a');
+  await graph().setFind('/a', { text: 'a2', author: '' }, -1);
+  vi.mocked(ipc.history).mockResolvedValue(page('a2'));
+  await graph().setOnlyMatches('/a', true);
+  graph().setCompare({ from: 'a1', to: 'a2' });
+  const saved = graph();
+  graph().activate('/b');
+  expect(graph().onlyMatches).toBe(false);
+  expect(graph().matchesOnly).toBeNull();
+  expect(graph().compare).toBeNull();
+  await graph().setOnlyMatches('/a', true);
+  expect(graph().onlyMatches).toBe(false);
+  graph().activate('/a');
+  expect(graph().onlyMatches).toBe(true);
+  expect(graph().matchesOnly).toEqual({ search: 'a2', author: undefined });
+  expect(graph().compare).toEqual(saved.compare);
+  expect(graph().rows).toBe(saved.rows);
+  await graph().goToMatch('/a', 0);
+  expect(graph().pendingScrollIndex).toBe(0);
+  vi.mocked(ipc.history).mockResolvedValue(page('a3'));
+  await graph().loadMore('/a');
+  expect(ipc.history).toHaveBeenLastCalledWith('/a', {
+    skip: 1, limit: 200, branch: undefined, search: 'a2', author: undefined,
+  });
+  expect(graph().rows.every((row) => row.node.color === 0)).toBe(true);
+  graph().forget('/a');
+  graph().activate('/a');
+  expect(graph().onlyMatches).toBe(false);
+  expect(graph().matchesOnly).toBeNull();
+  expect(graph().compare).toBeNull();
+});
+
 it('keeps cached rows while refreshing, anchors inserted rows and cleans vanished selection', async () => {
   vi.mocked(ipc.history).mockResolvedValue(page('a1', 'a2', 'a3'));
   await graph().reload('/a');
@@ -186,4 +221,91 @@ it('forgets inactive snapshots and clears an active repository, invalidating its
   pending.resolve(page('stale'));
   await refresh;
   expect(graph().commits).toEqual([]);
+});
+
+it.each([false, true])('lands a changed matches-only search after its relist (user selects during reload: %s)', async (selectDuringReload) => {
+  vi.mocked(ipc.history).mockResolvedValue(page('a1', 'a2', 'a3'));
+  vi.mocked(ipc.historySearch).mockResolvedValue({ matches: [{ oid: 'a1', index: 0 }, { oid: 'a3', index: 2 }], truncated: false });
+  await graph().reload('/a');
+  await graph().setFind('/a', { text: 'a1', author: '' });
+  vi.mocked(ipc.history).mockResolvedValue(page('a1', 'a3'));
+  await graph().setOnlyMatches('/a', true);
+
+  const search = deferred<Awaited<ReturnType<typeof ipc.historySearch>>>();
+  const listing = deferred<HistoryPage>();
+  vi.mocked(ipc.historySearch).mockReturnValueOnce(search.promise);
+  vi.mocked(ipc.history).mockReturnValueOnce(listing.promise);
+  const finding = graph().setFind('/a', { text: 'new', author: '' });
+  search.resolve({ matches: [{ oid: 'a2', index: 800 }, { oid: 'a3', index: 900 }], truncated: false });
+  await vi.waitFor(() => expect(ipc.history).toHaveBeenLastCalledWith('/a', {
+    skip: 0, limit: 200, branch: undefined, search: 'new', author: undefined,
+  }));
+  if (selectDuringReload) graph().select('a3');
+  listing.resolve(page('a2', 'a3'));
+  expect(await finding).toBe(selectDuringReload ? null : 'a2');
+  expect(graph().selectedOid).toBe(selectDuringReload ? 'a3' : 'a2');
+  expect(graph().find?.active).toBe(selectDuringReload ? 1 : 0);
+  if (!selectDuringReload) expect(graph().pendingScrollIndex).toBe(0);
+});
+
+it('reveals a deep selected match when turning matches-only off', async () => {
+  vi.mocked(ipc.history).mockResolvedValue(page('a1', 'a2'));
+  vi.mocked(ipc.historySearch).mockResolvedValue({ matches: [{ oid: 'a2', index: 800 }], truncated: false });
+  await graph().reload('/a');
+  await graph().setFind('/a', { text: 'a2', author: '' }, -1);
+  graph().select('a2');
+  vi.mocked(ipc.history).mockResolvedValue(page('a2'));
+  await graph().setOnlyMatches('/a', true);
+  const listing = deferred<HistoryPage>();
+  const position = deferred<Awaited<ReturnType<typeof ipc.historyPosition>>>();
+  const more = deferred<HistoryPage>();
+  vi.mocked(ipc.history).mockReturnValueOnce(listing.promise).mockReturnValueOnce(more.promise);
+  vi.mocked(ipc.historyPosition).mockReturnValueOnce(position.promise);
+  const toggling = graph().setOnlyMatches('/a', false);
+  listing.resolve(page('a1'));
+  await vi.waitFor(() => expect(ipc.historyPosition).toHaveBeenCalledWith('/a', 'a2'));
+  position.resolve({ oid: 'a2', index: 800 });
+  await vi.waitFor(() => expect(ipc.history).toHaveBeenLastCalledWith('/a', {
+    skip: 1, limit: 999, branch: undefined,
+  }));
+  more.resolve({ commits: [...Array.from({ length: 799 }, (_, i) => commit(`f${i}`)), commit('a2')], hasMore: true });
+  await toggling;
+  expect(graph().selectedOid).toBe('a2');
+  expect(graph().pendingScrollIndex).toBe(800);
+  expect(graph().matchesOnly).toBeNull();
+});
+
+it('does not continue an old matches-only toggle after A → B → A', async () => {
+  vi.mocked(ipc.history).mockResolvedValue(page('a1', 'a2'));
+  vi.mocked(ipc.historySearch).mockResolvedValue({ matches: [{ oid: 'a2', index: 1 }], truncated: false });
+  await graph().reload('/a');
+  await graph().setFind('/a', { text: 'a2', author: '' });
+  const listing = deferred<HistoryPage>();
+  vi.mocked(ipc.history).mockReturnValueOnce(listing.promise);
+  const toggling = graph().setOnlyMatches('/a', true);
+  graph().activate('/b');
+  graph().activate('/a');
+  graph().clearPendingScroll();
+  listing.resolve(page('a2'));
+  await toggling;
+  expect(graph().commits.map((c) => c.oid)).toEqual(['a1', 'a2']);
+  expect(graph().onlyMatches).toBe(true);
+  expect(graph().matchesOnly).toBeNull();
+  expect(graph().pendingScrollIndex).toBeNull();
+  expect(ipc.historyPosition).not.toHaveBeenCalled();
+});
+
+it('preserves a cached comparison whose endpoints are outside the refreshed page', async () => {
+  vi.mocked(ipc.history).mockResolvedValue(page('a1'));
+  await graph().reload('/a');
+  graph().setCompare({ from: 'old-base', to: 'deep-tip' });
+  graph().activate('/b');
+  graph().activate('/a');
+  const listing = deferred<HistoryPage>();
+  vi.mocked(ipc.history).mockReturnValueOnce(listing.promise);
+  const refresh = graph().reload('/a');
+  expect(graph().compare).toEqual({ from: 'old-base', to: 'deep-tip' });
+  listing.resolve(page('new', 'a1'));
+  await refresh;
+  expect(graph().compare).toEqual({ from: 'old-base', to: 'deep-tip' });
 });

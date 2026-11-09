@@ -332,7 +332,9 @@ pub fn rebase(path: &str, upstream: &str) -> AppResult<OpOutcome> {
     let mut rebase = repo.rebase(None, Some(&upstream_annotated), None, Some(&mut opts))?;
 
     while let Some(op) = rebase.next() {
-        op?;
+        if let Err(error) = op {
+            return Err(stopped_step(&repo, &mut rebase, error));
+        }
         let index = repo.index()?;
         if index.has_conflicts() {
             return Ok(OpOutcome {
@@ -357,6 +359,12 @@ pub fn rebase_continue(path: &str) -> AppResult<OpOutcome> {
     let repo = super::repo::open(path)?;
     let sig = repo.signature()?;
     let mut rebase = repo.open_rebase(None)?;
+    if reapply_stopped_step(&repo, &mut rebase)? {
+        return Ok(OpOutcome {
+            status: "conflicts".into(),
+            message: "变基因冲突暂停。请解决冲突后继续。".into(),
+        });
+    }
 
     {
         let index = repo.index()?;
@@ -374,7 +382,9 @@ pub fn rebase_continue(path: &str) -> AppResult<OpOutcome> {
     }
 
     while let Some(op) = rebase.next() {
-        op?;
+        if let Err(error) = op {
+            return Err(stopped_step(&repo, &mut rebase, error));
+        }
         let index = repo.index()?;
         if index.has_conflicts() {
             return Ok(OpOutcome {
@@ -393,6 +403,111 @@ pub fn rebase_continue(path: &str) -> AppResult<OpOutcome> {
         status: "ok".into(),
         message: "变基完成".into(),
     })
+}
+
+const STOPPED_STEP_MARK: &str = "angkorgit-stopped-step";
+
+fn stopped_step_mark(repo: &Repository) -> std::path::PathBuf {
+    repo.path().join("rebase-merge").join(STOPPED_STEP_MARK)
+}
+
+fn current_step_commit<'r>(
+    repo: &'r Repository,
+    rebase: &mut git2::Rebase<'_>,
+) -> Option<git2::Commit<'r>> {
+    let index = rebase.operation_current()?;
+    let id = rebase.nth(index)?.id();
+    repo.find_commit(id).ok()
+}
+
+fn paths_in_the_way(repo: &Repository, commit: &git2::Commit<'_>) -> Vec<String> {
+    let parent_tree = commit.parent(0).ok().and_then(|p| p.tree().ok());
+    let Ok(tree) = commit.tree() else {
+        return Vec::new();
+    };
+    let Ok(diff) = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None) else {
+        return Vec::new();
+    };
+    let touched: std::collections::HashSet<std::path::PathBuf> = diff
+        .deltas()
+        .flat_map(|delta| [delta.old_file().path(), delta.new_file().path()])
+        .flatten()
+        .map(std::path::Path::to_path_buf)
+        .collect();
+    let mut options = git2::StatusOptions::new();
+    options
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_ignored(false);
+    let Ok(statuses) = repo.statuses(Some(&mut options)) else {
+        return Vec::new();
+    };
+    let mut paths: Vec<String> = statuses
+        .iter()
+        .filter_map(|entry| entry.path().map(str::to_string))
+        .filter(|path| touched.contains(std::path::Path::new(path)))
+        .collect();
+    paths.sort();
+    paths
+}
+
+fn stopped_step(repo: &Repository, rebase: &mut git2::Rebase<'_>, error: git2::Error) -> AppError {
+    if repo.path().join("rebase-merge").is_dir() {
+        let _ = std::fs::write(stopped_step_mark(repo), "");
+    }
+    let Some(commit) = current_step_commit(repo, rebase) else {
+        return error.into();
+    };
+    let paths = paths_in_the_way(repo, &commit);
+    if paths.is_empty() {
+        return error.into();
+    }
+    let short = commit.id().to_string()[..7].to_string();
+    let summary = commit.summary().unwrap_or_default().to_string();
+    let named = match paths.len() {
+        1 => paths[0].clone(),
+        2 => format!("{} 和 {}", paths[0], paths[1]),
+        n if n <= 3 => format!("{}、{} 和 {}", paths[0], paths[1], paths[2]),
+        n => format!("{}、{} 及另外 {} 个文件", paths[0], paths[1], n - 2),
+    };
+    let it = if paths.len() == 1 {
+        "该文件"
+    } else {
+        "这些文件"
+    };
+    AppError::other(format!(
+        "变基在提交 {short} \"{summary}\" 处停止，因为 {named} 阻碍了操作。请移走或提交{it}，然后继续变基。"
+    ))
+}
+
+fn reapply_stopped_step(repo: &Repository, rebase: &mut git2::Rebase<'_>) -> AppResult<bool> {
+    let mark = stopped_step_mark(repo);
+    if !mark.exists() {
+        return Ok(false);
+    }
+    let Some(commit) = current_step_commit(repo, rebase) else {
+        let _ = std::fs::remove_file(&mark);
+        return Ok(false);
+    };
+    let head = repo.head()?.peel_to_commit()?;
+    let mut merged = repo.cherrypick_commit(&commit, &head, 0, None)?;
+    let conflicts = merged.has_conflicts();
+    let mut checkout = CheckoutBuilder::new();
+    checkout.safe();
+    if conflicts {
+        checkout.allow_conflicts(true).conflict_style_merge(true);
+    }
+    if let Err(error) = repo.checkout_index(Some(&mut merged), Some(&mut checkout)) {
+        return Err(stopped_step(repo, rebase, error));
+    }
+    let mut index = repo.index()?;
+    index.clear()?;
+    for entry in merged.iter() {
+        index.add(&entry)?;
+    }
+    index.write()?;
+    let _ = std::fs::remove_file(&mark);
+    Ok(conflicts)
 }
 
 pub fn rebase_abort(path: &str) -> AppResult<()> {

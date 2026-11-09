@@ -49,6 +49,13 @@
 5. 同步演示数据、中文文案、端到端断言；前端隐藏不可用入口，后端仍拒绝非法请求。
 6. 实施项目缓存后，成功写入必须刷新/失效对应仓库快照。跨标签请求应绑定发起时的仓库、目标和来源，不能在完成时读取新标签替代。
 
+## 上游 0.27.0 适配记录
+
+- `lib.rs` 同时保留本地 `branch_fast_forward` 测试导出/命令注册，与上游新增 `compare_files`、`compare_file_diff_with` 共存。
+- `commands.rs` 中严格快进仍通过 `submodule::synced` 执行，侧栏及提交图仍走独立 `ipc.fastForward`；未退回普通 merge。
+- 上游 `rebase_continue` 的暂停步骤重新应用修复保留；新增错误文案及测试断言同步汉化，未改变提交重放算法。
+- 原有七项 `strict_fast_forward_*` 测试及双向菜单用例继续作为验收依据，实际结果见总入口。
+
 ## 验证
 
 在 `apps/desktop/src-tauri` 目录执行：

@@ -1593,6 +1593,128 @@ fn rebase_linearizes_history() {
     assert!(repo.dir.join("feature.txt").exists());
 }
 
+fn head_summaries(repo: &TempRepo) -> Vec<String> {
+    let git = git2::Repository::open(repo.path()).unwrap();
+    let mut walk = git.revwalk().unwrap();
+    walk.push_head().unwrap();
+    walk.map(|oid| {
+        git.find_commit(oid.unwrap())
+            .unwrap()
+            .summary()
+            .unwrap_or_default()
+            .to_string()
+    })
+    .collect()
+}
+
+fn rebase_in_progress(repo: &TempRepo) -> bool {
+    git2::Repository::open(repo.path()).unwrap().state() == git2::RepositoryState::RebaseMerge
+}
+
+fn topic_with_a_later_file(repo: &TempRepo) {
+    repo.write("a.txt", "base\n");
+    commit_all(repo, "base");
+    core::branch_create(repo.path(), "topic", None, false).unwrap();
+    repo.write("theirs.txt", "theirs\n");
+    commit_all(repo, "theirs");
+    core::checkout_branch(repo.path(), "topic").unwrap();
+    repo.write("first.txt", "first\n");
+    commit_all(repo, "first");
+    repo.write("later.txt", "later\n");
+    commit_all(repo, "add later");
+    std::fs::remove_file(repo.dir.join("later.txt")).unwrap();
+    commit_all(repo, "remove later");
+}
+
+#[test]
+fn continue_after_a_step_that_stopped_without_a_conflict_keeps_every_commit() {
+    let repo = TempRepo::new();
+    topic_with_a_later_file(&repo);
+    repo.write("later.txt", "mine, untracked\n");
+
+    let error = core::rebase(repo.path(), "master").unwrap_err().to_string();
+    assert!(rebase_in_progress(&repo));
+    assert!(error.contains("later.txt"), "{error}");
+    assert!(error.contains("add later"), "{error}");
+    assert!(
+        error.contains("请移走或提交该文件，然后继续变基。"),
+        "{error}"
+    );
+    assert!(!error.contains("class="), "{error}");
+
+    std::fs::remove_file(repo.dir.join("later.txt")).unwrap();
+    let outcome = core::rebase_continue(repo.path()).unwrap();
+    assert_eq!(outcome.status, "ok");
+    assert!(!rebase_in_progress(&repo));
+    assert_eq!(
+        head_summaries(&repo),
+        vec!["remove later", "add later", "first", "theirs", "base"]
+    );
+    assert!(!repo.dir.join("later.txt").exists());
+    assert!(repo.dir.join("first.txt").exists());
+}
+
+#[test]
+fn continue_while_the_file_is_still_in_the_way_stops_again_and_can_be_retried() {
+    let repo = TempRepo::new();
+    topic_with_a_later_file(&repo);
+    repo.write("later.txt", "mine, untracked\n");
+    core::rebase(repo.path(), "master").unwrap_err();
+
+    let error = core::rebase_continue(repo.path()).unwrap_err().to_string();
+    assert!(error.contains("later.txt"), "{error}");
+    assert!(rebase_in_progress(&repo));
+    assert_eq!(repo.read("later.txt"), "mine, untracked\n");
+    assert_eq!(head_summaries(&repo), vec!["first", "theirs", "base"]);
+
+    std::fs::remove_file(repo.dir.join("later.txt")).unwrap();
+    core::rebase_continue(repo.path()).unwrap();
+    assert_eq!(
+        head_summaries(&repo),
+        vec!["remove later", "add later", "first", "theirs", "base"]
+    );
+}
+
+#[test]
+fn a_stopped_step_that_conflicts_when_continued_pauses_for_resolution() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    commit_all(&repo, "base");
+    core::branch_create(repo.path(), "topic", None, false).unwrap();
+    repo.write("a.txt", "theirs\n");
+    commit_all(&repo, "theirs");
+    core::checkout_branch(repo.path(), "topic").unwrap();
+    repo.write("a.txt", "mine\n");
+    repo.write("new.txt", "new\n");
+    commit_all(&repo, "mine");
+    std::fs::remove_file(repo.dir.join("new.txt")).unwrap();
+    commit_all(&repo, "drop new");
+    repo.write("new.txt", "in the way\n");
+
+    let error = core::rebase(repo.path(), "master").unwrap_err().to_string();
+    assert!(error.contains("new.txt"), "{error}");
+    std::fs::remove_file(repo.dir.join("new.txt")).unwrap();
+
+    let outcome = core::rebase_continue(repo.path()).unwrap();
+    assert_eq!(outcome.status, "conflicts");
+    assert_eq!(outcome.message, "变基因冲突暂停。请解决冲突后继续。");
+    assert!(repo.read("a.txt").contains("<<<<<<<"));
+    assert_eq!(repo.read("new.txt"), "new\n");
+    let conflicted = core::conflict_list(repo.path()).unwrap();
+    assert_eq!(conflicted, vec!["a.txt".to_string()]);
+
+    repo.write("a.txt", "resolved\n");
+    core::stage_all(repo.path()).unwrap();
+    let outcome = core::rebase_continue(repo.path()).unwrap();
+    assert_eq!(outcome.status, "ok");
+    assert_eq!(
+        head_summaries(&repo),
+        vec!["drop new", "mine", "theirs", "base"]
+    );
+    assert_eq!(repo.read("a.txt"), "resolved\n");
+    assert!(!repo.dir.join("new.txt").exists());
+}
+
 #[test]
 fn interoperates_with_git_cli() {
     let repo = TempRepo::new();
@@ -2319,6 +2441,109 @@ fn ref_fingerprint_tracks_refs_but_not_file_edits() {
 
     core::branch_create(repo.path(), "feature", None, false).unwrap();
     assert_ne!(core::ref_fingerprint(repo.path()).unwrap(), after_commit);
+}
+
+fn git_name_status(repo: &TempRepo, from: &str, to: &str) -> Vec<String> {
+    let output = Command::new("git")
+        .args(["-c", "diff.renames=true", "diff", "--name-status", from, to])
+        .current_dir(&repo.dir)
+        .output()
+        .expect("git CLI available");
+    let mut lines: Vec<String> = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|line| {
+            let mut parts = line.split('\t');
+            let status = parts
+                .next()
+                .unwrap_or_default()
+                .chars()
+                .next()
+                .unwrap_or(' ');
+            let path = parts.next_back().unwrap_or_default();
+            format!("{status} {path}")
+        })
+        .collect();
+    lines.sort();
+    lines
+}
+
+#[test]
+fn compare_lists_the_net_change_between_two_commits_like_git_diff() {
+    let repo = TempRepo::new();
+    repo.write("kept.txt", "one\n");
+    repo.write("temp.txt", "temp\n");
+    repo.write(
+        "old-name.txt",
+        "a stable body that is long enough to be found again\n",
+    );
+    let from = commit_all(&repo, "from");
+    repo.write("kept.txt", "one\ntwo\n");
+    repo.write("added.txt", "new\n");
+    repo.write("temp.txt", "changed\n");
+    commit_all(&repo, "middle");
+    repo.write("temp.txt", "temp\n");
+    std::fs::rename(repo.dir.join("old-name.txt"), repo.dir.join("new-name.txt")).unwrap();
+    repo.write("kept.txt", "one\ntwo\nthree\n");
+    let to = commit_all(&repo, "to");
+
+    let files = core::compare_files(repo.path(), &from, &to).unwrap();
+    let mut ours: Vec<String> = files
+        .iter()
+        .map(|f| {
+            let status = match f.status.as_str() {
+                "new" => 'A',
+                "deleted" => 'D',
+                "renamed" => 'R',
+                _ => 'M',
+            };
+            format!("{status} {}", f.path)
+        })
+        .collect();
+    ours.sort();
+    assert_eq!(ours, git_name_status(&repo, &from, &to));
+    assert!(!files.iter().any(|f| f.path == "temp.txt"));
+    let renamed = files.iter().find(|f| f.path == "new-name.txt").unwrap();
+    assert_eq!(renamed.old_path.as_deref(), Some("old-name.txt"));
+    let kept = files.iter().find(|f| f.path == "kept.txt").unwrap();
+    assert_eq!((kept.additions, kept.deletions), (2, 0));
+
+    let diff =
+        core::compare_file_diff_with(repo.path(), &from, &to, "kept.txt", None, 3, false).unwrap();
+    let added: Vec<&str> = diff
+        .hunks
+        .iter()
+        .flat_map(|h| &h.lines)
+        .filter(|l| l.kind == "addition")
+        .map(|l| l.content.as_str())
+        .collect();
+    assert_eq!(added, vec!["two", "three"]);
+
+    let reversed = core::compare_files(repo.path(), &to, &from).unwrap();
+    assert!(reversed
+        .iter()
+        .any(|f| f.path == "added.txt" && f.status == "deleted"));
+}
+
+#[test]
+fn compare_works_across_branches_that_share_no_line() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "base\n");
+    commit_all(&repo, "base");
+    core::branch_create(repo.path(), "other", None, false).unwrap();
+    repo.write("a.txt", "main side\n");
+    let main_tip = commit_all(&repo, "main side");
+    core::checkout_branch(repo.path(), "other").unwrap();
+    repo.write("b.txt", "other side\n");
+    let other_tip = commit_all(&repo, "other side");
+
+    let files = core::compare_files(repo.path(), &main_tip, &other_tip).unwrap();
+    let mut ours: Vec<String> = files
+        .iter()
+        .map(|f| format!("{} {}", if f.status == "new" { 'A' } else { 'M' }, f.path))
+        .collect();
+    ours.sort();
+    assert_eq!(ours, git_name_status(&repo, &main_tip, &other_tip));
+    assert_eq!(ours, vec!["A b.txt".to_string(), "M a.txt".to_string()]);
 }
 
 #[test]
@@ -4944,6 +5169,7 @@ fn failing_pre_push_hook_sends_nothing_and_returns_its_output() {
     assert!(bare
         .find_commit(git2::Oid::from_str(&second).unwrap())
         .is_err());
+    drop(bare);
     assert_eq!(
         pre_push_stdin(&local),
         vec![format!(

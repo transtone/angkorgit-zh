@@ -31,11 +31,32 @@ test('project switching restores cached rows and reading position while refresh 
   await expect(page.getByRole('status', { name: '正在刷新' })).toBeVisible();
 });
 
+test('commit search shortcut remains available while the first history query is pending', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('最近仓库')).toBeVisible({ timeout: 10_000 });
+  await page.evaluate(async () => {
+    const { ipc } = await import('/src/core/ipc.ts');
+    ipc.history = () => new Promise(() => {});
+  });
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.locator('[data-table-loading]')).toBeVisible();
+  const search = page.getByPlaceholder('搜索提交…');
+  await page.keyboard.press('ControlOrMeta+f');
+  await expect(search).toBeFocused();
+  await expect(page.locator('[data-table-loading]')).toBeVisible();
+});
+
 test('manual refresh uses a transparent overlay confined to the table', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   const table = page.getByRole('table', { name: '提交', exact: true });
-  await expect(table.getByRole('row').first()).toBeVisible();
+  const firstRow = table.getByRole('row').first();
+  await expect(firstRow).toBeVisible();
+  await firstRow.click();
+  const selected = await page.evaluate(async () => {
+    const { useGraph } = await import('/src/features/graph/store.ts');
+    return useGraph.getState().selectedOid;
+  });
   await page.evaluate(async () => {
     const { ipc } = await import('/src/core/ipc.ts');
     ipc.history = () => new Promise(() => {});
@@ -44,6 +65,11 @@ test('manual refresh uses a transparent overlay confined to the table', async ({
   await page.keyboard.press('ControlOrMeta+r');
   const overlay = page.locator('[data-table-loading]');
   await expect(overlay).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  expect(await page.evaluate(async () => {
+    const { useGraph } = await import('/src/features/graph/store.ts');
+    return useGraph.getState().selectedOid;
+  })).toBe(selected);
   const overlayBox = await overlay.boundingBox();
   const tableBox = await table.boundingBox();
   expect(overlayBox).toEqual(tableBox);
@@ -55,4 +81,7 @@ test('manual refresh uses a transparent overlay confined to the table', async ({
   expect(visual.blur).toBe('none');
   await expect(table.getByRole('row').first()).toBeVisible();
   await expect(page.getByRole('complementary', { name: '分支与引用' })).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+f');
+  await expect(page.getByPlaceholder('搜索提交…')).toBeFocused();
+  await expect(overlay).toBeVisible();
 });

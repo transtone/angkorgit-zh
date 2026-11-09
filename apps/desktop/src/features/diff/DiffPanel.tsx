@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Copy, FileText, History, Minus, Plus, SearchCheck, Space, Sparkles, TextSelect, Trash2, UserRoundSearch, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, FileText, History, MapPin, Minus, Plus, SearchCheck, Space, Sparkles, TextSelect, Trash2, UserRoundSearch, X } from 'lucide-react';
 import type { CommitFileInfo, FileDiff } from '@angkorgit/core';
 import { aiCapabilities, hasCommittedHistory, hasReviewableText, hashText, locateDiffLine, patchTextOf, PROJECT_REVIEW_FILE } from '@angkorgit/core';
 import {
@@ -30,6 +30,8 @@ import { DiffAiStrip } from './DiffAiStrip';
 import { EXPLAIN_WAIT_MESSAGES, REVIEW_WAIT_MESSAGES } from '@/features/ai/waitMessages';
 import { fileAiKeyFor, useAiWork, type FileAiKind } from '@/features/ai/workStore';
 import { useShortcuts } from '@/shared/useShortcuts';
+import { basename, dirname } from '@/shared/utils';
+import { menuLocation } from './lineLocation';
 import { captureSelectionRanges, useKeepSelection } from '@/shared/useKeepSelection';
 import { useUi, type CenterDiffTarget } from '@/features/ui/store';
 import { DiffViewer } from './DiffViewer';
@@ -96,6 +98,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     info: LineMenuInfo;
     selection: string;
     ranges: Range[];
+    location: string | null;
   } | null>(null);
   useKeepSelection(lineMenu?.ranges ?? null);
   const textDiff = diff && !diff.isBinary && !diff.isImage ? diff : null;
@@ -131,6 +134,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         target.oldPath ?? null,
         contextLines,
         ignore,
+        target.base,
       );
       const untouched =
         result.hunks.length === 0 &&
@@ -152,7 +156,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     }
     let cancelled = false;
     void ipc
-      .commitFiles(path, target.oid)
+      .commitFiles(path, target.oid, target.base)
       .then((files) => {
         if (!cancelled) setCommitFileList(files);
       })
@@ -160,7 +164,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     return () => {
       cancelled = true;
     };
-  }, [path, target.oid]);
+  }, [path, target.oid, target.base]);
 
   const workingSiblings = useMemo(
     () =>
@@ -182,6 +186,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       openCenterDiff({
         path: next,
         oid: target.oid,
+        base: target.base,
         oldPath: commitFileList.find((f) => f.path === next)?.oldPath ?? null,
       });
     } else {
@@ -252,7 +257,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   const autoJumpKey = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (!diff || loading) return;
-    const key = `${path}|${target.path}|${target.oid ?? ''}|${target.staged ?? false}`;
+    const key = `${path}|${target.path}|${target.base ?? ''}|${target.oid ?? ''}|${target.staged ?? false}`;
     if (autoJumpKey.current === key) return;
     const el = scrollRef.current;
     if (!el) return;
@@ -292,7 +297,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
     if (!path) return;
     let cancelled = false;
     const seq = ++requestSeq.current;
-    const key = `${path}|${target.path}|${target.oid ?? ''}|${target.staged ?? false}|${target.unchanged ?? false}|${fullFileDiff}|${ignoreWhitespace}|${reloadToken}`;
+    const key = `${path}|${target.path}|${target.base ?? ''}|${target.oid ?? ''}|${target.staged ?? false}|${target.unchanged ?? false}|${fullFileDiff}|${ignoreWhitespace}|${reloadToken}`;
     if (loadedKey.current !== key) setLoading(true);
     void fetchDiff(fullFileDiff ? 10_000_000 : undefined)
       .then((result) => {
@@ -316,7 +321,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, target.path, target.oid, target.staged, target.unchanged, fullFileDiff, ignoreWhitespace, reloadToken, statusSignature]);
+  }, [path, target.path, target.oid, target.base, target.staged, target.unchanged, fullFileDiff, ignoreWhitespace, reloadToken, statusSignature]);
 
   useEffect(
     () => () => {
@@ -357,10 +362,12 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         ? {
             kind: 'commit',
             oid: target.oid,
-            summary: await ipc
-              .commitInfo(path, target.oid)
-              .then((info) => info.summary)
-              .catch(() => ''),
+            summary: target.base
+              ? `the changes from ${target.base.slice(0, 7)} to ${target.oid.slice(0, 7)}, several commits compared together`
+              : await ipc
+                  .commitInfo(path, target.oid)
+                  .then((info) => info.summary)
+                  .catch(() => ''),
           }
         : { kind: 'working-copy', staged: target.staged ?? false };
       if (!stillRunning()) return;
@@ -458,10 +465,17 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             <X className="size-4" />
           </Button>
         </Hint>
-        <span className="min-w-0 flex-1 truncate font-mono text-xs">{target.path}</span>
+        <span className="flex min-w-0 flex-1 font-mono text-xs" title={target.path}>
+          {dirname(target.path) && (
+            <span dir="rtl" className="min-w-0 truncate text-left text-muted">
+              <bdi>{dirname(target.path)}/</bdi>
+            </span>
+          )}
+          <span className="max-w-full shrink-0 truncate">{basename(target.path)}</span>
+        </span>
         {target.oid && (
-          <Badge tone="neutral" className="font-mono">
-            {target.oid.slice(0, 8)}
+          <Badge tone="neutral" className="font-mono" data-diff-range={target.base ? `${target.base.slice(0, 7)}..${target.oid.slice(0, 7)}` : undefined}>
+            {target.base ? `${target.base.slice(0, 7)}..${target.oid.slice(0, 7)}` : target.oid.slice(0, 8)}
           </Badge>
         )}
         {target.unchanged ? (
@@ -480,6 +494,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         <Separator orientation="vertical" className="mx-1 h-4" />
         {target.oid && !target.unchanged && !target.stash && <DiffLayoutToggle />}
         <DiffViewControls
+          labelled={!compact}
           wrapDisabled={!!textDiff && wrapUnavailable(textDiff)}
           notes={
             <>
@@ -493,11 +508,13 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         <Hint label="文件历史">
           <Button
             variant="ghost"
-            size="icon-sm"
+            size={compact ? 'icon-sm' : 'sm'}
             aria-label="文件历史"
+            className={cn(!compact && 'gap-1.5')}
             onClick={() => openFileHistory(target.path)}
           >
             <History className="size-3.5" />
+            {!compact && '历史'}
           </Button>
         </Hint>
         <Hint
@@ -511,12 +528,14 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
         >
           <Button
             variant="ghost"
-            size="icon-sm"
+            size={compact ? 'icon-sm' : 'sm'}
             aria-label="溯源"
+            className={cn(!compact && 'gap-1.5')}
             disabled={!blameable}
             onClick={() => openBlame(target.path, target.oid ?? null)}
           >
             <UserRoundSearch className="size-3.5" />
+            {!compact && '溯源'}
           </Button>
         </Hint>
         <DropdownMenu>
@@ -685,6 +704,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                 y: e.clientY,
                 info,
                 selection: diffSelectionText(scrollRef.current) ?? window.getSelection()?.toString() ?? '',
+                location: menuLocation(e, info, diff),
                 ranges: captureSelectionRanges(),
               });
             }}
@@ -829,6 +849,20 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             >
               <Copy /> 复制行
             </DropdownMenuItem>
+            {lineMenu.location && (
+              <DropdownMenuItem
+                data-copy-location={lineMenu.location}
+                onClick={() => {
+                  void navigator.clipboard.writeText(lineMenu.location ?? '');
+                  toast.success('路径和行号已复制', { description: lineMenu.location });
+                }}
+              >
+                <MapPin /> 复制路径和行号
+                <span className="ml-auto max-w-48 truncate pl-6 font-mono text-[11px] text-faint">
+                  {basename(lineMenu.location)}
+                </span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => selectSide(lineMenu.info.side ?? 'new')}
             >

@@ -1899,7 +1899,7 @@ test('a graph with more lanes than its column scrolls sideways under its own scr
   const bar = page.locator('[data-graph-scrollbar]');
   await expect(bar).toBeVisible();
   const list = page.getByRole('table', { name: '提交' });
-  const offset = () => list.evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue('--graph-scroll-x') || '0'));
+  const offset = () => list.evaluate((el) => parseFloat(el.getAttribute('data-graph-scroll-x') ?? '0'));
   const node = page.getByRole('row').nth(4).locator('span.rounded-full').first();
   const start = (await node.boundingBox())!.x;
   const listBox = (await list.boundingBox())!;
@@ -1961,7 +1961,49 @@ test('dragging the graph header edge resizes the column, keeps it after a reload
   await expect(bar).toBeVisible();
 });
 
+test('Only matches narrows the graph to the matching commits and brings the full graph back on the same commit', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const toggle = page.getByRole('button', { name: '仅显示匹配的提交' });
+  await expect(toggle).toHaveCount(0);
+  const search = page.getByPlaceholder('搜索提交…');
+  await search.fill('merge');
+  await expect(page.getByLabel(/^第 1 个匹配，共 \d+/)).toBeVisible();
+  const total = Number((await page.getByLabel(/^第 1 个匹配，共 \d+/).getAttribute('aria-label'))!.match(/共 (\d+)/)![1]);
+  const rows = page.locator('[role=table] [role=row]');
+  const summaries = () => rows.evaluateAll((all) => all.map((row) => row.textContent ?? ''));
+  expect((await summaries()).some((text) => !/merge/i.test(text))).toBe(true);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-matching-count]')).toHaveText(`${total} 个匹配提交`);
+  await expect.poll(async () => (await summaries()).every((text) => /merge/i.test(text))).toBe(true);
+  await search.press('Enter');
+  await search.press('Enter');
+  await expect(page.getByLabel(`第 3 个匹配，共 ${total}`)).toBeVisible();
+  const selectedHash = async () => ((await page.locator('[role=row][aria-selected=true]').textContent()) ?? '').match(/[0-9a-f]{7}/)?.[0];
+  const picked = (await page.locator('[role=row][aria-selected=true]').textContent())!;
+  expect(picked).toMatch(/merge/i);
+  const pickedHash = await selectedHash();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('[data-matching-count]')).toHaveCount(0);
+  await expect.poll(async () => (await summaries()).some((text) => !/merge/i.test(text))).toBe(true);
+  await expect.poll(selectedHash).toBe(pickedHash);
+  await expect(page.locator('[role=row][aria-selected=true]')).toHaveText(picked);
+  await toggle.click();
+  await expect.poll(async () => (await summaries()).every((text) => /merge/i.test(text))).toBe(true);
+  await search.press('Escape');
+  await expect.poll(async () => (await summaries()).some((text) => !/merge/i.test(text))).toBe(true);
+});
+
 test('the remote menu and the palette open the repository page in the browser', async ({ page }) => {
+  // Popup navigation belongs to the browser context; its first request bypasses page.route.
+  await page.context().route('https://github.com/demo/angkorgit', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<title>Repository preview</title>',
+  }));
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
@@ -1973,7 +2015,8 @@ test('the remote menu and the palette open the repository page in the browser', 
   await expect(item).toBeVisible();
   await expect(item).not.toHaveAttribute('aria-disabled', 'true');
   const [popup] = await Promise.all([page.context().waitForEvent('page'), item.click()]);
-  expect(popup.url()).toBe('https://github.com/demo/angkorgit');
+  await expect(popup).toHaveURL('https://github.com/demo/angkorgit');
+  await expect(popup).toHaveTitle('Repository preview');
   await popup.close();
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByPlaceholder('输入命令或分支名…')).toBeVisible();
@@ -2118,7 +2161,7 @@ test('shift-click selects a range of working copy files and the menu acts on all
   await expect(dialog.getByText('Architecture.md', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await page.getByText('ipc.ts', { exact: true }).first().click();
+  await page.locator('[data-selected-file-row]').getByText('ipc.ts', { exact: true }).click();
   await expect(page.locator('[data-selected-file-row]')).toHaveCount(1);
 });
 
@@ -3950,4 +3993,200 @@ test('pull warns before a conflicting pull and before one that would stop at loc
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-pull-warning]')).toHaveCount(0);
+});
+
+test('graph nodes whose lanes leave the column pin to its edges while the lanes scroll under them', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('angkorgit-demo-busy-graph', '1'));
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-graph-scrollbar]')).toBeVisible();
+  const placement = () =>
+    page.evaluate(() => {
+      const nodes = [...document.querySelectorAll<HTMLElement>('[role=table] [role=row] [data-graph-node]')];
+      let outside = 0;
+      let pinned = 0;
+      for (const node of nodes) {
+        const box = node.getBoundingClientRect();
+        const gutter = node.parentElement!.getBoundingClientRect();
+        if (box.left < gutter.left - 1 || box.right > gutter.right + 1) outside++;
+        if (node.style.transform) pinned++;
+      }
+      return { nodes: nodes.length, outside, pinned };
+    });
+  const rest = await placement();
+  expect(rest.nodes).toBeGreaterThan(10);
+  expect(rest.outside).toBe(0);
+  expect(rest.pinned).toBeGreaterThan(0);
+  const list = page.getByRole('table', { name: '提交' });
+  const box = (await list.boundingBox())!;
+  await page.mouse.move(box.x + 300, box.y + 200);
+  for (let i = 0; i < 30; i++) await page.mouse.wheel(20, 0);
+  await expect.poll(() => list.evaluate((el) => Number(el.getAttribute('data-graph-scroll-x')))).toBeGreaterThan(100);
+  const scrolled = await placement();
+  expect(scrolled.outside).toBe(0);
+  expect(scrolled.pinned).toBeGreaterThan(0);
+});
+
+test('a squeezed same-name tab hint keeps a few letters instead of one', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    const names = ['tycho', 'kirby', 'picasso', 'core.api', 'coloris', 'monika', 'crosspromotionmodule', 'promodia', 'schedudia', 'eyebreak', 'angkorgit'];
+    const paths = [...names.map((name) => `/Users/demo/projects/${name}`), '/Users/demo/forks/angkorgit'];
+    localStorage.setItem('angkorgit-ui', JSON.stringify({ state: { repoTabs: paths, worktreeTabs: [] }, version: 0 }));
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const hint = page.locator('[data-tab-path="/Users/demo/forks/angkorgit"] [data-tab-hint]');
+  await expect(hint).toHaveText('forks');
+  await page.setViewportSize({ width: 480, height: 900 });
+  await expect(page.locator('[data-tab-overflow]')).toBeVisible();
+  expect((await hint.boundingBox())!.width).toBeGreaterThanOrEqual(18);
+});
+
+test('switching between dark and light recolours every control in the same frame', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  for (const theme of ['light', 'angkor-dusk']) {
+    const lagging = await page.evaluate(async (theme) => {
+      const { useSettings } = await import('/src/features/settings/store.ts');
+      const elements = [...document.querySelectorAll<HTMLElement | SVGElement>('body *')];
+      const snap = () =>
+        elements.map((el) => {
+          const style = getComputedStyle(el);
+          return `${style.backgroundColor}|${style.borderTopColor}|${style.color}|${style.fill}`;
+        });
+      useSettings.getState().setTheme(theme as 'light');
+      const frames: string[][] = [];
+      const start = performance.now();
+      await new Promise<void>((resolve) => {
+        const tick = () => {
+          frames.push(snap());
+          if (performance.now() - start < 300) requestAnimationFrame(tick);
+          else resolve();
+        };
+        requestAnimationFrame(tick);
+      });
+      const final = frames[frames.length - 1];
+      return elements
+        .filter((el, i) => el.isConnected && frames.some((frame) => frame[i] !== final[i]))
+        .map((el) => `${el.tagName.toLowerCase()} ${el.getAttribute('class')?.slice(0, 60) ?? ''}`);
+    }, theme);
+    expect(lagging).toEqual([]);
+  }
+  await expect(page.locator('html')).not.toHaveClass(/no-transitions/);
+  expect(await page.getByPlaceholder('搜索提交…').evaluate((el) => getComputedStyle(el).transitionDuration)).not.toBe('0s');
+});
+
+test('a diff line menu copies the file location with the clicked column', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text: string) => void ((window as unknown as { __copied: string }).__copied = text) },
+    });
+  });
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await page.getByText('palette-seed.sql').first().click();
+  await page.waitForSelector('[data-diff-layer] [data-diff-row]', { timeout: 10_000 });
+  await page.waitForTimeout(500);
+
+  const target = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-diff-pane="new"] [data-diff-layer] > [data-diff-row]')];
+    const row = rows.find((r) => {
+      const box = r.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + 30, box.top + box.height / 2);
+      const end = document.elementFromPoint(box.left + 600, box.top + box.height / 2);
+      return (r.textContent ?? '').length > 12 && (r.textContent ?? '').length < 60 && !!hit && r.contains(hit) && !!end && r.contains(end) && box.top > 120;
+    })!;
+    const gutter = [...document.querySelectorAll<HTMLElement>('div.absolute.left-0.flex.w-full')].find(
+      (g) => g.style.transform === row.style.transform && g.children.length >= 3,
+    )!;
+    const lineNo = gutter.children[1].textContent || gutter.children[0].textContent;
+    const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+    let remaining = 6;
+    let rect: DOMRect | null = null;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const length = node.textContent?.length ?? 0;
+      if (remaining < length) {
+        const range = document.createRange();
+        range.setStart(node, remaining);
+        range.setEnd(node, remaining + 1);
+        rect = range.getBoundingClientRect();
+        break;
+      }
+      remaining -= length;
+    }
+    const box = row.getBoundingClientRect();
+    return {
+      lineNo,
+      charX: rect!.left + rect!.width * 0.75,
+      y: box.top + box.height / 2,
+      endX: box.left + 600,
+    };
+  });
+
+  await page.mouse.click(target.charX, target.y, { button: 'right' });
+  const item = page.getByRole('menuitem', { name: /复制路径和行号/ });
+  await expect(item).toHaveAttribute('data-copy-location', `src/data/palette-seed.sql:${target.lineNo}:7`);
+  await expect(item).toContainText(`palette-seed.sql:${target.lineNo}:7`);
+  await item.click();
+  await expect(page.getByText('路径和行号已复制')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __copied: string }).__copied)).toBe(
+    `src/data/palette-seed.sql:${target.lineNo}:7`,
+  );
+
+  await page.mouse.click(target.endX, target.y, { button: 'right' });
+  await expect(item).toHaveAttribute('data-copy-location', `src/data/palette-seed.sql:${target.lineNo}`);
+  await page.keyboard.press('Escape');
+});
+
+test('two selected commits can be compared with the same file list and diff panel', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('angkorgit', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
+  const rows = page.getByRole('row');
+  const hashOf = async (n: number) => (await rows.nth(n).getByTitle('复制完整哈希').textContent())!.trim();
+  const newer = await hashOf(1);
+  const older = await hashOf(3);
+
+  await rows.nth(1).click();
+  await rows.nth(3).click({ modifiers: ['ControlOrMeta'] });
+  await rows.nth(3).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '比较这些提交' }).click();
+
+  const inspector = page.locator('aside[aria-label="检查器"]');
+  const header = inspector.locator('[data-compare-header]');
+  await expect(inspector.getByText('比较', { exact: true })).toBeVisible();
+  await expect(header.locator('[data-compare-row="from"]')).toContainText(older);
+  await expect(header.locator('[data-compare-row="to"]')).toContainText(newer);
+  await expect(inspector.getByRole('button', { name: '编辑提交消息' })).toHaveCount(0);
+  await expect(inspector.getByRole('button', { name: /用 AI 解释/ })).toHaveCount(0);
+
+  await inspector.getByText('GraphRow.tsx').first().click();
+  await expect(page.locator('[data-diff-range]')).toHaveText(`${older}..${newer}`);
+  await page.getByRole('button', { name: '显示全部文件' }).click();
+  await expect(page.locator('[data-all-changes]')).toContainText(`${older}..${newer}`);
+  await page.getByRole('button', { name: '显示单文件' }).click();
+  await expect(page.locator('[data-diff-range]')).toHaveText(`${older}..${newer}`);
+
+  await header.getByRole('button', { name: '交换比较的提交' }).click();
+  await expect(header.locator('[data-compare-row="from"]')).toContainText(newer);
+  await expect(header.locator('[data-compare-row="to"]')).toContainText(older);
+  await expect(page.locator('[data-diff-range]')).toHaveCount(0);
+
+  await rows.nth(2).click();
+  await expect(inspector.locator('[data-compare-header]')).toHaveCount(0);
+  await expect(inspector.getByText('提交', { exact: true })).toBeVisible();
+
+  await rows.nth(1).click();
+  await rows.nth(2).click({ modifiers: ['ControlOrMeta'] });
+  await rows.nth(3).click({ modifiers: ['ControlOrMeta'] });
+  await rows.nth(3).click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: /摘取 3 个提交/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '比较这些提交' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 });

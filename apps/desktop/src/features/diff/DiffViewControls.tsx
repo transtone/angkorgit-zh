@@ -58,9 +58,11 @@ export function DiffLayoutToggle() {
 export function DiffViewControls({
   wrapDisabled = false,
   notes,
+  labelled = false,
 }: {
   wrapDisabled?: boolean;
   notes?: React.ReactNode;
+  labelled?: boolean;
 }) {
   const diffView = useUi((s) => s.diffView);
   const setDiffView = useUi((s) => s.setDiffView);
@@ -77,23 +79,25 @@ export function DiffViewControls({
       <Hint label="内联 diff">
         <Button
           variant="ghost"
-          size="icon-sm"
+          size={labelled ? 'sm' : 'icon-sm'}
           aria-label="内联 diff"
-          className={cn(diffView === 'inline' && 'bg-surface-raised text-foreground')}
+          className={cn(labelled && 'gap-1.5', diffView === 'inline' && 'bg-surface-raised text-foreground')}
           onClick={() => setDiffView('inline')}
         >
           <Rows3 className="size-3.5" />
+          {labelled && '内联'}
         </Button>
       </Hint>
       <Hint label="并排 diff">
         <Button
           variant="ghost"
-          size="icon-sm"
+          size={labelled ? 'sm' : 'icon-sm'}
           aria-label="并排 diff"
-          className={cn(diffView === 'split' && 'bg-surface-raised text-foreground')}
+          className={cn(labelled && 'gap-1.5', diffView === 'split' && 'bg-surface-raised text-foreground')}
           onClick={() => setDiffView('split')}
         >
           <Columns2 className="size-3.5" />
+          {labelled && '并排'}
         </Button>
       </Hint>
       <DropdownMenu>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
-import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Cloud, Combine, Copy, FastForward, Filter, FolderTree, GitBranchPlus, GitCommitHorizontal, Settings2, GitMerge, ListOrdered, ListRestart, Pencil, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Cloud, Combine, Copy, FastForward, Filter, FolderTree, GitCompareArrows, ListFilter, GitBranchPlus, GitCommitHorizontal, Settings2, GitMerge, ListOrdered, ListRestart, Pencil, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
 import { pickRemote, type CommitInfo, type RefInfo } from '@angkorgit/core';
 import {
   Button,
@@ -60,7 +60,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   const worktrees = useRepo((s) => s.worktrees);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
-  const { rows, commits, maxLane, hasMore, loading, error, filters, find, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
+  const { rows, commits, maxLane, hasMore, loading, error, filters, find, matchesOnly, onlyMatches, setOnlyMatches, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
     useGraph();
   const openDialog = useUi((s) => s.openDialog);
   const requestEditMessage = useUi((s) => s.requestEditMessage);
@@ -175,13 +175,13 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   const graphLimit = graphWidth ?? GUTTER_DEFAULT_WIDTH;
   const gutterWidth = gutterWidthFor(maxLane, laneWidth, graphLimit);
   const graphOverflow = gutterOverflowFor(maxLane, laneWidth, graphLimit);
-  const filtersActive = Boolean(filters.branch);
+  const filtersActive = Boolean(filters.branch) || matchesOnly !== null;
 
   const moveSelection = useCallback(
     (step: 1 | -1 | 'home' | 'end') => {
       const ui = useUi.getState();
       if (ui.centerDiff || ui.centerEditor || ui.centerFileHistory || ui.paletteOpen || ui.dialog || ui.conflictFile) return;
-      if (commits.length === 0) return;
+      if (blocked || commits.length === 0) return;
       const current = commits.findIndex((c) => c.oid === selectedOid);
       const next =
         step === 'home'
@@ -196,7 +196,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
       select(commits[next].oid);
       virtualizer.scrollToIndex(next, { align: 'auto' });
     },
-    [commits, selectedOid, select, virtualizer],
+    [blocked, commits, selectedOid, select, virtualizer],
   );
 
   const keyNav = useMemo(
@@ -210,6 +210,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
         handler: () => {
           const ui = useUi.getState();
           if (ui.centerDiff || ui.centerEditor || ui.centerFileHistory || ui.paletteOpen || ui.dialog || ui.conflictFile) return;
+          if (blocked) return;
           ui.focusInspector(useGraph.getState().selectedOid);
         },
       },
@@ -222,9 +223,9 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
         },
       },
     ],
-    [moveSelection],
+    [blocked, moveSelection],
   );
-  useShortcuts(blocked ? [] : keyNav);
+  useShortcuts(keyNav);
 
   const act = useCallback(
     async (
@@ -318,6 +319,14 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
       count: selectedOids.length,
       contiguous: max - min === selectedOids.length - 1,
     };
+  }, [menu, selectedOids, commits]);
+
+  const compareSelection = useMemo(() => {
+    if (!menu || selectedOids.length !== 2 || !selectedOids.includes(menu.commit.oid)) return null;
+    const [first, second] = selectedOids.map((oid) => commits.findIndex((c) => c.oid === oid));
+    if (first < 0 || second < 0) return null;
+    const [newer, older] = first < second ? [first, second] : [second, first];
+    return { from: commits[older].oid, to: commits[newer].oid };
   }, [menu, selectedOids, commits]);
 
   const pickSelection = useMemo(() => {
@@ -481,6 +490,21 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
               </Hint>
             </span>
           ))}
+        {find && (
+          <Hint label={onlyMatches ? '显示完整提交图' : '仅显示匹配的提交'}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="仅显示匹配的提交"
+              aria-pressed={onlyMatches}
+              data-only-matches={onlyMatches ? 'on' : 'off'}
+              className={cn(onlyMatches && 'bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary')}
+              onClick={() => void setOnlyMatches(path, !onlyMatches)}
+            >
+              <ListFilter className="size-3.5" />
+            </Button>
+          </Hint>
+        )}
         <div className="relative w-44">
           <User className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
           <Input
@@ -500,16 +524,23 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
             </button>
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2 text-xs text-faint">
+        <div className="ml-auto flex items-center gap-2 whitespace-nowrap text-xs text-faint">
           {(loading || refreshing) && <span role="status" aria-label="正在刷新"><Spinner className="size-3.5" /></span>}
           {refreshError && !refreshing && (
             <button className="max-w-48 truncate text-danger" title={refreshError}
               onClick={() => void refresh().catch(() => undefined)}>刷新失败，重试</button>
           )}
-          <span>
-            {commits.length.toLocaleString()}
-            {hasMore ? '+' : ''} 个提交
-          </span>
+          {matchesOnly && find && !find.loading ? (
+            <span data-matching-count>
+              {find.matches.length.toLocaleString()}
+              {find.truncated ? '+' : ''} 个匹配提交
+            </span>
+          ) : (
+            <span>
+              {commits.length.toLocaleString()}
+              {hasMore ? '+' : ''} 个提交
+            </span>
+          )}
           <DropdownMenu>
             <Hint label="提交图显示">
               <DropdownMenuTrigger asChild>
@@ -640,7 +671,11 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                   : '第一个提交会显示在这里。'
               }
             >
-              {filtersActive ? (
+              {matchesOnly ? (
+                <Button variant="ghost" size="sm" onClick={() => void setOnlyMatches(path, false)}>
+                  显示完整提交图
+                </Button>
+              ) : filtersActive ? (
                 <Button variant="ghost" size="sm" onClick={() => setFilters(path, { branch: '' })}>
                   清除筛选
                 </Button>
@@ -659,7 +694,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                   className={cn(
                     locatedOid === commit.oid
                       ? 'animate-locate rounded-md bg-primary/10 shadow-[inset_3px_0_0_hsl(var(--primary))]'
-                      : matchOids.has(commit.oid) && 'shadow-[inset_2px_0_0_hsl(var(--primary)/0.45)]',
+                      : !matchesOnly && matchOids.has(commit.oid) && 'shadow-[inset_2px_0_0_hsl(var(--primary)/0.45)]',
                   )}
                   data-search-match={matchOids.has(commit.oid) ? (locatedOid === commit.oid ? 'active' : 'true') : undefined}
                   style={{
@@ -938,6 +973,20 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                       )}
                     </DropdownMenuItem>
                   ))}
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {compareSelection && (
+              <>
+                <DropdownMenuItem
+                  data-compare-commits
+                  onClick={() => {
+                    useUi.getState().closeCenterDiff();
+                    useGraph.getState().setCompare(compareSelection);
+                  }}
+                >
+                  <GitCompareArrows /> 比较这些提交
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
             )}

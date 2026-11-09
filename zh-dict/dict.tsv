@@ -1495,3 +1495,12 @@ e2e	Done	完成	name: 'Done'
 e2e	Close	关闭	name: 'Close', exact: true
 e2e	Close tycho	关闭 tycho
 e2e	Close angkorgit	关闭 angkorgit
+ui,e2e	Show only matching commits	仅显示匹配的提交		whole
+ui,e2e	Show only the matching commits	仅显示匹配的提交		whole
+ui,e2e	Show the full graph	显示完整提交图		whole
+ui,e2e	Compare these commits	比较这些提交
+ui,e2e	Changes between two commits	两次提交之间的更改
+ui,e2e	Swap the direction	交换比较方向		whole
+ui,e2e	Swap the compared commits	交换比较的提交		whole
+ui,e2e	Copy path and line	复制路径和行号
+ui,e2e	Path and line copied	路径和行号已复制		whole
