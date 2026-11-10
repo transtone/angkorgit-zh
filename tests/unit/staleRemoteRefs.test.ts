@@ -78,12 +78,15 @@ describe('stale remote tracking refs', () => {
     mocks.remotes.mockResolvedValue([remote('origin', 'new-url')]);
     await useRepo.getState().refresh();
     expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(3);
+    await vi.dynamicImportSettled();
     useRepo.getState().markFetched();
     useRepo.getState().markFetched();
-    expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(5);
+    expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(4);
     await useRepo.getState().refresh();
-    expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(5);
+    expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(4);
     await useRepo.getState().checkStaleRemoteRefs();
+    expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(5);
+    useRepo.getState().markFetched();
     expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(6);
   });
 
@@ -111,7 +114,7 @@ describe('stale remote tracking refs', () => {
     expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(8);
   });
 
-  it('clears failed remote classification while preserving successful remote evidence', async () => {
+  it('retains failed remote stale evidence while clearing its tag classification', async () => {
     mocks.remotes.mockResolvedValue([remote('origin'), remote('upstream')]);
     mocks.branches.mockResolvedValue([branch('origin/gone'), branch('upstream/gone')]);
     mocks.remoteRefStatus.mockImplementation(async (_path, name) => result([`refs/remotes/${name}/gone`]));
@@ -122,18 +125,90 @@ describe('stale remote tracking refs', () => {
       return result(['refs/remotes/upstream/gone'], 'different');
     });
     await expect(useRepo.getState().checkStaleRemoteRefs()).resolves.toBeUndefined();
-    expect(stale()).toEqual(['refs/remotes/upstream/gone']);
+    expect(stale()).toEqual(['refs/remotes/origin/gone', 'refs/remotes/upstream/gone']);
     expect(useRepo.getState().tagRemoteStatus).toEqual({
       origin: { checkedAt: null, error: 'offline', tags: {} },
       upstream: { checkedAt: expect.any(Number), error: null, tags: { v1: 'different' } },
     });
   });
 
+  it('keeps displayed evidence during repeated background checks and publishes fast remotes first', async () => {
+    mocks.remotes.mockResolvedValue([remote('origin'), remote('upstream')]);
+    mocks.branches.mockResolvedValue([branch('origin/gone'), branch('upstream/gone')]);
+    mocks.remoteRefStatus.mockImplementation(async (_path, name) => result([`refs/remotes/${name}/gone`]));
+    await useRepo.getState().open('A');
+    await vi.waitFor(() => expect(stale()).toHaveLength(2));
+    const savedTags = useRepo.getState().tagRemoteStatus;
+    const slow = deferred<RemoteRefStatus>();
+    const fast = deferred<RemoteRefStatus>();
+    mocks.remoteRefStatus.mockImplementation((_path, name) => name === 'origin' ? slow.promise : fast.promise);
+    useRepo.getState().markFetched();
+    useRepo.getState().markFetched();
+    await useRepo.getState().refresh();
+    expect(mocks.remoteRefStatus).toHaveBeenCalledTimes(4);
+    expect(stale()).toEqual(['refs/remotes/origin/gone', 'refs/remotes/upstream/gone']);
+    expect(useRepo.getState().tagRemoteStatus).toEqual(savedTags);
+    fast.resolve(result([], 'different'));
+    await vi.waitFor(() => expect(useRepo.getState().tagRemoteStatus.upstream.tags.v1).toBe('different'));
+    expect(stale()).toEqual(['refs/remotes/origin/gone']);
+    expect(useRepo.getState().tagRemoteStatus.origin).toEqual(savedTags.origin);
+    slow.resolve(result());
+    await vi.waitFor(() => expect(stale()).toEqual([]));
+  });
+
+  it('retains only confirmed stale refs on failure with custom overlapping fetch destinations', async () => {
+    mocks.remotes.mockResolvedValue([remote('origin'), remote('upstream')]);
+    mocks.branches.mockResolvedValue([branch('custom/gone'), branch('custom/live')]);
+    mocks.remoteRefStatus.mockImplementation(async (_path, name) => result(
+      name === 'origin' ? ['refs/remotes/custom/gone'] : [],
+    ));
+    await useRepo.getState().open('A');
+    await vi.waitFor(() => expect(stale()).toEqual(['refs/remotes/custom/gone']));
+    mocks.remoteRefStatus.mockImplementation(async (_path, name) => {
+      if (name === 'origin') throw new Error('offline');
+      return result();
+    });
+    await useRepo.getState().checkStaleRemoteRefs();
+    expect(stale()).toEqual(['refs/remotes/custom/gone']);
+    expect(useRepo.getState().tagRemoteStatus.origin.tags).toEqual({});
+    mocks.branches.mockResolvedValue([branch('custom/live')]);
+    await useRepo.getState().refresh();
+    expect(stale()).toEqual([]);
+  });
+
+  it('invalidates previous evidence for a changed remote URL while a check is pending', async () => {
+    await useRepo.getState().open('A');
+    await vi.waitFor(() => expect(stale()).toHaveLength(1));
+    const pending = deferred<RemoteRefStatus>();
+    mocks.remoteRefStatus.mockReturnValueOnce(pending.promise);
+    mocks.remotes.mockResolvedValue([remote('origin', 'new-url')]);
+    await useRepo.getState().refresh();
+    expect(stale()).toEqual([]);
+    expect(useRepo.getState().tagRemoteStatus.origin.tags).toEqual({});
+    pending.resolve(result());
+    await pending.promise;
+  });
+
+  it('retains stale evidence across changed branch OIDs until fresh results arrive', async () => {
+    await useRepo.getState().open('A');
+    await vi.waitFor(() => expect(stale()).toEqual(['refs/remotes/origin/gone']));
+    const pending = deferred<RemoteRefStatus>();
+    mocks.remoteRefStatus.mockReturnValueOnce(pending.promise);
+    mocks.branches.mockResolvedValue([branch('origin/gone', 'two'), branch('origin/live')]);
+    await useRepo.getState().refresh();
+    expect(stale()).toEqual(['refs/remotes/origin/gone']);
+    pending.resolve(result());
+    await vi.waitFor(() => expect(stale()).toEqual([]));
+  });
+
   it('caches tag evidence for the selected repository and clears it for removed remotes', async () => {
-    mocks.remoteRefStatus.mockImplementation(async (path) => result([], path === 'A' ? 'localOnly' : 'different'));
+    mocks.remoteRefStatus.mockImplementation(async (path) => result(
+      path === 'A' ? ['refs/remotes/origin/gone'] : [], path === 'A' ? 'localOnly' : 'different',
+    ));
     await useRepo.getState().open('A');
     await vi.waitFor(() => expect(useRepo.getState().tagRemoteStatus.origin.tags.v1).toBe('localOnly'));
     const saved = useRepo.getState().tagRemoteStatus;
+    const savedEvidence = useRepo.getState().remoteRefEvidence;
     await useRepo.getState().open('B');
     await vi.waitFor(() => expect(useRepo.getState().tagRemoteStatus.origin.tags.v1).toBe('different'));
     const refresh = deferred<TagInfo[]>();
@@ -141,10 +216,13 @@ describe('stale remote tracking refs', () => {
     await useRepo.getState().open('A');
     expect(useRepo.getState().repo?.path).toBe('A');
     expect(useRepo.getState().tagRemoteStatus).toBe(saved);
+    expect(useRepo.getState().remoteRefEvidence).toBe(savedEvidence);
+    expect(stale()).toEqual(['refs/remotes/origin/gone']);
     mocks.remotes.mockResolvedValue([]);
     refresh.resolve([]);
     await useRepo.getState().refresh();
     expect(useRepo.getState().tagRemoteStatus).toEqual({});
+    expect(useRepo.getState().remoteRefEvidence).toEqual({});
     expect(stale()).toEqual([]);
   });
 
@@ -181,5 +259,6 @@ describe('stale remote tracking refs', () => {
     await check;
     expect(stale()).toEqual([]);
     expect(useRepo.getState().tagRemoteStatus).toEqual({});
+    expect(useRepo.getState().remoteRefEvidence).toEqual({});
   });
 });

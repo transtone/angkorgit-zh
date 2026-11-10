@@ -1661,26 +1661,33 @@ test('冲突解决器在两侧和结果中都显示行号', async ({ page }) => 
   expect(values.every((n) => Number.isInteger(n) && n > 0)).toBe(true);
 });
 
-test('hovering a crowded ref cell stacks every ref in place, folded ones included', async ({ page }) => {
+test('hovering a crowded ref cell opens a separate panel without moving its chips', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
-  const rowChip = page.getByTitle(/^feature\/diff-viewer · 本地/).first();
-  const row = page.getByRole('row').filter({ has: rowChip }).first();
+  const row = page.getByRole('row').filter({ has: page.locator('[data-ref-name="refs/heads/feature/diff-viewer"]') }).first();
+  const rowChip = row.locator('[data-ref-name="refs/heads/feature/diff-viewer"]');
   await expect(row.getByText('release/0.4', { exact: true })).toHaveCount(0);
   await expect(row.getByRole('button', { name: '还有 1 个引用' })).toHaveText('+1');
+  const overflow = row.getByRole('button', { name: '还有 1 个引用' });
+  const before = { chip: await rowChip.boundingBox(), overflow: await overflow.boundingBox() };
   await rowChip.hover();
   const panel = page.locator('[data-more-refs]');
-  const first = panel.getByTitle(/^feature\/diff-viewer · 本地/);
-  const second = panel.getByTitle(/^release\/0\.4 · 本地——双击检出/);
+  const first = panel.locator('[data-ref-name="refs/heads/feature/diff-viewer"]');
+  const second = panel.locator('[data-ref-name="refs/heads/release/0.4"]');
   await expect(first).toBeVisible();
   await expect(second).toBeVisible();
   const rowBox = await rowChip.boundingBox();
+  const overflowBox = await overflow.boundingBox();
+  const panelBox = await panel.boundingBox();
   const firstBox = await first.boundingBox();
   const secondBox = await second.boundingBox();
-  if (!rowBox || !firstBox || !secondBox) throw new Error('chip geometry missing');
-  expect(Math.abs(firstBox.x - rowBox.x)).toBeLessThanOrEqual(2);
-  expect(Math.abs(firstBox.y - rowBox.y)).toBeLessThanOrEqual(2);
+  if (!before.chip || !before.overflow || !rowBox || !overflowBox || !panelBox || !firstBox || !secondBox) throw new Error('chip geometry missing');
+  expect(rowBox).toEqual(before.chip);
+  expect(overflowBox).toEqual(before.overflow);
+  expect(panelBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height);
+  await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+  await expect(first).not.toHaveAttribute('title');
   expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
   expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height);
   await second.click({ button: 'right' });
@@ -1701,8 +1708,8 @@ test('the checked-out branch is the visible chip and the only one with the tick'
   await expect(top.getByRole('button', { name: '还有 1 个引用' })).toHaveText('+1');
   await top.getByTitle(/^main · 本地/).hover();
   const panel = page.locator('[data-more-refs]');
-  const main = panel.getByTitle(/^main · 本地/);
-  const hotfix = panel.getByTitle(/^hotfix\/lane-colors · 本地/);
+  const main = panel.locator('[data-ref-name="refs/heads/main"]');
+  const hotfix = panel.locator('[data-ref-name="refs/heads/hotfix/lane-colors"]');
   await expect(main).toBeVisible();
   await expect(hotfix).toBeVisible();
   const mainBox = await main.boundingBox();
@@ -1860,7 +1867,7 @@ test('graph branch and tag chips offer the sidebar actions, with the checked-out
   await expect(page.getByRole('menu')).toHaveCount(0);
   // The remote prefix can fold the tag behind the row's overflow badge.
   await page.getByTitle(/origin\/main——双击将 main 重置到此处/).first().hover();
-  await page.locator('[data-more-refs]').getByTitle(/^v0\.4\.0 ·/).first().click({ button: 'right' });
+  await page.locator('[data-more-refs] [data-ref-name="refs/tags/v0.4.0"]').click({ button: 'right' });
   await expect(menu.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeEnabled();
   await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeDisabled();
   await menu.getByRole('menuitem', { name: '删除标签 v0.4.0', exact: true }).click();

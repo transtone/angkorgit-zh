@@ -30,13 +30,10 @@ export function tagRemoteSummary(
     const entry = tagRemoteStatus[remoteName];
     return entry?.checkedAt != null && !entry.error ? entry.tags[name] ?? 'unknown' : 'unknown';
   };
-  const title = remotes.length === 0 ? `${name} · 未配置远端` : `${name} · 状态图标对应远端：${remote}\n` + remotes.map(({ name: remoteName }) => {
-    const entry = tagRemoteStatus[remoteName];
-    const checked = entry?.checkedAt != null
-      ? `上次检查：${new Date(entry.checkedAt).toLocaleString()}`
-      : entry?.error ? '查询失败' : '未检查';
-    return `${name} · ${remoteName}: ${labels[statusFor(remoteName)]}（${checked}）`;
-  }).join('\n');
+  const orderedRemotes = [...remotes].sort((a, b) => Number(b.name === remote) - Number(a.name === remote));
+  const title = remotes.length === 0 ? `${name} · 未配置远端` : `${name} · ` + orderedRemotes.map(({ name: remoteName }) =>
+    `${remoteName}：${labels[statusFor(remoteName)]}`,
+  ).join('；');
   return { status: remote ? statusFor(remote) : 'unknown', title, remote };
 }
 
@@ -47,7 +44,7 @@ export function useTagRemoteStatus(name: string) {
   return tagRemoteSummary(name, { tagRemoteStatus, remotes, branches });
 }
 
-export function TagRemoteStatus({ name, className }: { name: string; className?: string }) {
+export function TagRemoteStatus({ name, className, showTitle = true }: { name: string; className?: string; showTitle?: boolean }) {
   const { status, title } = useTagRemoteStatus(name);
   const Icon = { synced: Cloud, localOnly: Monitor, different: TriangleAlert, unknown: CircleHelp }[status];
   return (
@@ -56,7 +53,7 @@ export function TagRemoteStatus({ name, className }: { name: string; className?:
       data-tag-remote={name}
       role="img"
       aria-label={title}
-      title={title}
+      title={showTitle ? title : undefined}
       className={cn('inline-flex shrink-0 items-center', status === 'different' ? 'text-amber-500' : 'text-muted-foreground', className)}
     >
       <Icon className="size-3.5" aria-hidden="true" />

@@ -28,17 +28,16 @@ beforeEach(() => {
 });
 
 describe('tag remote summary', () => {
-  it('picks HEAD upstream and lists every remote with its check time', () => {
+  it('picks HEAD upstream and gives a concise summary with the selected remote first', () => {
     const summary = tagRemoteSummary('v1', { remotes, branches: [head], tagRemoteStatus: statuses });
     expect(summary).toMatchObject({ remote: 'backup', status: 'different' });
-    expect(summary.title).toContain('v1 · backup: 与远端不一致');
-    expect(summary.title).toContain('v1 · origin: 已同步');
-    expect(summary.title).toContain(new Date(checkedAt).toLocaleString());
+    expect(summary.title).toBe('v1 · backup：与远端不一致；origin：已同步');
   });
 
   it('uses origin before the first remote when HEAD has no upstream', () => {
-    expect(tagRemoteSummary('v1', { remotes, branches: [], tagRemoteStatus: statuses }))
-      .toMatchObject({ remote: 'origin', status: 'synced' });
+    const summary = tagRemoteSummary('v1', { remotes, branches: [], tagRemoteStatus: statuses });
+    expect(summary).toMatchObject({ remote: 'origin', status: 'synced' });
+    expect(summary.title).toBe('v1 · origin：已同步；backup：与远端不一致');
   });
 
   it('keeps failed, unchecked and missing tag results unknown without leaking errors', () => {
@@ -48,8 +47,7 @@ describe('tag remote summary', () => {
       },
     });
     expect(summary.status).toBe('unknown');
-    expect(summary.title).toContain('backup: 状态未知（查询失败）');
-    expect(summary.title).toContain('origin: 状态未知（未检查）');
+    expect(summary.title).toBe('v1 · backup：状态未知；origin：状态未知');
     expect(summary.title).not.toContain('secret');
     expect(tagRemoteSummary('missing', { remotes, branches: [], tagRemoteStatus: statuses }).status).toBe('unknown');
   });
@@ -73,8 +71,8 @@ describe('tag status icon', () => {
     expect(html).toContain(`data-tag-remote-status="${status}"`);
     expect(html).toContain('data-tag-remote="v1"');
     expect(html).toContain(`lucide-${icon}`);
-    expect(html).toContain('aria-label="v1 · 状态图标对应远端：backup');
-    expect(html).toContain('title="v1 · 状态图标对应远端：backup');
+    expect(html).toContain('aria-label="v1 · backup：');
+    expect(html).toContain('title="v1 · backup：');
     expect(html).toContain('custom');
     if (status === 'different') expect(html).toContain('text-amber-500');
   });

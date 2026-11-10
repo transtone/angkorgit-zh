@@ -14,8 +14,6 @@ export const REF_COL_WIDTH = 150;
 export const GUTTER_GAP = 10;
 export const AUTHOR_COL_WIDTH = 112;
 const OVERFLOW_BADGE_WIDTH = 34;
-const REF_STACK_SIDE_OFFSET = -ROW_HEIGHT;
-const REF_STACK_ALIGN_OFFSET = -5;
 const CHAR_WIDTH = 6.4;
 const CHIP_PADDING = 18;
 const CHIP_ICON = 14;
@@ -346,11 +344,15 @@ function RefChip({
   onCheckoutRef,
   onRefMenu,
   onResetToRemote,
+  showTitle = true,
+  refName,
 }: {
   group: RefGroup;
   head: boolean;
   worktree?: string;
   separated: boolean;
+  showTitle?: boolean;
+  refName?: string;
   color: number;
   onCheckoutRef: (ref: RefInfo) => void;
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
@@ -367,18 +369,19 @@ function RefChip({
   return (
     <Badge
       tone="neutral"
+      data-ref-name={refName}
       data-stale-remote-ref={group.stale ? group.primary.name : undefined}
       data-lane-chip={group.stash || group.stale ? undefined : color % 10}
       style={laneStyle}
       className={cn(
-        'min-w-0 shrink whitespace-nowrap',
+        'min-w-0 max-w-full shrink whitespace-nowrap',
         !group.tag && !group.stash && !head &&
-          'cursor-pointer hover:z-20 hover:shrink-0 hover:!bg-surface-overlay hover:shadow-soft',
+          'cursor-pointer hover:!bg-surface-overlay hover:shadow-soft',
         group.stale && 'border-dashed',
         group.stash && 'max-w-[11rem] cursor-pointer border-dashed hover:!bg-surface-overlay',
-        head && 'cursor-pointer shadow-soft hover:z-20 hover:shrink-0',
+        head && 'cursor-pointer shadow-soft',
       )}
-      title={
+      title={!showTitle ? undefined :
         group.stale
           ? `${group.primary.shorthand} · 过期的远程跟踪分支\n上次检查时远端分支已删除；右键可删除远程跟踪引用，不影响本地分支或远端仓库。`
           : group.stash
@@ -411,7 +414,7 @@ function RefChip({
       {group.local && !worktree && <Monitor className="size-2.5 shrink-0" />}
       {worktree && <FolderTree className="size-2.5 shrink-0" />}
       {group.remote && (group.stale ? <CloudOff className="size-2.5 shrink-0" /> : <Cloud className="size-2.5 shrink-0" />)}
-      {group.tag && <TagRemoteStatus name={group.label} className="size-2.5 shrink-0" />}
+      {group.tag && <TagRemoteStatus name={group.label} showTitle={showTitle} className="size-2.5 shrink-0" />}
     </Badge>
   );
 }
@@ -461,7 +464,7 @@ function RefCell({
       return head;
     });
   };
-  const chip = (group: RefGroup, head: boolean) => (
+  const chip = (group: RefGroup, head: boolean, inOverlay = false) => (
     <RefChip
       key={group.primary.name}
       group={group}
@@ -469,6 +472,8 @@ function RefCell({
       worktree={group.local ? worktrees?.get(group.label) : undefined}
       color={color}
       separated={!group.stale && group.remote && !group.local && (resettableBranches?.has(group.primary.shorthand.split('/').slice(1).join('/')) ?? false)}
+      showTitle={!more && !inOverlay}
+      refName={group.primary.name}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={onRefMenu}
       onResetToRemote={onResetToRemote}
@@ -484,7 +489,7 @@ function RefCell({
           aria-label={`还有 ${hidden.length} 个引用`}
           aria-expanded={more}
           className="shrink-0 cursor-pointer hover:!bg-surface-overlay"
-          title={hidden.map((g) => g.label).join(', ')}
+          title={more ? undefined : hidden.map((g) => g.label).join(', ')}
           onClick={(e) => {
             e.stopPropagation();
             setMore(true);
@@ -515,13 +520,13 @@ function RefCell({
       <HoverCardContent
         side="bottom"
         align="start"
-        sideOffset={REF_STACK_SIDE_OFFSET}
-        alignOffset={REF_STACK_ALIGN_OFFSET}
+        sideOffset={4}
         data-more-refs
-        className="flex flex-col items-start gap-1 p-1"
+        style={{ animation: 'none' }}
+        className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-1 overflow-auto p-1"
         {...stopRowGestures}
       >
-        {groups.map((group, i) => chip(group, allHeads[i]))}
+        {groups.map((group, i) => chip(group, allHeads[i], true))}
       </HoverCardContent>
     </HoverCard>
   );
