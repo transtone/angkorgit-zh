@@ -134,7 +134,7 @@
 1. 手动查看上游 `cheat2001/angkorgit` 的变更，按[本地维护流程](local-customizations/WORKFLOW.md)合并并适配 fork 定制。
 2. 运行 `bun run localize --repo <源码目录>`，审阅 diff 和生成的 `zh-dict/pending.tsv`，补齐 `zh-CN.json` 与手工中文内容；文案变化同时修改 JSON 与源码。
 3. 运行 `bun run check:dict`、`bun run check:copy` 及相关测试，审阅 CI（typecheck / 单元测试 / Playwright / Rust）结果后完成合并。
-4. **发布中文版**（`release-zh.yml`，手动触发）：先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名与 `latest.json`）。
+4. **发布中文版**（`release-zh.yml`，仅推送 `vX.Y.Z` 版本 tag 时触发）：先检查 tag 与源码版本一致并跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名与 `latest.json`）。CI 与 Website 仅保留手动运行入口。
 
 翻译报告 `zh-dict/pending.tsv` 本地生成、被 Git 忽略，不入库也不作为词典。审阅待译候选、漂移、未解析及歧义位置后，更新唯一权威词典 `zh-dict/zh-CN.json` 和对应源码。`ChangeFilter` 的 `title` 将 `Show all files` 译为“显示全部变更”，其他全局用法仍为“显示全部文件”。
 详见 [Localization.md](Localization.md)。

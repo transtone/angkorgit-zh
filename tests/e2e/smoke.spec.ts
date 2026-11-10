@@ -2465,7 +2465,7 @@ test('partial fetches keep the timestamp and name failed remotes without raw err
       if (name === 'upstream') throw new Error('private token expired');
       return { status: 'ok', message: 'Fetched origin' };
     };
-    await useRepo.getState().refresh();
+    useRepo.setState({ remotes: await ipc.remotes('') });
   });
 
   const fetchButton = page.getByRole('button', { name: '获取', exact: true });

@@ -8,7 +8,7 @@
 - [FEATURES.md](local-customizations/FEATURES.md)：已确认的指导方针、功能清单及合并增强流程。
 - `scripts/localize.mjs`：由 Bun 执行，仅应用词典并扫描待译候选。
 - `ci.yml`：保留文案、词典、类型、单元测试、Playwright 和 Rust 检查。
-- 网站与发布工作流继续保留；`release-zh.yml` 由人工触发，测试后构建 Windows 安装包、签名、生成 `latest.json` 并发布 Release。版本须已在源码中，`dry_run` 用于发布前检查。
+- CI 与 Website 仅支持手动运行；`release-zh.yml` 仅在推送 `vX.Y.Z` 版本 tag 时触发，检查 tag 与源码版本一致后运行测试、构建 Windows 安装包、签名、生成 `latest.json` 并发布 Release。普通提交、PR、Release 发布及定时任务均不自动触发工作流。
 
 原有 `upstream-watch.yml` 和 `localize.yml` 已移除。自动检测上游、创建通知 Issue、邮件通知和自动准备 PR 的流程不再存在；无需为此配置 SMTP secrets，也没有自动上传的 pending-strings 产物。
 
@@ -18,7 +18,7 @@
 2. 运行下述翻译命令，审阅修改和生成的待译清单，把需要翻译的新词条补进唯一权威词典 `zh-dict/zh-CN.json` 后重跑。文案调整须同时修改 JSON 与对应源码。
 3. 人工适配词典无法表达的文案、测试选择器，以及 README、文档和网站中的有效上游变化。
 4. 运行 `bun run check:dict`、`bun run check:copy` 和相关测试，完成审阅并检查 CI 后合并。
-5. 需要发版时，先统一源码中的应用版本，再手动运行**发布中文版**工作流。
+5. 需要发版时，先统一源码中的应用版本，再创建并推送对应的 `vX.Y.Z` tag，触发**发布中文版**工作流。
 
 ## 人工维护的中文内容
 
@@ -130,4 +130,4 @@ bun run localize --repo <源码目录> [--dict-dir <词典目录>] [--include-cl
 - 发布前不跑任何测试，坏文案随安装包发出去；
 - 自动推 main 会触发 CI 变红，发布却已完成。
 
-当前由人工合并、适配和审阅，Bun 脚本负责词典替换与待译扫描，CI 和发布工作流负责各自检查；发布单独手动触发。
+当前由人工合并、适配和审阅，Bun 脚本负责词典替换与待译扫描；CI 和 Website 手动运行，发布仅由版本 tag 推送触发。

@@ -137,9 +137,9 @@
 1. 手动查看上游 `cheat2001/angkorgit` 的变更，按[本地维护流程](docs/local-customizations/WORKFLOW.md)合并并适配 fork 定制。
 2. 运行 `bun run localize --repo <源码目录>`，审阅 diff 和生成的 `zh-dict/pending.tsv`，补齐 `zh-CN.json` 与手工中文内容；文案变化同时修改 JSON 与源码。
 3. 运行 `bun run check:dict`、`bun run check:copy` 及相关测试，审阅 CI（typecheck / 单元测试 / Playwright / Rust）结果后完成合并。
-4. **发布中文版**（`release-zh.yml`，手动触发）：使用 Bun 安装依赖，先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名、`latest.json` 与 `SHA256SUMS`）。
+4. **发布中文版**（`release-zh.yml`，仅推送 `vX.Y.Z` 版本 tag 时触发）：使用 Bun 安装依赖，先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名、`latest.json` 与 `SHA256SUMS`）。
 
-发布前，将根目录及桌面端 `package.json`、`tauri.conf.json`、`Cargo.toml` 和 `Cargo.lock` 中应用的版本统一为新版本，并合并到要发布的提交。在仓库 Actions 中运行「发布中文版」，输入该版本号；`dry_run` 会执行版本、tag 检查和前端测试，不构建或发布安装包。已有 tag 只有在指向同一提交时才允许重试，工作流不会移动 tag。
+发布前，将根目录及桌面端 `package.json`、`tauri.conf.json`、`Cargo.toml` 和 `Cargo.lock` 中应用的版本统一为新版本，并合并到要发布的提交。创建并推送对应的 `vX.Y.Z` tag，工作流从 tag 提取版本并检查一致性；不会自动创建或移动 tag。失败后可对同一 tag 重试。普通提交、PR、发布 Release 和定时任务均不自动触发工作流；CI 与 Website 仅支持在 Actions 中手动运行。
 
 仓库必须配置 Secret `TAURI_SIGNING_PRIVATE_KEY`（Tauri updater 私钥）；有密码时还需 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。私钥对应的公钥必须写入 `apps/desktop/src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`。工作流会检查密钥是否存在，测试通过后使用 Windows runner 的原生 Strawberry Perl 构建 OpenSSL，并运行 Rust 测试。发布产物也会保存在该次 Actions 的 artifact 中。
 

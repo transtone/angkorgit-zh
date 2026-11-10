@@ -1,20 +1,10 @@
 name: 发布中文版
 
-# 手动触发：检查版本、运行测试，再构建并发布签名的 Windows 安装包。
+# 推送版本 tag 后检查版本、运行测试，再构建并发布签名的 Windows 安装包。
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: '版本号 x.y.z（必须已写入仓库）'
-        required: true
-      notes:
-        description: '可选：补充发布说明'
-        required: false
-        default: ''
-      dry_run:
-        description: '只跑测试，不构建不发布'
-        type: boolean
-        default: false
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
 
 permissions:
   contents: write
@@ -27,12 +17,13 @@ jobs:
   verify:
     name: 测试
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: 检查 updater 签名密钥
-        if: ${{ !inputs.dry_run }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
@@ -43,13 +34,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
-      - name: 版本号与仓库一致
+      - name: tag 版本号与仓库一致
+        id: version
         env:
-          VERSION: ${{ inputs.version }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
           bun -e '
-            const version = process.env.VERSION;
-            if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("版本号格式应为 x.y.z");
+            const tag = process.env.TAG_NAME;
+            if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error("版本 tag 格式应为 vX.Y.Z");
+            const version = tag.slice(1);
             const base = "apps/desktop/src-tauri/";
             const versions = {
               "package.json": (await Bun.file("package.json").json()).version,
@@ -59,18 +52,20 @@ jobs:
               "Cargo.lock": Bun.TOML.parse(await Bun.file(base + "Cargo.lock").text()).package.find(p => p.name === "angkorgit").version,
             };
             for (const [file, actual] of Object.entries(versions)) {
-              if (actual !== version) throw new Error(`${file} 版本 ${actual} 与输入 ${version} 不一致，请先合并版本升级。`);
+              if (actual !== version) throw new Error(`${file} 版本 ${actual} 与 tag ${tag} 不一致，请先合并版本升级。`);
             }
+            const { appendFileSync } = await import("node:fs");
+            appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
             console.log(`版本检查通过：${version}`);
           '
       - name: 检查 tag（允许同一提交重试）
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           tag="refs/tags/v$VERSION"
           if git show-ref --verify --quiet "$tag"; then
             commit=$(git rev-parse "$tag^{}")
-            if [ "$commit" != "$GITHUB_SHA" ]; then
+            if [ "$commit" != "$(git rev-parse HEAD)" ]; then
               echo "::error::tag v$VERSION 已指向其他提交，请升级版本号；不会移动现有 tag。"
               exit 1
             fi
@@ -93,9 +88,10 @@ jobs:
 
   build:
     name: 构建并发布（Windows）
-    if: ${{ !inputs.dry_run }}
     needs: verify
     runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
@@ -131,8 +127,7 @@ jobs:
       - name: 整理安装包、签名、updater 清单与 SHA256SUMS
         shell: pwsh
         env:
-          VERSION: ${{ inputs.version }}
-          NOTES: ${{ inputs.notes }}
+          NOTES: ''
         run: |
           $bundle = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/src-tauri/target/release/bundle'
           $exe = @(Get-ChildItem (Join-Path $bundle 'nsis') -Filter *.exe)
@@ -179,14 +174,14 @@ jobs:
       - name: 保存发布产物
         uses: actions/upload-artifact@v4
         with:
-          name: windows-release-${{ inputs.version }}
+          name: windows-release-${{ needs.verify.outputs.version }}
           path: release/*
           if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version }}
+          tag_name: ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
-          name: AngKorGit 中文版 v${{ inputs.version }}
+          name: AngKorGit 中文版 v${{ needs.verify.outputs.version }}
           body_path: release-notes.md
           fail_on_unmatched_files: true
           make_latest: true

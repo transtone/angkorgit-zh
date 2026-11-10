@@ -4315,18 +4315,17 @@ agent, "Generated with/by", 🤖 — while leaving real people's
 - **Local**: `pnpm tauri:build` → `AngKorGit.app` + `AngKorGit_x.y.z_aarch64.dmg`;
   `pnpm install:mac` installs. Locally-built apps aren't Gatekeeper-quarantined; shared
   dmg recipients need right-click → Open (unsigned).
-- **CI** (`.github/workflows/ci.yml`): frontend typecheck+unit+build · Playwright ·
+- **CI** (`.github/workflows/ci.yml`): manual dispatch only; frontend typecheck+unit+build · Playwright ·
   Rust fmt/clippy/test on ubuntu+macos+windows.
+- **Chinese release** (`.github/workflows/release-zh.yml`): only version-tag pushes
+  (`vX.Y.Z`) trigger verification, Windows build and publication. The version comes
+  from the tag and must match all application manifests. No manual version input or dry run.
 - **Website** (`.github/workflows/website.yml`): builds the Astro site (re-runs
   `website:images`) and deploys to **GitHub Pages** via `actions/deploy-pages`.
   The install-section version is fetched from the latest GitHub release at build
-  time (`site.ts`, hardcoded fallback). Triggers: push to main (website paths),
-  release published, nightly cron, manual dispatch. **Gotcha**: release-published
-  runs execute on the tag ref — even with a `v*` tag policy on the github-pages
-  environment (added 2026-08-09), Pages was observed to keep serving the older
-  main-ref deployment despite the tag deployment reporting success. The nightly
-  cron (runs on main) self-heals this; for an instant flip after publishing a
-  release, manually dispatch the Website workflow. Pages CDN caches HTML for
+  time (`site.ts`, hardcoded fallback). Manual dispatch only; branch pushes, PRs,
+  releases and schedules do not automatically run workflows. Dispatch Website when
+  the published site needs an update. Pages CDN caches HTML for
   10 min (`max-age=600`) with no owner-facing purge.
   Served at `https://angkorgit.app/` (custom domain; `public/CNAME` holds it and the
   workflow pins `SITE_URL=https://angkorgit.app`, `SITE_BASE=/`). Repo must have Pages
