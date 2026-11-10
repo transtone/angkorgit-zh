@@ -2,6 +2,16 @@
 
 状态：已有实现，合并上游后持续维护。流程背景见 [Localization.md](../Localization.md)，整体入口见 [README](README.md)。
 
+## 直接执行翻译
+
+```bash
+bun run scripts/localize.mjs --repo <源码目录>
+```
+
+脚本由 Bun 执行，仅应用词典并生成待译清单（默认 `zh-dict/pending.tsv`）。允许工作区有未提交修改；不操作 Git，也不修改版本号或 fork 发布地址。翻译会修改命中的本地文件，完成后自行审阅 diff。
+
+CLI 为 `bun run scripts/localize.mjs --repo <目录> [--dict-dir <目录>] [--include-claude-md] [--help]`。`--dict-dir` 指定词典目录，`--include-claude-md` 将 `CLAUDE.md` 纳入翻译，`--help` 显示帮助。旧 PowerShell 脚本及其测试已移除；版本、渠道适配、合并和交付均按手动维护流程处理。
+
 ## 必须保留的行为
 
 - 界面操作、提示、空状态、错误、无障碍名称使用完整简体中文，不留下“中文 + 半句英文”。
@@ -12,17 +22,14 @@
 
 ## 维护入口
 
-| 文件 / 目录 | 用途 |
-| --- | --- |
-| `zh-dict/dict.tsv` | 可重复应用的词典，优先补完整短语 |
-| `zh-dict/protect.txt`、`zh-dict/skip-files.txt` | 保护技术内容及排除手工维护文件 |
-| `scripts/sync-localize.ps1` | 同步与字典替换；执行前核对参数、副作用及默认值 |
-| `scripts/check-copy.mjs`、`scripts/copy-allowlist.json` | 中英混排检查及真正的技术术语允许表 |
-| `scripts/check-dict.mjs` | 词典结构、锚点、重复和重叠检查 |
-| `.github/workflows/localize.yml` | PR 本地化流程，核对自维护目录恢复范围 |
-| `tests/unit/localization.test.ts` | 文案、模板变量、技术内容保护 |
-| `tests/e2e/smoke.spec.ts` | 中文可访问名与实际交互 |
-| `README.md`、`docs/`、`apps/website/` | 手工维护内容，需要人工吸收上游变化 |
+- `zh-dict/dict.tsv`：可重复应用的词典，优先补完整短语。
+- `zh-dict/protect.txt`、`zh-dict/skip-files.txt`：保护技术内容及排除手工维护文件。
+- `scripts/localize.mjs`：Bun 纯翻译与待译扫描，不操作 Git、版本或发布地址。
+- `scripts/check-copy.mjs`、`scripts/copy-allowlist.json`：中英混排检查及真正的技术术语允许表。
+- `scripts/check-dict.mjs`：词典结构、锚点、重复和重叠检查。
+- `tests/unit/localization.test.ts`：文案、模板变量、技术内容保护。
+- `tests/e2e/smoke.spec.ts`：中文可访问名与实际交互。
+- `README.md`、`docs/`、`apps/website/`：手工维护内容，需要人工吸收上游变化。
 
 ## 合并后的恢复步骤
 

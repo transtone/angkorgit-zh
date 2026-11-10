@@ -21,6 +21,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
+    "localize": "bun run scripts/localize.mjs",
+    "test:localize": "node --test tests/localize.test.mjs",
     "check:copy": "node scripts/check-copy.mjs",
     "check:dict": "node scripts/check-dict.mjs",
     "website": "bun run --filter @angkorgit/website dev",

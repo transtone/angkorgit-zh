@@ -23,6 +23,10 @@ craftsmanship from Cambodia 🇰🇭.
 - Keyboard-first (⌘K palette), beginner-friendly (visual conflict resolver, confirm
   dialogs, undo/redo), performance-first (virtualized graph & diffs, 100k-commit repos stay smooth)
 
+## Fork patch maintenance
+
+Before merging upstream or restoring fork enhancements, read [FEATURES.md](docs/local-customizations/FEATURES.md): the agreed principles, feature list and merge sequence live there. Upstream merging and enhancement adaptation are manual. Automatic upstream detection/localization PR workflows have been removed; CI, website deployment and release workflows remain for verification and delivery. Translation uses `bun run localize --repo <source-directory>` (`scripts/localize.mjs`), only edits local translation files and pending report, and never runs Git or changes versions/release URLs. Run `bun run test:localize` for its regression tests. Risk control is a functional-enhancement subclass: telemetry must be disabled; domestic avatars, updates, fetch, AI, self-hosted services and auxiliary credentials are allowed. Product-login gates are distinct from optional service credentials. Earlier GUIDANCE/WORKFLOW documents are historical drafts, not competing process definitions.
+
 ## 2. Tech stack
 
 | Layer | Choice | Notes |

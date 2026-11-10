@@ -54,6 +54,7 @@ jobs:
       - run: bun run check:dict
       - run: bun run typecheck
       - run: bun run test
+      - run: bun run test:localize
       - run: bun run --filter @angkorgit/desktop build
 
   e2e:

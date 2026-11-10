@@ -1,5 +1,7 @@
 # pending.tsv 翻译契约（t3/t4/t5 翻译批次 + t6 合并回归 的输入契约）
 
+> 历史批次记录，非当前操作规范。文中旧 PS1、SkipSync 和 dry-run 命令已失效；当前翻译入口为 `bun run localize --repo <源码目录>`，回归测试为 `bun run test:localize`。
+
 - 制定者：researcher（t1 · requirements r1）
 - 输入：`zh-dict/pending.tsv`（813 条，`scope<TAB>文件<TAB>英文串`，行 2–814）、`zh-dict/dict.tsv`（578 条，`scope/source/target/anchor`）、`zh-dict/protect.txt`、`zh-dict/skip-files.txt`、`docs/i18n-scope-report.md`、`scripts/sync-localize.ps1`
 - 源码上下文（查 anchor/语境）：`E:\angkorgit_zh\.tmp-analysis\upstream`（上游 HEAD `5e71a4e` 浅克隆，只读）

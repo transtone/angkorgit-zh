@@ -28,19 +28,18 @@
 
 若直接在源码中强行植入国际化框架，不仅会破坏原项目的极简运行时，而且在后续与上游主分支进行持续代码同步时，必定产生海量、不可调和的代码合并冲突。
 
-因此，本项目构建了一套**“基于严格语法保护的确定性字典式就地替换”**流水线（`scripts/sync-localize.ps1`）：
+因此，本项目采用**“基于严格语法保护的确定性字典式就地替换”**工具（`scripts/localize.mjs`，由 Bun 执行）：
 
 1. **多维度精细化分词库（`zh-dict/dict.tsv`）**
    - 维护 1,000+ 条覆盖全生命周期的高质量中英对照条目，划分为 UI 界面、Rust 引擎错误、Core 领域层、Docs 文档与 Meta 元数据 5 大维度。
    - 所有单单词或易混淆短词均严格绑定**行级上下文正则锚点（Anchor）**，并按长串优先倒序执行，杜绝误伤。
-2. **代码标识符与 AST 安全防护（`zh-dict/protect.txt`）**
-   - 严格拦截技术标识符、驼峰命名、组件名（如保护 `<FolderOpen />`、`isLocked` 不被单词规则拆解）。
-   - 每次本地化执行后，自动通过 TypeScript 严格编译器校验（`tsc --noEmit` 0 错误）与 Rust 编译拦截。
-3. **自动化同步与一键构建流水线（`scripts/sync-localize.ps1`）**
-   - **自动合流**：自动 fetch 上游并执行智能合并（提供 merge、ours 等分支策略）。
-   - **端点与仓库重定向**：自动将 Tauri Updater 升级检查端点与仓库地址重定向到 `wuwuzhazha/angkorgit-zh`。
-   - **增量翻译回扫**：同步后自动扫描上游最新引入的新英文文案，提取生成待译清单 `pending.tsv`，支撑敏捷增量更新。
-   - **安全发版**：默认安全 dry-run，凭据零泄露，杜绝任何 `--force` 危险操作。
+2. **代码标识符保护（`zh-dict/protect.txt`）**
+   - 使用文本与正则规则保护技术标识符、路径、URL 等内容；不是 AST 解析器。
+   - 翻译后单独执行类型检查、测试及必要的 Rust 检查。
+3. **独立翻译脚本（`scripts/localize.mjs`）**
+   - 运行 `bun run scripts/localize.mjs --repo <源码目录>`，应用词典并扫描生成待译清单 `pending.tsv`。
+   - 允许已有未提交改动，不暂存、提交、推送或同步代码。
+   - 可选 `--dict-dir <词典目录>`、`--include-claude-md`、`--help`；版本号、更新地址、合并和发布单独处理。
 
 ---
 
@@ -129,15 +128,15 @@
 
 ## 🔄 上游同步与中文化
 
-本仓库不再无人值守地自动发布，汉化采用「自动检测 → 自动准备 PR → 人工校对合并 → 手动发布」：
+上游同步与本地 patch 由人工执行，翻译脚本只处理词典替换和待译扫描：
 
-1. **上游更新检测**（`upstream-watch.yml`，每天）：发现上游 `cheat2001/angkorgit` 新提交时创建 Issue，GitHub 邮件通知。
-2. **同步并汉化（PR）**（`localize.yml`，手动触发）：合并上游 → 应用 `zh-dict/dict.tsv` → 跑 `pnpm check:copy` → 开出 PR。
-3. 在 PR 里补齐新增英文串，CI（typecheck / 单元测试 / Playwright / Rust）全绿后合并。
+1. 手动查看上游 `cheat2001/angkorgit` 的变更，按[本地维护流程](local-customizations/WORKFLOW.md)合并并适配 fork 定制。
+2. 运行 `bun run scripts/localize.mjs --repo <源码目录>`，审阅 diff 和生成的 `zh-dict/pending.tsv`，补齐词典与手工中文内容。
+3. 运行 `bun run check:dict`、`bun run check:copy` 及相关测试，审阅 CI（typecheck / 单元测试 / Playwright / Rust）结果后完成合并。
 4. **发布中文版**（`release-zh.yml`，手动触发）：先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名与 `latest.json`）。
 
-上游新引入的英文串会进入 `zh-dict/pending.tsv`（构建产物，不入库），翻译后补进 `dict.tsv` 即可。
-详见 [docs/Localization.md](docs/Localization.md)。
+翻译脚本扫描出的英文候选会写入 `zh-dict/pending.tsv`（本地生成，不入库），审阅后将需要翻译的词条补进 `dict.tsv`。
+详见 [Localization.md](Localization.md)。
 
 ## 🚫 故意不做的事情
 
@@ -158,36 +157,36 @@
 
 ## 🛠️ 从源码编译构建
 
-构建前请准备开发环境：[Node 20+](https://nodejs.org)、[pnpm 10+](https://pnpm.io)、[Rust 稳定版](https://rustup.rs) 以及 [Tauri v2 系统依赖](https://v2.tauri.app/start/prerequisites/)（Windows 需 Visual Studio C++ 生成工具）。
+构建前请准备开发环境：[Node 20+](https://nodejs.org)、[Bun 1.4.4](https://bun.sh)、[Rust 稳定版](https://rustup.rs) 以及 [Tauri v2 系统依赖](https://v2.tauri.app/start/prerequisites/)（Windows 需 Visual Studio C++ 生成工具）。
 
 ```bash
 # 1. 安装项目依赖
-pnpm install
+bun install --frozen-lockfile
 
 # 2. 生成应用占位图标
-pnpm icons
+bun run icons
 
 # 3. 运行桌面应用（开发模式）
-pnpm tauri:dev
+bun run tauri:dev
 ```
 
 纯前端演示模式（直接在普通浏览器中调试 UI，无需 Rust 工具链）：
 
 ```bash
-pnpm dev            # 访问 http://localhost:1420
+bun run dev            # 访问 http://localhost:1420
 ```
 
 编译正式安装包：
 
 ```bash
-pnpm tauri:build    # 产物输出至 apps/desktop/src-tauri/target/release/bundle/
+bun run tauri:build    # 产物输出至 apps/desktop/src-tauri/target/release/bundle/
 ```
 
 运行自动化测试：
 
 ```bash
-pnpm test                                  # vitest 单元测试
-pnpm test:e2e                              # Playwright 端到端测试
+bun run test                                  # vitest 单元测试
+bun run test:e2e                              # Playwright 端到端测试
 cd apps/desktop/src-tauri && cargo test   # Rust Git 引擎集成测试
 ```
 
@@ -199,7 +198,7 @@ cd apps/desktop/src-tauri && cargo test   # Rust Git 引擎集成测试
 | `apps/website` | 官方展示网站（基于 Astro 5 构建） |
 | `packages/core` | 纯 TypeScript 领域模型：提交图布局算法、代码词级 diff、冲突解析器、Git 平台与 AI 适配器 |
 | `packages/design-system` | 基础设计系统：颜色变量、Tailwind Preset、UI 原语组件与图标 |
-| `scripts` | 中文化同步流水线（`sync-localize.ps1`）与构建图标脚本 |
+| `scripts` | Bun 独立翻译脚本（`localize.mjs`）、检查与构建图标脚本 |
 | `zh-dict` | 结构化中文化词库（`dict.tsv`）、保护规则（`protect.txt`）与待译清单 |
 | `docs` | 架构设计、UI 指南、开发贡献规范与分发指南 |
 

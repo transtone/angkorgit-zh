@@ -1,55 +1,48 @@
 # 中文化与上游同步
 
 本仓库是 [cheat2001/angkorgit](https://github.com/cheat2001/angkorgit) 的简体中文分支。
-本地化与上游同步刻意**拆成四步**：自动检测 → 自动准备 PR → 人工校对合并 → 测试通过后手动发布。
-翻译是需要判断的工作，绝不放进无人值守、会自动发布的流水线。
+本地化与上游同步分开执行：人工合并上游并恢复本地 patch → 运行翻译脚本 → 审阅并验证 → 按需手动发布。
 
-## 工作流总览
+## 当前入口
 
-| 工作流 | 触发 | 做什么 | 不做什么 |
-| --- | --- | --- | --- |
-| `upstream-watch.yml` 上游更新检测 | 每天 01:00 UTC / 手动 | 检测上游新提交，创建（或复用）带 `upstream-sync` 标签的 Issue，并在正文 @ 仓库所有者 | 不写 main、不构建、不发布 |
-| `localize.yml` 同步并汉化（PR） | 手动 | 合并上游 → 恢复自维护文件 → 应用词库 → `check:copy` → 开 PR | 不推 main、不发布 |
-| `ci.yml` | push / PR | `check:copy`、`check:dict`、typecheck、单元测试、Playwright、Rust 三平台 | — |
-| `release-zh.yml` 发布中文版 | 手动 | 先跑完整测试（含 e2e），再构建 Windows 安装包、签名、生成 `latest.json`、发布 Release | 不改版本号，版本必须已在仓库中；`dry_run` 可只跑测试 |
+- [FEATURES.md](local-customizations/FEATURES.md)：已确认的指导方针、功能清单及合并增强流程。
+- `scripts/localize.mjs`：由 Bun 执行，仅应用词典并扫描待译候选。
+- `ci.yml`：保留文案、词典、类型、单元测试、Playwright 和 Rust 检查。
+- 网站与发布工作流继续保留；`release-zh.yml` 由人工触发，测试后构建 Windows 安装包、签名、生成 `latest.json` 并发布 Release。版本须已在源码中，`dry_run` 用于发布前检查。
 
-### 通知方式
-
-Issue 是唯一事实来源：GitHub 会给仓库关注者发送 Issue 邮件通知，正文里 `@owner` 再兜底一次。
-Issue 带 `upstream-sync` 标签，同一上游提交不会重复创建。
-
-> 前置条件：仓库必须**启用 Issues**（Settings → Features → Issues）。本仓库已启用。
-
-如需**额外**发一封独立邮件，配置以下 secrets 后自动启用（不配置则跳过该步）：
-`SMTP_SERVER`、`SMTP_PORT`、`SMTP_USERNAME`、`SMTP_PASSWORD`、`MAIL_TO`、`MAIL_FROM`，
-SSL 端口（465）另在仓库 Variables 里设 `SMTP_SECURE=true`。
+原有 `upstream-watch.yml` 和 `localize.yml` 已移除。自动检测上游、创建通知 Issue、邮件通知和自动准备 PR 的流程不再存在；无需为此配置 SMTP secrets，也没有自动上传的 pending-strings 产物。
 
 ## 人工流程
 
-1. 收到「上游更新：<sha>」Issue。
-2. Actions → **同步并汉化（PR）** → Run workflow（可填 `version` 顺带升版本号）。
-3. 工作流产出 PR `chore(i18n): 同步上游并汉化`。
-4. 在 PR 里查看 `check:copy` 结果与 CI；对照 **pending-strings** 构建产物
-   （`zh-dict/pending.tsv`，列出所有未翻译英文串）把新增串补进 `zh-dict/dict.tsv`。
-5. CI 全绿后合并。
-6. 需要发版时：确认 `package.json` 版本已是要发布的版本 → 运行 **发布中文版**。
+1. 手动查看上游提交和差异，按 [FEATURES.md 的合并流程](local-customizations/FEATURES.md#三合并与增强流程) 合并并恢复本地定制。
+2. 运行下述翻译命令，审阅修改和生成的待译清单，把需要翻译的新词条补进 `zh-dict/dict.tsv` 后重跑。
+3. 人工适配词典无法表达的文案、测试选择器，以及 README、文档和网站中的有效上游变化。
+4. 运行 `bun run check:dict`、`bun run check:copy` 和相关测试，完成审阅并检查 CI 后合并。
+5. 需要发版时，先统一源码中的应用版本，再手动运行**发布中文版**工作流。
 
 ## 人工维护的中文内容
 
-以下路径是**手写中文**，词典无法复现，因此处理方式不同：
+`README.md`、`docs/`、`apps/website/` 中的手写中文无法由词典完整复现。翻译范围由 `zh-dict/skip-files.txt` 等规则控制；合并时逐项保留中文内容，并迁入上游新增的有效事实，不用整目录恢复代替审阅。
+代码中的词典替换仍需结合 diff、`check:copy` 和测试验证。
 
-- 本地化脚本跳过它们（`zh-dict/skip-files.txt` 里的 `docs/**`、`apps/website/**`）；
-- 合并上游后，工作流用 `git checkout <合并前提交> -- README.md docs apps/website`
-  把它们恢复成我们的版本，避免被上游英文覆盖。
+## 独立翻译脚本
 
-上游对这些文件的改动会出现在 Issue 的「变更统计」里，需要人工搬运——这正是「精准汉化」的部分。
-代码（`apps/desktop/src`、`apps/desktop/src-tauri/src`、`packages/core/src`、`tests/**`）仍由词典自动翻译，
-并由 `check:copy` / e2e 把关。
+```bash
+bun run scripts/localize.mjs --repo <源码目录> [--dict-dir <词典目录>] [--include-claude-md] [--help]
+```
+
+脚本仅应用词典并生成待译清单，允许已有未提交修改。它不执行 Git 操作，不调整版本号或 fork 发布地址；合并、渠道适配和交付由人工处理。
+
+- `--repo <目录>`：指定要翻译的源码目录。
+- `--dict-dir <目录>`：指定词典目录。
+- `--include-claude-md`：将 `CLAUDE.md` 纳入翻译。
+- `--help`：显示命令帮助。
+
+旧 PowerShell 翻译脚本及其测试已移除，不再使用旧参数。
 
 ## 词典 `zh-dict/dict.tsv`
 
-> `zh-dict/pending.tsv` 是脚本生成的待译清单，已加入 `.gitignore`，不再提交；
-> 每次「同步并汉化（PR）」会把它作为构建产物上传，PR 正文里也给出条目数。
+> `pending.tsv` 是脚本生成的英文候选清单，写入词典目录（默认 `zh-dict/`），已加入 `.gitignore`，不提交。人工审阅候选，不能把清单为空视为翻译完整。
 
 每行 `TAB` 分隔，字段依次为：
 
@@ -58,7 +51,7 @@ SSL 端口（465）另在仓库 Variables 里设 `SMTP_SECURE=true`。
 ```
 
 - **作用域**：`ui` `rust` `core` `website` `meta` `docs` `e2e` `test`，逗号分隔可多选。
-- **锚点**：正则，只有当该行匹配锚点时才替换；**单单词词条必须给锚点**。
+- **锚点**：正则，只有当该行匹配锚点时才替换；**单单词词条必须给锚点或使用 `whole`**。
 - **匹配模式**：留空 = 子串替换；`whole` = 只匹配完整的字符串字面量
   （`'…'` / `"…"` / `` `…` ``）。
 
@@ -78,11 +71,11 @@ ui	Open repository	打开仓库		whole
 
 它只会替换 `'Open repository'`，不会碰 `'Open repository in browser'`。
 注意 `whole` 只适用于**带引号的字面量**；JSX 文本节点（如 `>Cancel<`）仍需用子串 + 锚点。
-迁移应逐条进行，并本地跑一次 `pnpm check:copy` 与 `pnpm test:e2e` 验证。
+迁移应逐条进行，并本地跑一次 `bun run check:copy` 与 `bun run test:e2e` 验证。
 
 ## 混排文案检查 `scripts/check-copy.mjs`
 
-`pnpm check:copy` 扫描 `apps/desktop/src`、`packages/core/src`、`tests/e2e`、`apps/website/src`，
+`bun run check:copy` 扫描 `apps/desktop/src`、`packages/core/src`、`tests/e2e`、`apps/website/src`，
 只要**中文与未列入允许表的英文单词出现在同一片段**就失败（如 `打开 in browser`、`复制 public key`）。
 路径、标识符、版本号（含 `. / _ - :` 的 token）自动忽略。
 
@@ -91,21 +84,21 @@ ui	Open repository	打开仓库		whole
 
 ## 词典检查 `scripts/check-dict.mjs`
 
-`pnpm check:dict` 静态校验 `dict.tsv`：
+`bun run check:dict` 静态校验 `dict.tsv`：
 
 - 字段数、作用域、匹配模式是否合法；
 - 锚点是否为合法正则；
-- **单单词是否缺锚点**（会在同步时直接报错的那条）；
+- **单单词是否缺少锚点或 `whole` 模式**（翻译脚本也会校验）；
 - 重复词条、译文与源文相同、以及**前缀重叠**提示（不阻塞，已按最长源优先处理）。
 
-CI 与「同步并汉化（PR）」都会跑它，坏词条在 PR 阶段就被拦住。
+本地维护时运行该检查，CI 也会执行。
 
-## 为什么不自动发布
+## 历史背景：为什么不自动发布
 
-旧流水线"合并上游 → 自动汉化 → 推 main → 直接发布"有三个结构性问题：
+历史上的旧流水线“合并上游 → 自动汉化 → 推 main → 直接发布”有三个结构性问题：
 
 - 子串词典会切坏文案（`Open repository in browser` → `打开仓库 in browser`）；
 - 发布前不跑任何测试，坏文案随安装包发出去；
 - 自动推 main 会触发 CI 变红，发布却已完成。
 
-现在：**自动做机械且易错的活，人做需要判断的活，PR + CI 当闸门，发布前必过测试。**
+当前由人工合并、适配和审阅，Bun 脚本负责词典替换与待译扫描，CI 和发布工作流负责各自检查；发布单独手动触发。
