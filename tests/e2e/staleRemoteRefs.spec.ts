@@ -21,7 +21,7 @@ test('expired remote tracking refs are distinct and can be deleted from the grap
     useRepo.setState({ branches: [...useRepo.getState().branches, {
       ...useRepo.getState().branches[0], name: 'upstream/topic', isRemote: true, isHead: false, targetOid: commits[0].oid,
     }] });
-    ipc.remoteStaleRefs = async () => [ref.name];
+    ipc.remoteRefStatus = async () => ({ staleRefs: [ref.name], tags: [] });
     await useRepo.getState().checkStaleRemoteRefs();
     useGraph.setState({ commits: commits.map((commit, i) => i === 0 ? { ...commit, refs: [ref] } : commit) });
     useRepo.setState({ staleRemoteRefs: new Set([ref.name]) });

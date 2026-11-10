@@ -162,6 +162,7 @@ pub struct BranchInfo {
 #[serde(rename_all = "camelCase")]
 pub struct TagInfo {
     pub name: String,
+    pub ref_oid: String,
     pub target_oid: String,
     pub message: Option<String>,
     pub is_annotated: bool,

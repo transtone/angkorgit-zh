@@ -25,9 +25,9 @@ craftsmanship from Cambodia 🇰🇭.
 
 ## Fork patch maintenance
 
-Before merging upstream or restoring fork enhancements, read [FEATURES.md](docs/local-customizations/FEATURES.md): the agreed principles, feature list and merge sequence live there. Upstream merging and enhancement adaptation are manual. Automatic upstream detection/localization PR workflows have been removed; CI, website deployment and release workflows remain for verification and delivery. Translation uses `bun run localize --repo <source-directory>` (`scripts/localize.mjs`), only edits local translation files and pending report, and never runs Git or changes versions/release URLs. Run `bun run test:localize` for its regression tests.
+Before merging upstream or restoring fork enhancements, read [FEATURES.md](docs/local-customizations/FEATURES.md): the agreed principles, feature list and merge sequence live there. Upstream merging and enhancement adaptation are manual; do not add isolated upstream-sync files. Automatic upstream detection/localization PR workflows have been removed. CI and Website run only by manual dispatch; `release-zh.yml` runs only on pushed `vX.Y.Z` tags, validates manifest versions, runs tests and builds/signs Windows packages. Website `SITE_URL` derives from the current repository owner/name; enable Pages with Source **GitHub Actions**. See [maintenance entry](docs/local-customizations/README.md#发布与网站维护), including the partial-fetch CI fixture requirements. Translation uses `bun run localize --repo <source-directory>` (`scripts/localize.mjs`), only edits local translation files and pending report, and never runs Git or changes versions/release URLs. Run `bun run test:localize` for its regression tests.
 
-The sole authoritative translation catalog is `zh-dict/zh-CN.json`, a JSON object keyed by stable semantic IDs. Each value has required string `source` and `target`, optional string arrays `scopes` and `previousTargets`, optional regex string `anchor`, optional `mode: 'whole'`, and optional `locations: [{file: string, component?: string, attribute?: string}]`. Keep English, Chinese and locations in that one file; copy changes must update both JSON and source. Legacy TSV rows use stable generated keys and retain their scopes/anchor/mode behavior. Context-specific UI entries use exact file/component/JSX attribute locations with unique matching, never line numbers. In `apps/desktop/src/features/inspector/CommitDetails.tsx`, the `ChangeFilter` title maps `Show all files` to `显示全部变更`; other global uses remain `显示全部文件`. Known obsolete translations listed in `previousTargets` may be corrected only within the located context; unknown English or Chinese changes require review, not blind overwrites. Generated, Git-ignored `zh-dict/pending.tsv` is a non-authoritative report of candidates, drift and unresolved/ambiguous locations. `bun run check:dict` validates the JSON schema, anchors, locations, duplicates and overlaps. Optional `--dict-dir <directory>` selects the catalog/report directory. Localization edits source during maintenance and introduces no runtime i18n. See [Localization.md](docs/Localization.md) for examples.
+The sole authoritative translation catalog is `zh-dict/zh-CN.json`, a JSON object keyed by stable semantic IDs. Each value has required string `source` and `target`, optional string arrays `scopes` and `previousTargets`, optional regex string `anchor`, optional `mode: 'whole'`, and optional `locations: [{file: string, component?: string, attribute?: string}]`. Keep English, Chinese and locations in that one file; every new or changed UI string, including remote-ref status copy, must register/update its catalog entry alongside source. The 1478 migrated TSV rules use stable generated keys and retain their scopes/anchor/mode behavior. Context-specific UI entries use TypeScript/TSX AST-based exact file/component/JSX attribute locations with unique matching, never line numbers or replacements of unrelated code. In `apps/desktop/src/features/inspector/CommitDetails.tsx`, the `ChangeFilter` title maps `Show all files` to `显示全部变更`; other global uses remain `显示全部文件`. Known obsolete translations listed in `previousTargets` may be corrected only within the located context; unknown English or Chinese changes require review, not blind overwrites. Generated, Git-ignored `zh-dict/pending.tsv` is a non-authoritative report of candidates, drift and unresolved/ambiguous locations. `bun run check:dict` validates the JSON schema, anchors, locations, duplicates and overlaps. Optional `--dict-dir <directory>` selects the catalog/report directory. Localization edits source during maintenance and introduces no runtime i18n. See [Localization.md](docs/Localization.md) for examples.
 
 Risk control is a functional-enhancement subclass: telemetry must be disabled; domestic avatars, updates, fetch, AI, self-hosted services and auxiliary credentials are allowed. Product-login gates are distinct from optional service credentials. Earlier GUIDANCE/WORKFLOW documents are historical drafts, not competing process definitions.
 
@@ -1752,12 +1752,28 @@ features/
 │                           remote blue, tag primary) — a green `demo ✓` on an orange lane did
 │                           not say which line it was; the icons still tell local/remote/tag
 │                           apart; stale remote-tracking refs use neutral gray, a dashed border and
-│                           CloudOff, with “过期的远程跟踪分支” in the tooltip. Repository open and
-│                           relevant ref/fetch changes trigger an authenticated read-only remote check;
-│                           failed checks are unknown, never proof of deletion. Graph and sidebar ref
-│                           menus offer “删除远程跟踪引用” only for confirmed stale refs. Deletion
-│                           rechecks the remote and selected local OID, removes only that tracking ref,
-│                           and refreshes the UI; local branches and remote refs are untouched.
+│                           CloudOff, with “过期的远程跟踪分支” and the full remote-prefixed name
+│                           in the tooltip. Repository open and relevant ref/fetch/push changes trigger
+│                           an authenticated read-only remote check; failed checks are unknown,
+│                           never proof of deletion. Graph and sidebar ref menus offer
+│                           “删除远程跟踪引用” only for confirmed stale refs. Deletion rechecks
+│                           remote absence, locks the selected local ref, checks its expected OID
+│                           under that lock and removes only that tracking ref, then refreshes.
+│                           TAG REMOTE STATUS (ongoing): graph/sidebar share repository/
+│                           TagRemoteStatus.tsx: Cloud=synced, Monitor=local-only, gray
+│                           CircleHelp=unknown/failure, amber TriangleAlert=same-name different
+│                           tag object. Compare direct refs/tags OIDs, including annotated metadata
+│                           and signatures, never peeled targets; TagInfo.refOid must survive
+│                           refresh signatures. Store results per remote with checkedAt/error;
+│                           default status and push use pickRemote (HEAD upstream → origin → first),
+│                           tooltips list all remotes and check times. remote::ref_status shares
+│                           one authenticated read-only connection for tracking refs and tags.
+│                           Menus offer “检查远端状态” and remote choice for push; synced targets
+│                           disable push, mismatches never default to force. Keep path/generation
+│                           guards and unknown-on-failure behavior. New UI copy must be registered
+│                           in zh-dict/zh-CN.json. Source anchors and validation commands live in
+│                           docs/local-customizations/06-remote-ref-status.md; current new test
+│                           results must be recorded only after actual verification.
 │                           Stash chips stay neutral and dashed; the chip→node connector
 │                           is 1.5px at 0.85 opacity (was 1px/0.45); a remote-only chip
 │                           whose base name matches an existing local branch is

@@ -4,6 +4,7 @@ import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@angko
 import { Archive, Check, Cloud, CloudOff, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
 import type { CommitInfo } from '@angkorgit/core';
 import { Avatar } from '@/components/Avatar';
+import { TagRemoteStatus, useTagRemoteStatus } from '@/features/repository/TagRemoteStatus';
 import { toast } from 'sonner';
 import { formatDate, timeAgo } from '@/shared/utils';
 import { DEFAULT_GRAPH_COLUMNS, type GraphColumns } from '@/features/ui/store';
@@ -316,7 +317,7 @@ export function groupRefs(refs: RefInfo[], headBranch: string | null = null, sta
 
 export function estimateChipWidth(group: RefGroup, head: boolean): number {
   const icons = (group.local ? 1 : 0) + (group.remote ? 1 : 0) + (group.tag ? 1 : 0) + (group.stash ? 1 : 0) + (head || group.detachedHead ? 1 : 0);
-  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + icons * CHIP_ICON);
+  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tag ? 1 : 0)) * CHIP_ICON);
 }
 
 function fitGroups(groups: RefGroup[], available: number, isHead: boolean): RefGroup[] {
@@ -355,6 +356,7 @@ function RefChip({
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
+  const tagStatus = useTagRemoteStatus(group.tag ? group.label : '');
   const laneStyle = group.stale
     ? { background: 'hsl(var(--muted) / 0.25)', borderColor: 'hsl(var(--muted-foreground) / 0.35)', color: 'hsl(var(--muted-foreground))' }
     : group.stash
@@ -384,7 +386,7 @@ function RefChip({
           : group.tag || group.detachedHead
           ? group.detachedHead
             ? 'HEAD 游离在该提交处'
-            : group.label
+            : tagStatus.title
           : separated
             ? `${group.primary.shorthand}——双击将 ${group.primary.shorthand.split('/').slice(1).join('/')} 重置到此处，右键显示操作`
             : `${group.label}${group.local ? ' · 本地' : ''}${group.remote ? ` · ${group.remoteNames?.join('、') ?? group.primary.shorthand}` : ''}${worktree ? ` · 位于工作树 ${worktree}` : ''}——${worktree ? '双击切换到该工作树' : group.local ? '双击检出' : `双击从此处检出 ${group.primary.shorthand.split('/').slice(1).join('/')}（本地分支落后时会快进）`}，右键显示操作`
@@ -409,6 +411,7 @@ function RefChip({
       {group.local && !worktree && <Monitor className="size-2.5 shrink-0" />}
       {worktree && <FolderTree className="size-2.5 shrink-0" />}
       {group.remote && (group.stale ? <CloudOff className="size-2.5 shrink-0" /> : <Cloud className="size-2.5 shrink-0" />)}
+      {group.tag && <TagRemoteStatus name={group.label} className="size-2.5 shrink-0" />}
     </Badge>
   );
 }

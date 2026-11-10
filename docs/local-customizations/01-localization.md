@@ -18,11 +18,12 @@ CLI 为 `bun run localize --repo <目录> [--dict-dir <目录>] [--include-claud
 - 保留 Git 状态码、命令名、ref、远端名、文件路径、模板变量、配置键和第三方品牌；不通过替换标识符实现翻译。
 - 同步翻译可访问名称对应的 e2e 选择器；中文子串容易重合，必要时使用精确匹配。
 - 变基冲突提示引导“继续变基”，不能统一描述为“提交完成”；摘取、合并等状态分别表达。
+- 新增或调整界面文案必须同步登记唯一词典 `zh-dict/zh-CN.json`，包括远端引用状态的菜单、提示、错误与可访问名称；不得只在 TSX/Rust 写中文而遗漏词典。
 - 服务端输出可保留原文，不把原始诊断当漏译；自有错误说明及恢复操作仍需中文。
 
 ## 维护入口
 
-- `zh-dict/zh-CN.json`：唯一权威词典，以稳定语义 ID 为键，在同一条目维护 `source`、`target` 及可选 `locations`。传统 TSV 条目使用稳定生成的键，保留 `scopes`、`anchor`、`mode`。
+- `zh-dict/zh-CN.json`：唯一权威词典，以稳定语义 ID 为键，在同一条目维护 `source`、`target` 及可选 `locations`。已迁入 1478 条传统规则并补充上下文词条；迁移条目保留稳定生成键、`scopes`、`anchor`、`mode`，不恢复并行 TSV 词典。
 - `zh-dict/pending.tsv`：生成且被 Git 忽略的报告，包含待译候选、漂移、未解析和歧义位置；不提交，不作为翻译来源。
 - `zh-dict/protect.txt`、`zh-dict/skip-files.txt`：保护技术内容及排除手工维护文件。
 - `scripts/localize.mjs`：Bun 纯翻译与待译扫描，不操作 Git、版本或发布地址。
@@ -35,8 +36,8 @@ CLI 为 `bun run localize --repo <目录> [--dict-dir <目录>] [--include-claud
 ## 合并后的恢复步骤
 
 1. 查看新增或修改的用户可见文案，结合生成的 `zh-dict/pending.tsv` 审阅；待译数量下降不等于汉化完整。
-2. 整句词条优先，传统单词规则必须锚定或使用 `whole`，保留最长源优先。上下文专用文案用 `locations` 的精确文件、组件与 JSX 属性定位，须唯一匹配，不按行号定位。
-3. 文案变动同时修改 `zh-CN.json` 与源码，保留稳定 ID。已确认的旧译放入 `previousTargets`，只在限定位置纠正；未知英文或中文漂移、位置未解析或歧义须人工审阅，不盲目覆盖。`ChangeFilter` 的 `title` 中 `Show all files` 应译为“显示全部变更”，其他全局用法仍为“显示全部文件”。
+2. 整句词条优先，传统单词规则必须锚定或使用 `whole`，保留最长源优先。上下文专用文案用 `locations` 的精确文件、组件与 JSX 属性定位，经 TypeScript/TSX AST 识别字符串/JSX 内容，不对组件外同文或代码标识符做文本替换；须唯一匹配，不按行号定位。
+3. 文案变动同时修改 `zh-CN.json` 与源码，保留稳定 ID。已确认的旧译放入 `previousTargets`，只在限定位置纠正；未知英文或中文漂移、位置未解析或歧义须人工审阅，不盲目覆盖。`ChangeFilter` 中仅“全部”按钮的 `title` 将 `Show all files` 译为“显示全部变更”，按钮标签仍为“全部”，其他全局用法仍为“显示全部文件”。
 4. 多行 Rust 消息、JSX 文本、模板插值和状态相关说明人工核对；词典无法表达的改动直接在源码适配并记录原因。
 5. 对照新的状态判断检查翻译是否改变分支行为，尤其工具栏、命令面板的拉取/推送及失败恢复入口。不要只改显示词而遗漏以文案判断的旧逻辑。
 6. 已增加的局部加载用语为“正在加载…”“正在刷新…”“刷新失败，重试”；上游合并后不要把缓存后的后台刷新改回“正在打开项目”。这些属于本地手写交互文案，按表格加载行为核对。
@@ -48,6 +49,7 @@ CLI 为 `bun run localize --repo <目录> [--dict-dir <目录>] [--include-claud
 ```bash
 rtk bun run check:dict
 rtk bun run check:copy
+rtk bun run test:localize
 rtk bun run test -- tests/unit/localization.test.ts
 ```
 

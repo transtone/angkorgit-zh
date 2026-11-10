@@ -20,6 +20,7 @@ import type {
   RecentRepository,
   RepositoryScan,
   RemoteInfo,
+  RemoteRefStatus,
   RepositoryInfo,
   StashInfo,
   PullPreview,
@@ -610,6 +611,12 @@ export const ipc = {
   async remoteRemove(path: string, name: string): Promise<void> {
     if (!isTauri()) return;
     return invoke('remote_remove', { path, name });
+  },
+  async remoteRefStatus(path: string, remote: string): Promise<RemoteRefStatus> {
+    if (!isTauri()) {
+      return { staleRefs: [], tags: demo.demoTags.map((tag) => ({ name: tag.name, status: 'synced' as const })) };
+    }
+    return invoke('remote_ref_status', { path, remote });
   },
   async remoteStaleRefs(path: string, remote: string): Promise<string[]> {
     if (!isTauri()) return [];

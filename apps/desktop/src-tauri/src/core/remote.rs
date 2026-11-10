@@ -435,8 +435,41 @@ pub fn remove(path: &str, name: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// Combined read-only status from one authenticated remote advertisement.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteRefStatus {
+    pub stale_refs: Vec<String>,
+    pub tags: Vec<RemoteTagStatus>,
+}
+
+/// A local tag compared with the selected remote's direct tag object ID.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteTagStatus {
+    pub name: String,
+    pub status: TagSyncStatus,
+}
+
+/// Relationship between a local tag and its remote counterpart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TagSyncStatus {
+    Synced,
+    LocalOnly,
+    Different,
+}
+
 /// Lists absent advertised sources for direct local refs covered by this remote's fetch mappings.
 pub fn stale_refs(path: &str, remote_name: &str) -> AppResult<Vec<String>> {
+    Ok(ref_status(path, remote_name)?.stale_refs)
+}
+
+/// Compares tracking refs and all local tags without fetching or updating local state.
+///
+/// # Errors
+/// Returns errors from opening the repository, reading refs, or querying the remote.
+pub fn ref_status(path: &str, remote_name: &str) -> AppResult<RemoteRefStatus> {
     let repo = super::repo::open(path)?;
     let mut remote = repo.find_remote(remote_name)?;
     let advertised = advertised_refs(&repo, &mut remote)?;
@@ -450,22 +483,54 @@ pub fn stale_refs(path: &str, remote_name: &str) -> AppResult<Vec<String>> {
             continue;
         }
         let sources = fetch_sources(&remote, name)?;
-        if !sources.is_empty() && sources.iter().all(|source| !advertised.contains(source)) {
+        if !sources.is_empty()
+            && sources
+                .iter()
+                .all(|source| !advertised.contains_key(source))
+        {
             stale.push(name.to_owned());
         }
     }
     stale.sort();
-    Ok(stale)
+    let mut tags = Vec::new();
+    for reference in repo.references_glob("refs/tags/*")? {
+        let reference = reference?;
+        let name = reference
+            .name()
+            .ok_or_else(|| AppError::other("标签引用不是 UTF-8"))?;
+        let oid = reference
+            .resolve()?
+            .target()
+            .ok_or_else(|| AppError::other("标签引用没有对象 ID"))?;
+        let status = match advertised.get(name) {
+            None => TagSyncStatus::LocalOnly,
+            Some(remote_oid) if *remote_oid == oid => TagSyncStatus::Synced,
+            Some(_) => TagSyncStatus::Different,
+        };
+        tags.push(RemoteTagStatus {
+            name: name.strip_prefix("refs/tags/").unwrap_or(name).to_owned(),
+            status,
+        });
+    }
+    tags.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(RemoteRefStatus {
+        stale_refs: stale,
+        tags,
+    })
 }
 
-fn advertised_refs(repo: &Repository, remote: &mut git2::Remote<'_>) -> AppResult<HashSet<String>> {
+fn advertised_refs(
+    repo: &Repository,
+    remote: &mut git2::Remote<'_>,
+) -> AppResult<HashMap<String, git2::Oid>> {
     prime_account_bindings(Some(repo));
     // A connection guard disconnects on every exit; no fetch or local ref update occurs.
     let connection = remote.connect_auth(git2::Direction::Fetch, Some(make_callbacks()), None)?;
     Ok(connection
         .list()?
         .iter()
-        .map(|head| head.name().to_owned())
+        .filter(|head| !head.name().ends_with("^{}"))
+        .map(|head| (head.name().to_owned(), head.oid()))
         .collect())
 }
 
@@ -537,7 +602,7 @@ pub fn delete_stale_ref(path: &str, ref_name: &str, expected_oid: &str) -> AppRe
         owner.ok_or_else(|| AppError::other("此引用没有所属远端的抓取映射"))?;
     let mut remote = repo.find_remote(&remote_name)?;
     let advertised = advertised_refs(&repo, &mut remote)?;
-    if sources.iter().any(|source| advertised.contains(source)) {
+    if sources.iter().any(|source| advertised.contains_key(source)) {
         return Ok(OpOutcome {
             status: "skipped".into(),
             message: format!("远端分支已恢复，已跳过删除 {ref_name}"),

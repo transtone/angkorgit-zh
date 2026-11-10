@@ -48,7 +48,8 @@ pub mod test_api {
     pub use crate::core::remote::{
         add as remote_add, checkout_remote_ref, delete_stale_ref as remote_delete_stale_ref, fetch,
         group_update, group_update_controlled, list as remote_list, pull, push, push_specs,
-        push_tag, stale_refs as remote_stale_refs,
+        push_tag, ref_status as remote_ref_status, stale_refs as remote_stale_refs,
+        RemoteRefStatus, RemoteTagStatus, TagSyncStatus,
     };
     pub use crate::core::repo::{
         cleanup_state, discover, info as repo_info, init, ref_fingerprint, set_config, status,
@@ -199,6 +200,7 @@ pub fn run() {
             commands::remote_edit,
             commands::remote_remove,
             commands::remote_fetch,
+            commands::remote_ref_status,
             commands::remote_stale_refs,
             commands::remote_delete_stale_ref,
             commands::remote_pull,

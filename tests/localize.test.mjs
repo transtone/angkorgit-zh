@@ -523,6 +523,8 @@ test('the real catalog restores the actual ChangeFilter tooltip without changing
         fs.copyFileSync(path.join(project, 'zh-dict', file), path.join(dictDir, file));
       }
       const componentFile = 'apps/desktop/src/features/inspector/CommitDetails.tsx';
+      const tagStatusFile = 'apps/desktop/src/features/repository/TagRemoteStatus.tsx';
+      write(repo, tagStatusFile, read(project, tagStatusFile));
       const actual = read(project, componentFile);
       assert.ok(actual.includes('title="显示全部变更"'));
       write(repo, componentFile, actual.replace('title="显示全部变更"', `title="${previous}"`));

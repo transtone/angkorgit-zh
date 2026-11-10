@@ -10728,5 +10728,91 @@
     "previousTargets": [
       "显示全部文件"
     ]
+  },
+  "tags.remoteStatus.synced": {
+    "source": "Synced",
+    "target": "已同步",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.remoteStatus.localOnly": {
+    "source": "Local only",
+    "target": "仅本地",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.remoteStatus.different": {
+    "source": "Different from remote",
+    "target": "与远端不一致",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.remoteStatus.unknown": {
+    "source": "Status unknown",
+    "target": "状态未知",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.remoteStatus.failed": {
+    "source": "Query failed",
+    "target": "查询失败",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.remoteStatus.unchecked": {
+    "source": "Not checked",
+    "target": "未检查",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.checkRemoteStatus": {
+    "source": "Check remote status",
+    "target": "检查远端状态",
+    "scopes": [
+      "ui"
+    ]
+  },
+  "tags.remoteMismatchWarning": {
+    "source": "Different from remote; a normal push will not force overwrite the remote tag",
+    "target": "与远端不一致；普通推送不会强制覆盖远端标签",
+    "scopes": [
+      "ui"
+    ]
+  },
+  "tags.remoteStatus.iconRemote": {
+    "source": "Status icon remote:",
+    "target": "状态图标对应远端：",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
+  },
+  "tags.remoteStatus.checkedAt": {
+    "source": "Last checked:",
+    "target": "上次检查：",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
+      }
+    ]
   }
 }

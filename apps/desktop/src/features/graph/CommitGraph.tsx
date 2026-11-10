@@ -12,6 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Hint,
   Input,
@@ -31,6 +34,7 @@ import { WipRow } from './WipRow';
 import { confirmDialog } from '@/components/confirm';
 import { isHookFailure, reportHookFailure } from '@/components/hookFailure';
 import { useShortcuts } from '@/shared/useShortcuts';
+import { useTagRemoteStatus } from '@/features/repository/TagRemoteStatus';
 
 interface MenuState {
   x: number;
@@ -61,6 +65,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
   const staleRemoteRefs = useRepo((s) => s.staleRemoteRefs);
+  const tagRemoteStatus = useRepo((s) => s.tagRemoteStatus);
   const { rows, commits, maxLane, hasMore, loading, error, filters, find, matchesOnly, onlyMatches, setOnlyMatches, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
     useGraph();
   const openDialog = useUi((s) => s.openDialog);
@@ -93,6 +98,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const path = repo?.path ?? '';
+  const tagStatus = useTagRemoteStatus(refMenu?.ref.kind === 'tag' ? refMenu.ref.shorthand : '');
   const refMenuSource =
     refMenu && (refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch')
       ? refMenu.ref.kind === 'remoteBranch' ? refMenu.ref.name : refMenu.ref.shorthand
@@ -423,12 +429,12 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
     !refMenuIsHead &&
     !(refMenu.ref.kind === 'localBranch' && worktreeBranches.has(refMenu.ref.shorthand));
 
-  const pushTag = (tag: string, noVerify = false): void =>
+  const pushTag = (tag: string, noVerify = false, remote = pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name ?? 'origin'): void =>
     void act(
       `推送标签 ${tag}`,
-      () => ipc.pushTag(path, pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name ?? 'origin', tag, noVerify),
+      () => ipc.pushTag(path, remote, tag, noVerify),
       undefined,
-      () => pushTag(tag, true),
+      () => pushTag(tag, true, remote),
     );
 
   const refMenuResetTarget = (() => {
@@ -825,9 +831,42 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                 >
                   <Check /> 检出提交（游离状态）
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => pushTag(refMenu.ref.shorthand)}>
-                  <Cloud /> 推送到远端
+                <DropdownMenuItem onClick={() => void act('检查远端状态', async () => {
+                  await useRepo.getState().checkStaleRemoteRefs();
+                  if (useRepo.getState().repo?.path !== path) return;
+                  const failed = Object.entries(useRepo.getState().tagRemoteStatus).filter(([, state]) => state.error).map(([name]) => name);
+                  if (failed.length) throw new Error(`无法检查远端：${failed.join('、')}`);
+                })} disabled={remotes.length === 0}>
+                  <Cloud /> 检查远端状态
                 </DropdownMenuItem>
+                {remotes.length > 1 ? (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger><Cloud /> 推送到远端</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {remotes.map((remote) => {
+                        const state = tagRemoteStatus[remote.name]?.tags[refMenu.ref.shorthand];
+                        return (
+                          <DropdownMenuItem
+                            key={remote.name}
+                            disabled={state === 'synced'}
+                            title={state === 'different' ? '与远端不一致；普通推送不会强制覆盖远端标签' : undefined}
+                            onClick={() => pushTag(refMenu.ref.shorthand, false, remote.name)}
+                          >
+                            {remote.name}{state === 'synced' ? ' · 已同步' : state === 'different' ? ' · 与远端不一致' : ''}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                ) : (
+                  <DropdownMenuItem
+                    disabled={remotes.length === 0 || tagStatus.status === 'synced'}
+                    title={tagStatus.status === 'different' ? '与远端不一致；普通推送不会强制覆盖远端标签' : undefined}
+                    onClick={() => pushTag(refMenu.ref.shorthand)}
+                  >
+                    <Cloud /> 推送到远端
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   destructive

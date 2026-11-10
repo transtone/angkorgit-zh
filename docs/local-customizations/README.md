@@ -1,9 +1,16 @@
 # fork patch 维护入口
 
-- [项目功能清单](FEATURES.md)：独立的分组列表，登记工具链、翻译、UI、功能优化、风控和发布维护；每项有编号、合并要求及验证依据。
-- [指导方案](GUIDANCE.md)：恢复原则、上游等价接管及自动化边界。
-- [执行流程](WORKFLOW.md)：基线 → 合并 → patch → 验证 → 交付 → 发布。
-- 专项细节：[01 中文翻译](01-localization.md)、[02 页面样式](02-page-styles.md)、[03 严格快进](03-fast-forward.md)、[04 项目切换](04-project-switch-loading.md)、[05 风控](05-risk-control.md)。
+- [项目功能清单](FEATURES.md)：登记工具链、国际化、易用性、风控和发布能力及合并要求。
+- [指导方案](GUIDANCE.md)、[执行流程](WORKFLOW.md)：历史方案背景；当前流程以 FEATURES.md 为准。
+
+| 专项维护文档 | 范围 |
+| --- | --- |
+| [01 中文翻译](01-localization.md) | 唯一 JSON 词典、上下文定位及文案登记 |
+| [02 页面样式](02-page-styles.md) | 紧凑布局与头像 |
+| [03 严格快进](03-fast-forward.md) | 双向快进与安全校验 |
+| [04 项目切换](04-project-switch-loading.md) | 缓存、阅读状态与异步保护 |
+| [05 风控](05-risk-control.md) | 遥测限制与合并审查 |
+| [06 远端引用状态](06-remote-ref-status.md) | 过期跟踪分支、单引用删除及标签远端状态 |
 
 清单只维护在 FEATURES.md，历史结果保留在本文，不重复登记功能。风控归属“功能补强”，按必须限制、无需限制、合并监控三类处理。
 
@@ -27,6 +34,14 @@
 ## 执行入口
 
 每次同步以 [FEATURES.md 的合并与增强流程](FEATURES.md#三合并与增强流程) 为准。同步、冲突处理与增强适配在本地人工完成，自动上游检测及同步汉化 PR 工作流已移除。翻译仅运行 `bun run localize --repo <源码目录>`，不操作 Git；CI、网站部署和发布负责验证与交付。
+
+## 发布与网站维护
+
+- `.github/workflows/release-zh.yml` 仅响应推送 `vX.Y.Z` tag；核对根及桌面 `package.json`、`tauri.conf.json`、`Cargo.toml`、`Cargo.lock` 与 tag 版本，再运行测试、构建 Windows 安装包、签名及发布更新元数据。不要恢复普通 push/PR、Release 事件或手动发布触发器。
+- `.github/workflows/ci.yml` 与 `website.yml` 仅 `workflow_dispatch`；上游同步按本地人工流程执行，不新建独立 upstream-sync 文件或自动同步工作流。
+- 保留部分 Fetch 的 CI 夹具修正，入口为 `apps/desktop/src-tauri/tests/git_engine.rs` 的 `group_fetch_reports_moved_refs_and_continues_after_remote_failure`。使用本地临时远端与故意不可用的远端，明确区分首轮引用移动和后续无引用移动；均须验证远端失败时仍报告 `partial`，并核对成功远端的变更及工作区不变。修复应落在夹具状态构造，不能放宽生产断言或依赖外网。
+- Website 构建注入 `SITE_URL=https://<repository_owner>.github.io/<repository_name>/`，由当前仓库上下文动态生成，避免硬编码所有者。GitHub 仓库 Settings → Pages 必须已启用，Source 选择 **GitHub Actions**；只有工作流文件不能代替 Pages 配置。
+- 相关验证命令（不代表本轮已执行）：`rtk bun run test:localize`、`rtk bun run website:build`、`rtk cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --test git_engine group_fetch_reports_moved_refs_and_continues_after_remote_failure`。工作流触发条件、版本清单与 Pages 设置另外人工核对。
 
 下方仅保留历史事实；其中“本次”“已暂存”等描述指当轮记录，不代表当前 Git 状态。
 

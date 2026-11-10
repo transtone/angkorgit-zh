@@ -413,6 +413,7 @@ pub fn tag_list(path: &str) -> AppResult<Vec<TagInfo>> {
             Ok(tag) => {
                 result.push(TagInfo {
                     name,
+                    ref_oid: oid.to_string(),
                     target_oid: tag.target_id().to_string(),
                     message: tag.message().map(|m| m.trim().to_string()),
                     is_annotated: true,
@@ -421,6 +422,7 @@ pub fn tag_list(path: &str) -> AppResult<Vec<TagInfo>> {
             Err(_) => {
                 result.push(TagInfo {
                     name,
+                    ref_oid: oid.to_string(),
                     target_oid: oid.to_string(),
                     message: None,
                     is_annotated: false,

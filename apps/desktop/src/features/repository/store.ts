@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { pickRemote } from '@angkorgit/core';
 import type {
   BranchInfo, PullPreview, RecentRepository, RemoteInfo, RepositoryInfo,
-  StashInfo, StatusSummary, SubmoduleInfo, TagInfo, WorktreeInfo,
+  StashInfo, StatusSummary, SubmoduleInfo, TagInfo, TagRemoteState, WorktreeInfo,
 } from '@angkorgit/core';
 import { ipc } from '@/core/ipc';
 import { useGraph } from '@/features/graph/store';
@@ -29,6 +29,11 @@ interface RepoState {
   lastFetchAt: number | null;
   fetchFailures: string[];
   staleRemoteRefs: ReadonlySet<string>;
+  tagRemoteStatus: Record<string, {
+    checkedAt: number | null;
+    error: string | null;
+    tags: Record<string, TagRemoteState>;
+  }>;
   checkStaleRemoteRefs: () => Promise<void>;
   loadRecents: () => Promise<void>;
   open: (path: string) => Promise<RepositoryInfo>;
@@ -45,19 +50,19 @@ interface RepoState {
 
 type RepoSnapshot = Pick<RepoState,
   'repo' | 'status' | 'branches' | 'tags' | 'stashes' | 'remotes' | 'submodules' |
-  'worktrees' | 'conflicts' | 'unpushed' | 'pullPreview' | 'profileId' | 'lastFetchAt' | 'fetchFailures' | 'staleRemoteRefs'>;
+  'worktrees' | 'conflicts' | 'unpushed' | 'pullPreview' | 'profileId' | 'lastFetchAt' | 'fetchFailures' | 'staleRemoteRefs' | 'tagRemoteStatus'>;
 
 const emptySnapshot = (): RepoSnapshot => ({
   repo: null, status: null, branches: [], tags: [], stashes: [], remotes: [],
   submodules: [], worktrees: [], conflicts: [], unpushed: [], pullPreview: null,
-  profileId: null, lastFetchAt: null, fetchFailures: [], staleRemoteRefs: new Set(),
+  profileId: null, lastFetchAt: null, fetchFailures: [], staleRemoteRefs: new Set(), tagRemoteStatus: {},
 });
 const snapshot = (s: RepoState): RepoSnapshot => ({
   repo: s.repo, status: s.status, branches: s.branches, tags: s.tags, stashes: s.stashes,
   remotes: s.remotes, submodules: s.submodules, worktrees: s.worktrees,
   conflicts: s.conflicts, unpushed: s.unpushed, pullPreview: s.pullPreview,
   profileId: s.profileId, lastFetchAt: s.lastFetchAt, fetchFailures: s.fetchFailures,
-  staleRemoteRefs: s.staleRemoteRefs,
+  staleRemoteRefs: s.staleRemoteRefs, tagRemoteStatus: s.tagRemoteStatus,
 });
 
 let openSeq = 0;
@@ -71,10 +76,11 @@ export const useRepo = create<RepoState>((set, get) => {
   let staleSeq = 0;
   let staleSignature: string | null = null;
   const remoteSignature = () => {
-    const { remotes, branches, lastFetchAt } = get();
+    const { remotes, branches, tags, lastFetchAt } = get();
     return JSON.stringify([
       remotes.map((r) => [r.name, r.url]).sort(),
       branches.filter((b) => b.isRemote).map((b) => [b.name, b.targetOid]).sort(),
+      tags.map((t) => [t.name, t.targetOid, t.refOid, t.message, t.isAnnotated]).sort(),
       lastFetchAt,
     ]);
   };
@@ -238,18 +244,29 @@ export const useRepo = create<RepoState>((set, get) => {
       const path = repo.path;
       const seq = ++staleSeq;
       staleSignature = remoteSignature();
-      // A changed URL or ref tip makes the previous classification unknown.
-      set({ staleRemoteRefs: new Set() });
+      // Changed refs or URLs make the previous classification unknown.
+      set({ staleRemoteRefs: new Set(), tagRemoteStatus: Object.fromEntries(
+        remotes.map((remote) => [remote.name, { checkedAt: null, error: null, tags: {} }]),
+      ) });
       const results = await Promise.all(remotes.map(async (remote) => {
         try {
-          return await ipc.remoteStaleRefs(path, remote.name);
-        } catch {
-          return [] as string[];
+          const result = await ipc.remoteRefStatus(path, remote.name);
+          return { name: remote.name, staleRefs: result.staleRefs, status: {
+            checkedAt: Date.now(), error: null,
+            tags: Object.fromEntries(result.tags.map((tag) => [tag.name, tag.status])),
+          } };
+        } catch (error) {
+          return { name: remote.name, staleRefs: [] as string[], status: {
+            checkedAt: null, error: (error as { message?: string }).message ?? String(error), tags: {},
+          } };
         }
       }));
       if (get().repo?.path !== path || seq !== staleSeq) return;
       const trackingRefs = new Set(branches.filter((b) => b.isRemote).map((b) => `refs/remotes/${b.name}`));
-      set({ staleRemoteRefs: new Set(results.flat().filter((ref) => trackingRefs.has(ref))) });
+      set({
+        staleRemoteRefs: new Set(results.flatMap((result) => result.staleRefs).filter((ref) => trackingRefs.has(ref))),
+        tagRemoteStatus: Object.fromEntries(results.map((result) => [result.name, result.status])),
+      });
     },
 
     setBusy: (busy) => set({ busy }),

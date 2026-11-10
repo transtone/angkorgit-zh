@@ -52,6 +52,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Hint,
   Input,
@@ -63,6 +66,7 @@ import { confirmDialog } from '@/components/confirm';
 import { isHookFailure, reportHookFailure } from '@/components/hookFailure';
 import { EmptyCard } from '@/components/EmptyCard';
 import { useRepo } from '@/features/repository/store';
+import { TagRemoteStatus, tagRemoteSummary } from '@/features/repository/TagRemoteStatus';
 import { useGraph } from '@/features/graph/store';
 import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
@@ -222,6 +226,7 @@ export function Sidebar() {
   const staleRemoteTitle = (branch: BranchInfo) =>
     `过期的远程跟踪分支 — ${branch.name} — 远端已不存在此分支，本地仍保留跟踪引用；可右键删除远程跟踪引用。`;
   const tags = useRepo((s) => s.tags);
+  const tagRemoteStatus = useRepo((s) => s.tagRemoteStatus);
   const stashes = useRepo((s) => s.stashes);
   const remotes = useRepo((s) => s.remotes);
   const submodules = useRepo((s) => s.submodules);
@@ -338,13 +343,43 @@ export function Sidebar() {
     }
   };
 
-  const pushTag = (tag: string, noVerify = false): void =>
+  const tagSummary = (name: string) => tagRemoteSummary(name, { tagRemoteStatus, remotes, branches });
+  const defaultTagRemote = pickRemote(remotes, branches.find((branch) => !branch.isRemote && branch.isHead)?.upstream)?.name;
+  const tagPushStatus = (tag: string, remote = defaultTagRemote) => {
+    const entry = remote ? tagRemoteStatus[remote] : undefined;
+    return entry?.checkedAt != null && !entry.error ? entry.tags[tag] ?? 'unknown' : 'unknown';
+  };
+  const tagPushTitle = (tag: string, remote = defaultTagRemote) => {
+    if (!remote) return '未配置远端';
+    const status = tagPushStatus(tag, remote);
+    if (status === 'different') return `${tag} · ${remote}: 与远端不一致；普通推送可能被拒绝，不会强制覆盖远端标签`;
+    return tagSummary(tag).title;
+  };
+  const checkTagRemoteStatus = async () => {
+    try {
+      await useRepo.getState().checkStaleRemoteRefs();
+      const state = useRepo.getState();
+      if (state.repo?.path !== path) return;
+      const failed = state.remotes.filter((remote) => {
+        const entry = state.tagRemoteStatus[remote.name];
+        return entry?.checkedAt == null || Boolean(entry.error);
+      }).map((remote) => remote.name);
+      if (failed.length > 0) toast.error(`检查远端状态失败：${failed.join('、')}`);
+      else toast.success('检查远端状态已完成');
+    } catch {
+      toast.error('检查远端状态失败');
+    }
+  };
+  const pushTag = (tag: string, noVerify = false, remoteOverride?: string): void => {
+    const remote = remoteOverride ?? defaultTagRemote;
+    if (!remote) return;
     void act(
-      `推送标签 ${tag}`,
-      () => ipc.pushTag(path, remotes[0]?.name ?? 'origin', tag, noVerify),
+      `推送标签 ${tag} 到 ${remote}`,
+      () => ipc.pushTag(path, remote, tag, noVerify),
       undefined,
-      () => pushTag(tag, true),
+      () => pushTag(tag, true, remote),
     );
+  };
 
   const pushBranch = (branch: string, noVerify = false): void =>
     void act(
@@ -1181,10 +1216,11 @@ export function Sidebar() {
             >
               <span
                 className="min-w-0 flex-1 truncate"
-                title={`${tag.message ?? tag.name} — 点击显示该提交，右键查看更多操作`}
+                title={`${tag.message ?? tag.name} — 点击显示该提交，右键查看更多操作\n${tagSummary(tag.name).title}`}
               >
                 {tag.name}
               </span>
+              <TagRemoteStatus name={tag.name} />
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -1369,12 +1405,39 @@ export function Sidebar() {
               <Check /> 检出提交（游离状态）
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={remotes.length === 0}
+              onClick={() => void checkTagRemoteStatus()}
+            >
+              <RefreshCw /> 检查远端状态
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!defaultTagRemote || tagPushStatus(tagMenu.tag.name) === 'synced'}
+              title={tagPushTitle(tagMenu.tag.name)}
               onClick={() => {
                 pushTag(tagMenu.tag.name);
               }}
             >
-              <Cloud /> 推送到远端
+              {tagPushStatus(tagMenu.tag.name) === 'different' ? <AlertTriangle className="text-amber-500" /> : <Cloud />} 推送到远端
             </DropdownMenuItem>
+            {remotes.length > 1 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Cloud /> 推送到远端</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {remotes.map((remote) => (
+                    <DropdownMenuItem
+                      key={remote.name}
+                      disabled={tagPushStatus(tagMenu.tag.name, remote.name) === 'synced'}
+                      title={tagPushTitle(tagMenu.tag.name, remote.name)}
+                      onClick={() => pushTag(tagMenu.tag.name, false, remote.name)}
+                    >
+                      {tagPushStatus(tagMenu.tag.name, remote.name) === 'different'
+                        ? <AlertTriangle className="text-amber-500" /> : <Cloud />}
+                      {remote.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive

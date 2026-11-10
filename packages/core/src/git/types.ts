@@ -95,8 +95,17 @@ export interface BranchInfo {
 export interface TagInfo {
   name: string;
   targetOid: string;
+  /** Direct tag reference OID, before peeling annotated tags. */
+  refOid?: string;
   message: string | null;
   isAnnotated: boolean;
+}
+
+export type TagRemoteState = 'synced' | 'localOnly' | 'different';
+
+export interface RemoteRefStatus {
+  staleRefs: string[];
+  tags: { name: string; status: TagRemoteState }[];
 }
 
 export interface StashInfo {
