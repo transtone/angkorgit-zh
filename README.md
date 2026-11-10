@@ -30,14 +30,15 @@
 
 因此，本项目采用**“基于严格语法保护的确定性字典式就地替换”**工具（`scripts/localize.mjs`，由 Bun 执行）：
 
-1. **多维度精细化分词库（`zh-dict/dict.tsv`）**
-   - 维护 1,000+ 条覆盖全生命周期的高质量中英对照条目，划分为 UI 界面、Rust 引擎错误、Core 领域层、Docs 文档与 Meta 元数据 5 大维度。
-   - 所有单单词或易混淆短词均严格绑定**行级上下文正则锚点（Anchor）**，并按长串优先倒序执行，杜绝误伤。
+1. **统一 JSON 词典（`zh-dict/zh-CN.json`）**
+   - 唯一权威翻译来源，以稳定语义 ID 为键；每项在同一文件维护英文 `source`、中文 `target` 及可选 `locations`。
+   - 传统 TSV 规则以稳定生成的键迁入，保留 `scopes`、`anchor`、`mode` 与最长源优先；上下文文案可精确限定文件、组件和 JSX 属性，须唯一匹配，不按行号定位。
+   - 修改文案须同时更新 JSON 与源码；已知旧译可通过 `previousTargets` 在限定上下文纠正，未知英文或中文漂移须审阅。
 2. **代码标识符保护（`zh-dict/protect.txt`）**
    - 使用文本与正则规则保护技术标识符、路径、URL 等内容；不是 AST 解析器。
    - 翻译后单独执行类型检查、测试及必要的 Rust 检查。
 3. **独立翻译脚本（`scripts/localize.mjs`）**
-   - 运行 `bun run scripts/localize.mjs --repo <源码目录>`，应用词典并扫描生成待译清单 `pending.tsv`。
+   - 运行 `bun run localize --repo <源码目录>`，应用词典并生成 `pending.tsv`，包含待译候选、文案漂移及未解析或歧义位置；报告被 Git 忽略，不是翻译来源。
    - 允许已有未提交改动，不暂存、提交、推送或同步代码。
    - 可选 `--dict-dir <词典目录>`、`--include-claude-md`、`--help`；版本号、更新地址、合并和发布单独处理。
 
@@ -134,7 +135,7 @@
 上游同步与本地 patch 由人工执行，翻译脚本只处理词典替换和待译扫描：
 
 1. 手动查看上游 `cheat2001/angkorgit` 的变更，按[本地维护流程](docs/local-customizations/WORKFLOW.md)合并并适配 fork 定制。
-2. 运行 `bun run scripts/localize.mjs --repo <源码目录>`，审阅 diff 和生成的 `zh-dict/pending.tsv`，补齐词典与手工中文内容。
+2. 运行 `bun run localize --repo <源码目录>`，审阅 diff 和生成的 `zh-dict/pending.tsv`，补齐 `zh-CN.json` 与手工中文内容；文案变化同时修改 JSON 与源码。
 3. 运行 `bun run check:dict`、`bun run check:copy` 及相关测试，审阅 CI（typecheck / 单元测试 / Playwright / Rust）结果后完成合并。
 4. **发布中文版**（`release-zh.yml`，手动触发）：使用 Bun 安装依赖，先跑完整测试，再构建并发布 Windows 安装包（NSIS + MSI，含 updater 签名、`latest.json` 与 `SHA256SUMS`）。
 
@@ -142,7 +143,7 @@
 
 仓库必须配置 Secret `TAURI_SIGNING_PRIVATE_KEY`（Tauri updater 私钥）；有密码时还需 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。私钥对应的公钥必须写入 `apps/desktop/src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`。工作流会检查密钥是否存在，测试通过后使用 Windows runner 的原生 Strawberry Perl 构建 OpenSSL，并运行 Rust 测试。发布产物也会保存在该次 Actions 的 artifact 中。
 
-翻译脚本扫描出的英文候选会写入 `zh-dict/pending.tsv`（本地生成，不入库），审阅后将需要翻译的词条补进 `dict.tsv`。
+翻译报告 `zh-dict/pending.tsv` 本地生成、被 Git 忽略，不入库也不作为词典。审阅待译候选、漂移、未解析及歧义位置后，更新唯一权威词典 `zh-dict/zh-CN.json` 和对应源码。`ChangeFilter` 的 `title` 将 `Show all files` 译为“显示全部变更”，其他全局用法仍为“显示全部文件”。
 详见 [docs/Localization.md](docs/Localization.md)。
 
 - **遥测数据、强制账号、云服务**：不会向外部发送任何追踪数据，无需注册任何平台。
@@ -198,7 +199,7 @@ cd apps/desktop/src-tauri && cargo test   # Rust Git 引擎集成测试
 | `packages/core` | 纯 TypeScript 领域模型：提交图布局算法、代码词级 diff、冲突解析器、Git 平台与 AI 适配器 |
 | `packages/design-system` | 基础设计系统：颜色变量、Tailwind Preset、UI 原语组件与图标 |
 | `scripts` | Bun 独立翻译脚本（`localize.mjs`）、检查与构建图标脚本 |
-| `zh-dict` | 结构化中文化词库（`dict.tsv`）、保护规则（`protect.txt`）与待译清单 |
+| `zh-dict` | 唯一权威中文词典（`zh-CN.json`）、保护规则（`protect.txt`）与生成的待译报告 |
 | `docs` | 架构设计、UI 指南、开发贡献规范与分发指南 |
 
 ## 📄 开源许可证

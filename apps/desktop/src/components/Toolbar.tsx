@@ -478,6 +478,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         toast.success(`${label} 完成`);
       }
       await onRefresh();
+      if (label.includes('推送') && useRepo.getState().repo?.path === repo.path) void useRepo.getState().checkStaleRemoteRefs();
     } catch (error) {
       if (retryWithoutHooks && isHookFailure(error)) {
         reportHookFailure({ repoPath: repo.path, operation: 'push', error, retry: retryWithoutHooks });

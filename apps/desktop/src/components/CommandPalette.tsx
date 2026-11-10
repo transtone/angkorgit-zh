@@ -168,6 +168,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         if ((label.startsWith('拉取') || label.startsWith('从')) && useRepo.getState().repo?.path === path) useRepo.getState().markFetched();
         toastOutcome(result, `${label} 已完成`);
         await onRefresh();
+        if (label.includes('推送') && useRepo.getState().repo?.path === path) void useRepo.getState().checkStaleRemoteRefs();
       } catch (error) {
         if (retryWithoutHooks && isHookFailure(error)) {
           reportHookFailure({ repoPath: path, operation: 'push', error, retry: retryWithoutHooks });

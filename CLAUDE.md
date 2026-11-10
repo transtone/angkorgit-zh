@@ -25,7 +25,11 @@ craftsmanship from Cambodia 🇰🇭.
 
 ## Fork patch maintenance
 
-Before merging upstream or restoring fork enhancements, read [FEATURES.md](docs/local-customizations/FEATURES.md): the agreed principles, feature list and merge sequence live there. Upstream merging and enhancement adaptation are manual. Automatic upstream detection/localization PR workflows have been removed; CI, website deployment and release workflows remain for verification and delivery. Translation uses `bun run localize --repo <source-directory>` (`scripts/localize.mjs`), only edits local translation files and pending report, and never runs Git or changes versions/release URLs. Run `bun run test:localize` for its regression tests. Risk control is a functional-enhancement subclass: telemetry must be disabled; domestic avatars, updates, fetch, AI, self-hosted services and auxiliary credentials are allowed. Product-login gates are distinct from optional service credentials. Earlier GUIDANCE/WORKFLOW documents are historical drafts, not competing process definitions.
+Before merging upstream or restoring fork enhancements, read [FEATURES.md](docs/local-customizations/FEATURES.md): the agreed principles, feature list and merge sequence live there. Upstream merging and enhancement adaptation are manual. Automatic upstream detection/localization PR workflows have been removed; CI, website deployment and release workflows remain for verification and delivery. Translation uses `bun run localize --repo <source-directory>` (`scripts/localize.mjs`), only edits local translation files and pending report, and never runs Git or changes versions/release URLs. Run `bun run test:localize` for its regression tests.
+
+The sole authoritative translation catalog is `zh-dict/zh-CN.json`, a JSON object keyed by stable semantic IDs. Each value has required string `source` and `target`, optional string arrays `scopes` and `previousTargets`, optional regex string `anchor`, optional `mode: 'whole'`, and optional `locations: [{file: string, component?: string, attribute?: string}]`. Keep English, Chinese and locations in that one file; copy changes must update both JSON and source. Legacy TSV rows use stable generated keys and retain their scopes/anchor/mode behavior. Context-specific UI entries use exact file/component/JSX attribute locations with unique matching, never line numbers. In `apps/desktop/src/features/inspector/CommitDetails.tsx`, the `ChangeFilter` title maps `Show all files` to `显示全部变更`; other global uses remain `显示全部文件`. Known obsolete translations listed in `previousTargets` may be corrected only within the located context; unknown English or Chinese changes require review, not blind overwrites. Generated, Git-ignored `zh-dict/pending.tsv` is a non-authoritative report of candidates, drift and unresolved/ambiguous locations. `bun run check:dict` validates the JSON schema, anchors, locations, duplicates and overlaps. Optional `--dict-dir <directory>` selects the catalog/report directory. Localization edits source during maintenance and introduces no runtime i18n. See [Localization.md](docs/Localization.md) for examples.
+
+Risk control is a functional-enhancement subclass: telemetry must be disabled; domestic avatars, updates, fetch, AI, self-hosted services and auxiliary credentials are allowed. Product-login gates are distinct from optional service credentials. Earlier GUIDANCE/WORKFLOW documents are historical drafts, not competing process definitions.
 
 ## 2. Tech stack
 
@@ -1680,7 +1684,8 @@ features/
 │                           bg-primary/10 replaced bg-surface/95 when selected and rows scrolled
 │                           visibly under it;
 │                           GraphRow (per-row SVG lanes; REF CHIPS: groupRefs merges
-│                           local+remote of the same name, DROPS 'head' refs when a local
+│                           local+live remote of the same name, keeps stale remote refs separate,
+│                           shows remote-only chips with their remote prefix, DROPS 'head' refs when a local
 │                           branch sits on the commit (the tick on that chip is the HEAD
 │                           mark) and renders a primary "HEAD" chip only when detached,
 │                           sorts local → remote → tag → stash; STASH rows (any ref of
@@ -1746,7 +1751,14 @@ features/
 │                           text; data-lane-chip=<lane>) instead of the kind tones (local green,
 │                           remote blue, tag primary) — a green `demo ✓` on an orange lane did
 │                           not say which line it was; the icons still tell local/remote/tag
-│                           apart; stash chips stay neutral and dashed; the chip→node connector
+│                           apart; stale remote-tracking refs use neutral gray, a dashed border and
+│                           CloudOff, with “过期的远程跟踪分支” in the tooltip. Repository open and
+│                           relevant ref/fetch changes trigger an authenticated read-only remote check;
+│                           failed checks are unknown, never proof of deletion. Graph and sidebar ref
+│                           menus offer “删除远程跟踪引用” only for confirmed stale refs. Deletion
+│                           rechecks the remote and selected local OID, removes only that tracking ref,
+│                           and refreshes the UI; local branches and remote refs are untouched.
+│                           Stash chips stay neutral and dashed; the chip→node connector
 │                           is 1.5px at 0.85 opacity (was 1px/0.45); a remote-only chip
 │                           whose base name matches an existing local branch is
 │                           SEPARATED (local and origin sit on different commits;

@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronsDownUp,
   Cloud,
+  CloudOff,
   Copy,
   Eraser,
   Folder,
@@ -216,6 +217,10 @@ function Section({
 export function Sidebar() {
   const repo = useRepo((s) => s.repo);
   const branches = useRepo((s) => s.branches);
+  const staleRemoteRefs = useRepo((s) => s.staleRemoteRefs);
+  const isStaleRemote = (branch: BranchInfo) => branch.isRemote && staleRemoteRefs.has(`refs/remotes/${branch.name}`);
+  const staleRemoteTitle = (branch: BranchInfo) =>
+    `过期的远程跟踪分支 — ${branch.name} — 远端已不存在此分支，本地仍保留跟踪引用；可右键删除远程跟踪引用。`;
   const tags = useRepo((s) => s.tags);
   const stashes = useRepo((s) => s.stashes);
   const remotes = useRepo((s) => s.remotes);
@@ -321,6 +326,9 @@ export function Sidebar() {
         : await op();
       toastOutcome(result as { status?: string; message?: string } | undefined, `${label} 已完成`);
       await refreshAll();
+      if ((label.includes('推送') || label.startsWith('获取') || label.startsWith('拉取')) && useRepo.getState().repo?.path === path) {
+        void useRepo.getState().checkStaleRemoteRefs();
+      }
     } catch (error) {
       if (retryWithoutHooks && isHookFailure(error)) {
         reportHookFailure({ repoPath: path, operation: 'push', error, retry: retryWithoutHooks });
@@ -760,16 +768,17 @@ export function Sidebar() {
       style={{ paddingLeft: 28 + depth * 14 }}
       className={cn(
         'group flex cursor-grab items-center gap-2 rounded-md px-2 py-1 text-sm text-muted hover:bg-surface-raised active:cursor-grabbing',
+        isStaleRemote(branch) && 'text-faint',
         dragging === branch.name && 'opacity-40',
       )}
-      title={`${branch.name} — 拖到本地分支上进行合并或变基`}
+      title={isStaleRemote(branch) ? staleRemoteTitle(branch) : `${branch.name} — 拖到本地分支上进行合并或变基`}
     >
       <button
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
         onDoubleClick={() => void act(`检出 ${branch.name}`, () => ipc.checkout(path, branch.name), { kind: 'checkout' })}
-        title={`${branch.name}——双击从此处检出 ${branch.name.split('/').slice(1).join('/')}（本地分支落后时会快进）`}
+        title={isStaleRemote(branch) ? staleRemoteTitle(branch) : `${branch.name}——双击从此处检出 ${branch.name.split('/').slice(1).join('/')}（本地分支落后时会快进）`}
       >
-        <HeadMark active={false} />
+        {isStaleRemote(branch) ? <CloudOff className="size-3.5 shrink-0" aria-label="过期的远程跟踪分支" /> : <HeadMark active={false} />}
         <span className="min-w-0 truncate">{label}</span>
       </button>
       <Button
@@ -1662,6 +1671,22 @@ export function Sidebar() {
             <DropdownMenuItem onClick={() => openDialog('createBranch', branchMenu.branch.targetOid)}>
               <GitBranchPlus /> 在此处新建分支…
             </DropdownMenuItem>
+            {isStaleRemote(branchMenu.branch) && (
+              <DropdownMenuItem
+                destructive
+                title="仅删除本地远程跟踪引用，不删除本地分支或远端分支"
+                onClick={() => void act(
+                  '删除远程跟踪引用',
+                  async () => {
+                    const result = await ipc.deleteStaleRemoteRef(path, `refs/remotes/${branchMenu.branch.name}`, branchMenu.branch.targetOid);
+                    if (useRepo.getState().repo?.path === path) await useRepo.getState().checkStaleRemoteRefs();
+                    return result;
+                  },
+                )}
+              >
+                <Trash2 /> 删除远程跟踪引用
+              </DropdownMenuItem>
+            )}
             {!branchMenu.branch.isRemote && (
               <>
                 <DropdownMenuItem onClick={() => openDialog('rename', branchMenu.branch.name)}>

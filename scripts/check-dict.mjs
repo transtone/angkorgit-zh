@@ -1,92 +1,69 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readCatalog } from './translation-catalog.mjs';
+import { locationCandidates } from './localize.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const DICT = `${root}/zh-dict/dict.tsv`;
-const SCOPES = new Set(['ui', 'rust', 'core', 'website', 'meta', 'docs', 'e2e', 'test']);
-const MODES = new Set(['', 'whole']);
-
-const lines = readFileSync(DICT, 'utf8').split(/\r?\n/);
-const errors = [];
 const warnings = [];
-const entries = [];
-
-lines.forEach((raw, index) => {
-  const line = index + 1;
-  if (!raw.trim() || raw.trimStart().startsWith('#')) return;
-  const f = raw.split('\t');
-  if (f.length < 3) {
-    errors.push(`第 ${line} 行字段不足（需要 作用域<TAB>源文<TAB>译文）：${raw}`);
-    return;
-  }
-  const [scopeField, src, tgt, anchor = '', mode = ''] = f;
-  const scopes = scopeField.split(',').map((s) => s.trim()).filter(Boolean);
-  for (const scope of scopes) {
-    if (!SCOPES.has(scope)) errors.push(`第 ${line} 行未知作用域：${scope}`);
-  }
-  if (!src || !tgt) {
-    errors.push(`第 ${line} 行源文或译文为空`);
-    return;
-  }
-  if (!MODES.has(mode)) {
-    errors.push(`第 ${line} 行非法匹配模式：${mode}（仅支持空或 whole）`);
-  }
-  if (anchor) {
-    try {
-      new RegExp(anchor);
-    } catch (e) {
-      errors.push(`第 ${line} 行锚点不是合法正则：${anchor}（${e.message}）`);
+const errors = [];
+let entries = [];
+try {
+  entries = readCatalog(path.join(root, 'zh-dict/zh-CN.json'));
+} catch (error) {
+  errors.push(error.message);
+}
+const seen = new Map();
+const locations = new Map();
+const byScope = new Map();
+for (const entry of entries) {
+  if (entry.source === entry.target) warnings.push(`${entry.key}：译文与源文相同`);
+  const identity = JSON.stringify([entry.scopes?.slice().sort(), entry.source, entry.anchor, entry.mode, entry.locations]);
+  if (seen.has(identity)) warnings.push(`${entry.key} 与 ${seen.get(identity)} 重复`);
+  else seen.set(identity, entry.key);
+  if (!entry.locations) {
+    for (const scope of entry.scopes) {
+      if (!byScope.has(scope)) byScope.set(scope, []);
+      byScope.get(scope).push(entry);
     }
   }
-  if (!/\s/.test(src) && !anchor && mode !== 'whole') {
-    errors.push(`第 ${line} 行单单词缺锚点：${src}（需 anchor 或 whole）`);
-  }
-  if (src === tgt) warnings.push(`第 ${line} 行译文与源文相同：${src}`);
-  entries.push({ line, scopes, src, mode });
-});
-
-const seen = new Map();
-for (const e of entries) {
-  const key = `${[...e.scopes].sort().join(',')}\u0000${e.src}`;
-  if (seen.has(key)) warnings.push(`第 ${e.line} 行与第 ${seen.get(key)} 行重复（同作用域同源文）：${e.src}`);
-  else seen.set(key, e.line);
-}
-
-const byScope = new Map();
-for (const e of entries) {
-  for (const scope of e.scopes) {
-    if (!byScope.has(scope)) byScope.set(scope, []);
-    byScope.get(scope).push(e);
+  for (const location of entry.locations ?? []) {
+    const identity = JSON.stringify([location.file, location.component, location.attribute, entry.source]);
+    if (locations.has(identity)) errors.push(`${entry.key} 与 ${locations.get(identity)} 重复定位同一文案`);
+    else locations.set(identity, entry.key);
+    const file = path.join(root, location.file);
+    if (!existsSync(file)) {
+      errors.push(`${entry.key}：定位文件不存在 ${location.file}`);
+      continue;
+    }
+    const raw = readFileSync(file, 'utf8');
+    const candidates = locationCandidates(raw, location.file, location, entry);
+    if (candidates.length !== 1) errors.push(`${entry.key}：定位需唯一，实际匹配 ${candidates.length} 处`);
+    else if (![entry.source, entry.target, ...(entry.previousTargets ?? [])].includes(candidates[0].value)) {
+      errors.push(`${entry.key}：定位文案已变化，需人工审阅`);
+    } else if (candidates[0].value !== entry.target) warnings.push(`${entry.key}：源码文案尚未同步为确认译文`);
   }
 }
-for (const [scope, list] of byScope) {
-  const sorted = [...list].sort((a, b) => a.src.length - b.src.length);
+for (const list of byScope.values()) {
+  const sorted = [...list].sort((a, b) => a.source.length - b.source.length);
   for (let i = 0; i < sorted.length; i++) {
     for (let j = i + 1; j < sorted.length; j++) {
       if (sorted[j].mode === 'whole' || sorted[i].mode === 'whole') continue;
-      if (sorted[j].src.startsWith(sorted[i].src) && sorted[j].src !== sorted[i].src) {
-        warnings.push(
-          `前缀重叠：『${sorted[i].src}』(第 ${sorted[i].line} 行) 是『${sorted[j].src}』(第 ${sorted[j].line} 行) 的前缀 — 已按最长源优先处理，确认是否符合预期`,
-        );
+      if (sorted[j].source.startsWith(sorted[i].source) && sorted[j].source !== sorted[i].source) {
+        warnings.push(`前缀重叠：${sorted[i].key} / ${sorted[j].key}（按最长源优先处理）`);
       }
     }
   }
 }
-
 if (warnings.length) {
-  const shown = warnings.slice(0, 15);
   console.warn(`词典提示（${warnings.length} 条，不阻塞）：`);
-  for (const w of shown) console.warn(`  - ${w}`);
-  if (warnings.length > shown.length) {
-    console.warn(`  … 还有 ${warnings.length - shown.length} 条前缀重叠提示（均按最长源优先处理）`);
-  }
+  for (const warning of warnings.slice(0, 15)) console.warn(`  - ${warning}`);
+  if (warnings.length > 15) console.warn(`  … 还有 ${warnings.length - 15} 条提示`);
 }
-
 if (errors.length) {
-  console.error(`\n词典错误（${errors.length} 条）：`);
-  for (const e of errors) console.error(`  - ${e}`);
-  process.exit(1);
+  console.error(`词典错误（${errors.length} 条）：\n${errors.map((error) => `  - ${error}`).join('\n')}`);
+  process.exitCode = 1;
+} else {
+  console.log(`词典检查通过：${entries.length} 条词条，${warnings.length} 条提示。`);
 }
-
-console.log(`\n词典检查通过：${entries.length} 条词条，${warnings.length} 条提示。`);

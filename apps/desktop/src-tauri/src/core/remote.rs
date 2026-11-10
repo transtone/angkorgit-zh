@@ -435,6 +435,129 @@ pub fn remove(path: &str, name: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// Lists absent advertised sources for direct local refs covered by this remote's fetch mappings.
+pub fn stale_refs(path: &str, remote_name: &str) -> AppResult<Vec<String>> {
+    let repo = super::repo::open(path)?;
+    let mut remote = repo.find_remote(remote_name)?;
+    let advertised = advertised_refs(&repo, &mut remote)?;
+    let mut stale = Vec::new();
+    for reference in repo.references_glob("refs/remotes/*")? {
+        let reference = reference?;
+        let Some(name) = reference.name() else {
+            continue;
+        };
+        if reference.symbolic_target().is_some() || name.ends_with("/HEAD") {
+            continue;
+        }
+        let sources = fetch_sources(&remote, name)?;
+        if !sources.is_empty() && sources.iter().all(|source| !advertised.contains(source)) {
+            stale.push(name.to_owned());
+        }
+    }
+    stale.sort();
+    Ok(stale)
+}
+
+fn advertised_refs(repo: &Repository, remote: &mut git2::Remote<'_>) -> AppResult<HashSet<String>> {
+    prime_account_bindings(Some(repo));
+    // A connection guard disconnects on every exit; no fetch or local ref update occurs.
+    let connection = remote.connect_auth(git2::Direction::Fetch, Some(make_callbacks()), None)?;
+    Ok(connection
+        .list()?
+        .iter()
+        .map(|head| head.name().to_owned())
+        .collect())
+}
+
+fn ref_pattern_matches(pattern: &str, name: &str) -> bool {
+    match pattern.split_once('*') {
+        Some((prefix, suffix)) => {
+            name.len() >= prefix.len() + suffix.len()
+                && name.starts_with(prefix)
+                && name.ends_with(suffix)
+        }
+        None => pattern == name,
+    }
+}
+
+fn fetch_sources(remote: &git2::Remote<'_>, local_ref: &str) -> AppResult<Vec<String>> {
+    let exclusions: Vec<_> = remote
+        .refspecs()
+        .filter(|spec| spec.direction() == git2::Direction::Fetch)
+        .filter_map(|spec| {
+            spec.str()
+                .and_then(|s| s.strip_prefix('^'))
+                .map(str::to_owned)
+        })
+        .collect();
+    let mut sources = Vec::new();
+    for spec in remote.refspecs() {
+        if spec.direction() != git2::Direction::Fetch
+            || spec.str().is_some_and(|s| s.starts_with('^'))
+            || !spec.dst_matches(local_ref)
+        {
+            continue;
+        }
+        let source = spec.rtransform(local_ref)?;
+        let source = source
+            .as_str()
+            .ok_or_else(|| AppError::other("远端引用不是 UTF-8"))?;
+        if !exclusions
+            .iter()
+            .any(|pattern| ref_pattern_matches(pattern, source))
+        {
+            sources.push(source.to_owned());
+        }
+    }
+    Ok(sources)
+}
+
+/// Rechecks remote absence and deletes only the selected tracking ref under a reference lock.
+pub fn delete_stale_ref(path: &str, ref_name: &str, expected_oid: &str) -> AppResult<OpOutcome> {
+    if !ref_name.starts_with("refs/remotes/")
+        || !git2::Reference::is_valid_name(ref_name)
+        || ref_name.ends_with("/HEAD")
+    {
+        return Err(AppError::other("只能删除有效的远程跟踪引用"));
+    }
+    let expected = git2::Oid::from_str(expected_oid)?;
+    let repo = super::repo::open(path)?;
+    let mut owner = None;
+    for name in repo.remotes()?.iter().flatten() {
+        let remote = repo.find_remote(name)?;
+        let sources = fetch_sources(&remote, ref_name)?;
+        if !sources.is_empty() {
+            if owner.is_some() {
+                return Err(AppError::other("多个远端映射到此引用，无法安全删除"));
+            }
+            owner = Some((name.to_owned(), sources));
+        }
+    }
+    let (remote_name, sources) =
+        owner.ok_or_else(|| AppError::other("此引用没有所属远端的抓取映射"))?;
+    let mut remote = repo.find_remote(&remote_name)?;
+    let advertised = advertised_refs(&repo, &mut remote)?;
+    if sources.iter().any(|source| advertised.contains(source)) {
+        return Ok(OpOutcome {
+            status: "skipped".into(),
+            message: format!("远端分支已恢复，已跳过删除 {ref_name}"),
+        });
+    }
+    let mut transaction = repo.transaction()?;
+    transaction.lock_ref(ref_name)?;
+    // Read after locking: a concurrent fetch cannot replace the ref between comparison and removal.
+    let reference = repo.find_reference(ref_name)?;
+    if reference.symbolic_target().is_some() || reference.target() != Some(expected) {
+        return Err(AppError::other("本地引用已变化，请刷新后重试"));
+    }
+    transaction.remove(ref_name)?;
+    transaction.commit()?;
+    Ok(OpOutcome {
+        status: "ok".into(),
+        message: format!("已删除远程跟踪引用 {ref_name}"),
+    })
+}
+
 pub fn fetch(path: &str, remote_name: &str, tags: bool, prune: bool) -> AppResult<OpOutcome> {
     let repo = super::repo::open(path)?;
     prime_account_bindings(Some(&repo));

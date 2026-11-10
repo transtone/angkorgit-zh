@@ -5,12 +5,12 @@
 ## 直接执行翻译
 
 ```bash
-bun run scripts/localize.mjs --repo <源码目录>
+bun run localize --repo <源码目录>
 ```
 
-脚本由 Bun 执行，仅应用词典并生成待译清单（默认 `zh-dict/pending.tsv`）。允许工作区有未提交修改；不操作 Git，也不修改版本号或 fork 发布地址。翻译会修改命中的本地文件，完成后自行审阅 diff。
+脚本由 Bun 执行，在维护时直接应用词典到源码，不引入运行时 i18n，并生成待译清单（默认 `zh-dict/pending.tsv`）。允许工作区有未提交修改；不操作 Git，也不修改版本号或 fork 发布地址。翻译会修改命中的本地文件，完成后自行审阅 diff。
 
-CLI 为 `bun run scripts/localize.mjs --repo <目录> [--dict-dir <目录>] [--include-claude-md] [--help]`。`--dict-dir` 指定词典目录，`--include-claude-md` 将 `CLAUDE.md` 纳入翻译，`--help` 显示帮助。旧 PowerShell 脚本及其测试已移除；版本、渠道适配、合并和交付均按手动维护流程处理。
+CLI 为 `bun run localize --repo <目录> [--dict-dir <目录>] [--include-claude-md] [--help]`。`--dict-dir` 指定词典目录，`--include-claude-md` 将 `CLAUDE.md` 纳入翻译，`--help` 显示帮助。旧 PowerShell 脚本及其测试已移除；版本、渠道适配、合并和交付均按手动维护流程处理。
 
 ## 必须保留的行为
 
@@ -22,11 +22,12 @@ CLI 为 `bun run scripts/localize.mjs --repo <目录> [--dict-dir <目录>] [--i
 
 ## 维护入口
 
-- `zh-dict/dict.tsv`：可重复应用的词典，优先补完整短语。
+- `zh-dict/zh-CN.json`：唯一权威词典，以稳定语义 ID 为键，在同一条目维护 `source`、`target` 及可选 `locations`。传统 TSV 条目使用稳定生成的键，保留 `scopes`、`anchor`、`mode`。
+- `zh-dict/pending.tsv`：生成且被 Git 忽略的报告，包含待译候选、漂移、未解析和歧义位置；不提交，不作为翻译来源。
 - `zh-dict/protect.txt`、`zh-dict/skip-files.txt`：保护技术内容及排除手工维护文件。
 - `scripts/localize.mjs`：Bun 纯翻译与待译扫描，不操作 Git、版本或发布地址。
 - `scripts/check-copy.mjs`、`scripts/copy-allowlist.json`：中英混排检查及真正的技术术语允许表。
-- `scripts/check-dict.mjs`：词典结构、锚点、重复和重叠检查。
+- `scripts/check-dict.mjs`：JSON schema、锚点、位置、重复和重叠检查。
 - `tests/unit/localization.test.ts`：文案、模板变量、技术内容保护。
 - `tests/e2e/smoke.spec.ts`：中文可访问名与实际交互。
 - `README.md`、`docs/`、`apps/website/`：手工维护内容，需要人工吸收上游变化。
@@ -34,12 +35,13 @@ CLI 为 `bun run scripts/localize.mjs --repo <目录> [--dict-dir <目录>] [--i
 ## 合并后的恢复步骤
 
 1. 查看新增或修改的用户可见文案，结合生成的 `zh-dict/pending.tsv` 审阅；待译数量下降不等于汉化完整。
-2. 整句词条优先，单词规则必须锚定或使用 `whole`，避免破坏较长句子。保留最长源优先机制。
-3. 多行 Rust 消息、JSX 文本、模板插值和状态相关说明人工核对；词典无法表达的改动直接在源码适配并记录原因。
-4. 对照新的状态判断检查翻译是否改变分支行为，尤其工具栏、命令面板的拉取/推送及失败恢复入口。不要只改显示词而遗漏以文案判断的旧逻辑。
-5. 已增加的局部加载用语为“正在加载…”“正在刷新…”“刷新失败，重试”；上游合并后不要把缓存后的后台刷新改回“正在打开项目”。这些属于本地手写交互文案，按表格加载行为核对。
-6. 适配测试；不要把普通英文加入允许表来绕过混排检查。
-7. 保留中文下载/更新渠道及公钥相关定制，吸收上游说明时不改回上游发布地址。发布渠道本身不在本轮实施范围内。
+2. 整句词条优先，传统单词规则必须锚定或使用 `whole`，保留最长源优先。上下文专用文案用 `locations` 的精确文件、组件与 JSX 属性定位，须唯一匹配，不按行号定位。
+3. 文案变动同时修改 `zh-CN.json` 与源码，保留稳定 ID。已确认的旧译放入 `previousTargets`，只在限定位置纠正；未知英文或中文漂移、位置未解析或歧义须人工审阅，不盲目覆盖。`ChangeFilter` 的 `title` 中 `Show all files` 应译为“显示全部变更”，其他全局用法仍为“显示全部文件”。
+4. 多行 Rust 消息、JSX 文本、模板插值和状态相关说明人工核对；词典无法表达的改动直接在源码适配并记录原因。
+5. 对照新的状态判断检查翻译是否改变分支行为，尤其工具栏、命令面板的拉取/推送及失败恢复入口。不要只改显示词而遗漏以文案判断的旧逻辑。
+6. 已增加的局部加载用语为“正在加载…”“正在刷新…”“刷新失败，重试”；上游合并后不要把缓存后的后台刷新改回“正在打开项目”。这些属于本地手写交互文案，按表格加载行为核对。
+7. 适配测试；不要把普通英文加入允许表来绕过混排检查。
+8. 保留中文下载/更新渠道及公钥相关定制，吸收上游说明时不改回上游发布地址。发布渠道本身不在本轮实施范围内。
 
 ## 验证
 

@@ -108,7 +108,7 @@ function ChangeFilter({
       <button
         type="button"
         aria-pressed={value === null}
-        title="显示全部文件"
+        title="显示全部变更"
         className={cn(token, value === null ? 'bg-surface-raised font-medium text-foreground' : 'text-muted')}
         onClick={() => onChange(null)}
       >

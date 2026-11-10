@@ -536,6 +536,20 @@ pub async fn remote_remove(path: String, name: String) -> AppResult<()> {
 }
 
 #[tauri::command]
+pub async fn remote_stale_refs(path: String, remote: String) -> AppResult<Vec<String>> {
+    blocking(move || remote::stale_refs(&path, &remote)).await
+}
+
+#[tauri::command]
+pub async fn remote_delete_stale_ref(
+    path: String,
+    refName: String,
+    expectedOid: String,
+) -> AppResult<OpOutcome> {
+    blocking(move || remote::delete_stale_ref(&path, &refName, &expectedOid)).await
+}
+
+#[tauri::command]
 pub async fn remote_fetch(
     path: String,
     remote: String,

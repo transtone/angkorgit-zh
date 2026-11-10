@@ -8,17 +8,23 @@ $root = Split-Path $PSScriptRoot -Parent                       # E:\angkorgit_zh
 $dictDir = $PSScriptRoot
 $up = Join-Path $root '.tmp-analysis\upstream'                 # 上游浅克隆 HEAD 5e71a4e（源码上下文）
 $pendingPath = Join-Path $dictDir 'pending.tsv'
-$dictPath = Join-Path $dictDir 'dict.tsv'
+$dictPath = Join-Path $dictDir 'zh-CN.json'
 $protectPath = Join-Path $dictDir 'protect.txt'
 
-# ---------- 加载 dict.tsv 与 protect.txt ----------
-$dictRows = @()
-foreach ($dl in [System.IO.File]::ReadAllLines($dictPath)) {
-  if ($dl -match '^\s*#') { continue }
-  $f = $dl -split "`t"
-  if ($f.Count -lt 3) { continue }
-  $dictRows += [pscustomobject]@{ Scopes = $f[0]; Src = $f[1]; Tgt = $f[2] }
-}
+# ---------- 加载 zh-CN.json 与 protect.txt ----------
+$catalog = [System.IO.File]::ReadAllText($dictPath) | ConvertFrom-Json
+if ($catalog -isnot [pscustomobject]) { throw 'zh-CN.json 必须是 id → 词条对象' }
+$dictRows = @(
+  foreach ($property in $catalog.PSObject.Properties) {
+    $entry = $property.Value
+    [pscustomobject]@{
+      Id = $property.Name
+      Scopes = (@($entry.scopes) -join ',')
+      Src = $entry.source
+      Tgt = $entry.target
+    }
+  }
+)
 $protectRegexes = @()
 foreach ($pl in [System.IO.File]::ReadAllLines($protectPath)) {
   if ($pl -match '^\s*#') { continue }
@@ -92,26 +98,32 @@ function Test-Skip([pscustomobject]$row) {
   return $null
 }
 
-# ---------- dict 复用提示 ----------
+# ---------- JSON 词条复用提示（保留所有上下文候选，由人工确认适用性） ----------
 function Get-DictHint([string]$src) {
   $t = $src.Trim()
-  foreach ($d in $dictRows) {
-    if ($d.Src.Trim() -eq $t) { return ("dict:{0}:{1}" -f $d.Scopes, $d.Tgt) }
+  $matches = @($dictRows | Where-Object { $_.Src.Trim() -ceq $t })
+  $prefix = 'dict'
+  if ($matches.Count -eq 0) {
+    $matches = @($dictRows | Where-Object { $_.Src.Trim().ToLowerInvariant() -ceq $t.ToLowerInvariant() })
+    $prefix = 'dict变体'
   }
-  foreach ($d in $dictRows) {
-    if ($d.Src.Trim().ToLowerInvariant() -eq $t.ToLowerInvariant()) { return ("dict变体:{0}:{1}" -f $d.Scopes, $d.Tgt) }
-  }
-  return ''
+  if ($matches.Count -eq 0) { return '' }
+  return ($matches | ForEach-Object { "{0}:{1}:{2}:{3}" -f $prefix, $_.Id, $_.Scopes, $_.Tgt }) -join ' | '
 }
 
 # ---------- 主流程 ----------
 $rows = @()
+$reviews = @()
 $lineNo = 0
 foreach ($pl in [System.IO.File]::ReadAllLines($pendingPath)) {
   $lineNo++
   if ($lineNo -eq 1) { continue }
   $f = $pl -split "`t"
   if ($f.Count -lt 3) { continue }
+  if ($f[0] -eq 'review') {
+    $reviews += [pscustomobject]@{ Line = $lineNo; File = $f[1]; Id = $f[2]; Reason = $f[3] }
+    continue
+  }
   $rows += [pscustomobject]@{ Line = $lineNo; Scope = $f[0]; File = $f[1]; Source = $f[2] }
 }
 
@@ -128,8 +140,8 @@ foreach ($r in $rows) {
   } else {
     $hint = Get-DictHint $r.Source
     if ($r.Source -eq 'aside div[title*="drag onto another branch"]') { $verdict = 'translate'; $reason = 'e2e 选择器整串改写（需配套 ui 片段词条 drag onto another branch to merge or rebase）' }
-    elseif ($hint -like 'dict:*') { $verdict = 'translate'; $reason = '复用 dict 已有译文（扩展 scope）' }
-    elseif ($hint -like 'dict变体:*') { $verdict = 'translate'; $reason = 'dict 大小写变体（复用译文，产出小写词条）' }
+    elseif ($hint -like 'dict:*') { $verdict = 'translate'; $reason = 'zh-CN.json 已有候选译文（按 ID 核对 scopes/locations/anchor/mode，勿自动扩展上下文）' }
+    elseif ($hint -like 'dict变体:*') { $verdict = 'translate'; $reason = 'zh-CN.json 大小写变体候选（核对上下文后复用译文）' }
     else { $verdict = 'translate'; $reason = '新译' }
   }
   $b = if ($r.Line -le 272) { 'B1' } elseif ($r.Line -le 500) { 'B2' } else { 'B3' }
@@ -139,9 +151,13 @@ foreach ($r in $rows) {
   [void]$out.Add(($r.Line, $r.Scope, $r.File, $r.Source, $verdict, $reason, $hint) -join "`t")
 }
 
+foreach ($r in $reviews) {
+  [void]$out.Add(($r.Line, 'review', $r.File, $r.Id, 'review', $r.Reason, '核对 zh-CN.json 中的文案与定位，不作为新英文词条处理') -join "`t")
+}
 $enc = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllLines((Join-Path $dictDir 'pending-classified.tsv'), $out, $enc)
 
+Write-Host "需人工审阅的定位或文案变化: $($reviews.Count)"
 Write-Host "总行数: $($rows.Count)  →  可译: $(($stats.B1_t + $stats.B2_t + $stats.B3_t))  跳过: $(($stats.B1_s + $stats.B2_s + $stats.B3_s))"
 Write-Host ("B1(行2-272): 可译 {0} / 跳过 {1}" -f $stats.B1_t, $stats.B1_s)
 Write-Host ("B2(行273-500): 可译 {0} / 跳过 {1}" -f $stats.B2_t, $stats.B2_s)

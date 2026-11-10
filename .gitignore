@@ -35,6 +35,3 @@ zh-dict/pending.tsv
 
 # 本机 pnpm 配置（Junction 不可用时的 copy/hoisted 兜底），随机器而异
 .npmrc
-# 本地工具脚本默认忽略，仅纳入独立翻译入口
-/scripts/*
-!/scripts/localize.mjs

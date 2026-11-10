@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import type { GraphRow as GraphRowData, RefInfo } from '@angkorgit/core';
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@angkorgit/design-system';
-import { Archive, Check, Cloud, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
+import { Archive, Check, Cloud, CloudOff, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
 import type { CommitInfo } from '@angkorgit/core';
 import { Avatar } from '@/components/Avatar';
 import { toast } from 'sonner';
@@ -269,16 +269,18 @@ export interface RefGroup {
   tag: boolean;
   detachedHead: boolean;
   stash?: boolean;
+  stale?: boolean;
+  remoteNames?: string[];
 }
 
 const groupRank = (g: RefGroup, headBranch: string | null) =>
   g.detachedHead ? 0 : g.local ? (g.label === headBranch ? 1 : 2) : g.remote ? 3 : g.stash ? 5 : 4;
 
-export function groupRefs(refs: RefInfo[], headBranch: string | null = null): RefGroup[] {
+export function groupRefs(refs: RefInfo[], headBranch: string | null = null, staleRemoteRefs?: ReadonlySet<string>): RefGroup[] {
   const out: RefGroup[] = [];
   const index = new Map<string, number>();
   const hasLocal = refs.some((r) => r.kind === 'localBranch');
-  for (const ref of refs) {
+  for (const ref of [...refs].sort((a, b) => Number(b.kind === 'localBranch') - Number(a.kind === 'localBranch'))) {
     if (ref.kind === 'head') {
       if (!hasLocal) {
         out.push({ label: 'HEAD', primary: ref, local: false, remote: false, tag: false, detachedHead: true });
@@ -294,12 +296,14 @@ export function groupRefs(refs: RefInfo[], headBranch: string | null = null): Re
       }
     } else if (ref.kind === 'remoteBranch') {
       const base = ref.shorthand.split('/').slice(1).join('/') || ref.shorthand;
-      const i = index.get(base);
-      if (i !== undefined) {
-        out[i].remote = true;
+      const stale = staleRemoteRefs?.has(ref.name) ?? false;
+      // Only a live remote ref may share a chip with a local branch.
+      const local = out.find((group) => group.local && group.label === base);
+      if (local && !stale) {
+        local.remote = true;
+        (local.remoteNames ??= []).push(ref.shorthand);
       } else {
-        index.set(base, out.length);
-        out.push({ label: base, primary: ref, local: false, remote: true, tag: false, detachedHead: false });
+        out.push({ label: ref.shorthand, primary: ref, local: false, remote: true, tag: false, detachedHead: false, stale });
       }
     } else if (ref.kind === 'stash') {
       out.push({ label: ref.shorthand, primary: ref, local: false, remote: false, tag: false, detachedHead: false, stash: true });
@@ -351,7 +355,9 @@ function RefChip({
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
-  const laneStyle = group.stash
+  const laneStyle = group.stale
+    ? { background: 'hsl(var(--muted) / 0.25)', borderColor: 'hsl(var(--muted-foreground) / 0.35)', color: 'hsl(var(--muted-foreground))' }
+    : group.stash
     ? undefined
     : head
       ? { background: laneColor(color), borderColor: laneColor(color), color: 'hsl(var(--background))' }
@@ -359,25 +365,29 @@ function RefChip({
   return (
     <Badge
       tone="neutral"
-      data-lane-chip={group.stash ? undefined : color % 10}
+      data-stale-remote-ref={group.stale ? group.primary.name : undefined}
+      data-lane-chip={group.stash || group.stale ? undefined : color % 10}
       style={laneStyle}
       className={cn(
         'min-w-0 shrink whitespace-nowrap',
         !group.tag && !group.stash && !head &&
           'cursor-pointer hover:z-20 hover:shrink-0 hover:!bg-surface-overlay hover:shadow-soft',
+        group.stale && 'border-dashed',
         group.stash && 'max-w-[11rem] cursor-pointer border-dashed hover:!bg-surface-overlay',
         head && 'cursor-pointer shadow-soft hover:z-20 hover:shrink-0',
       )}
       title={
-        group.stash
+        group.stale
+          ? `${group.primary.shorthand} · 过期的远程跟踪分支\n上次检查时远端分支已删除；右键可删除远程跟踪引用，不影响本地分支或远端仓库。`
+          : group.stash
           ? `${group.label}\n暂存——单击此行查看文件，右键应用、弹出或丢弃`
           : group.tag || group.detachedHead
           ? group.detachedHead
             ? 'HEAD 游离在该提交处'
             : group.label
           : separated
-            ? `${group.primary.shorthand}——双击将 ${group.label} 重置到此处，右键显示操作`
-            : `${group.label}${group.local ? ' · 本地' : ''}${group.remote ? ' · origin' : ''}${worktree ? ` · 位于工作树 ${worktree}` : ''}——${worktree ? '双击切换到该工作树' : group.local ? '双击检出' : `双击从此处检出 ${group.label}（本地分支落后时会快进）`}，右键显示操作`
+            ? `${group.primary.shorthand}——双击将 ${group.primary.shorthand.split('/').slice(1).join('/')} 重置到此处，右键显示操作`
+            : `${group.label}${group.local ? ' · 本地' : ''}${group.remote ? ` · ${group.remoteNames?.join('、') ?? group.primary.shorthand}` : ''}${worktree ? ` · 位于工作树 ${worktree}` : ''}——${worktree ? '双击切换到该工作树' : group.local ? '双击检出' : `双击从此处检出 ${group.primary.shorthand.split('/').slice(1).join('/')}（本地分支落后时会快进）`}，右键显示操作`
       }
       onDoubleClick={(e) => {
         if (group.tag || group.detachedHead || group.stash) return;
@@ -398,7 +408,7 @@ function RefChip({
       <span className="truncate">{group.label}</span>
       {group.local && !worktree && <Monitor className="size-2.5 shrink-0" />}
       {worktree && <FolderTree className="size-2.5 shrink-0" />}
-      {group.remote && <Cloud className="size-2.5 shrink-0" />}
+      {group.remote && (group.stale ? <CloudOff className="size-2.5 shrink-0" /> : <Cloud className="size-2.5 shrink-0" />)}
     </Badge>
   );
 }
@@ -417,6 +427,7 @@ function RefCell({
   headBranch = null,
   worktrees,
   resettableBranches,
+  staleRemoteRefs,
   onCheckoutRef,
   onRefMenu,
   onResetToRemote,
@@ -428,12 +439,13 @@ function RefCell({
   width: number;
   worktrees?: ReadonlyMap<string, string>;
   resettableBranches?: ReadonlySet<string>;
+  staleRemoteRefs?: ReadonlySet<string>;
   onCheckoutRef: (ref: RefInfo) => void;
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
   const [more, setMore] = useState(false);
-  const groups = groupRefs(refs, headBranch);
+  const groups = groupRefs(refs, headBranch, staleRemoteRefs);
   const shown = fitGroups(groups, width - 8, isHead);
   const hidden = groups.slice(shown.length);
   const headOf = (list: RefGroup[]) => {
@@ -453,7 +465,7 @@ function RefCell({
       head={head}
       worktree={group.local ? worktrees?.get(group.label) : undefined}
       color={color}
-      separated={group.remote && !group.local && (resettableBranches?.has(group.label) ?? false)}
+      separated={!group.stale && group.remote && !group.local && (resettableBranches?.has(group.primary.shorthand.split('/').slice(1).join('/')) ?? false)}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={onRefMenu}
       onResetToRemote={onResetToRemote}
@@ -524,6 +536,7 @@ interface Props {
   headBranch?: string | null;
   worktrees?: ReadonlyMap<string, string>;
   resettableBranches?: ReadonlySet<string>;
+  staleRemoteRefs?: ReadonlySet<string>;
   onSelect: (oid: string, event: React.MouseEvent) => void;
   onContextMenu: (event: React.MouseEvent, commit: CommitInfo) => void;
   onCheckoutRef: (ref: RefInfo) => void;
@@ -543,6 +556,7 @@ export const CommitRow = memo(function CommitRow({
   headBranch = null,
   worktrees,
   resettableBranches,
+  staleRemoteRefs,
   onSelect,
   onContextMenu,
   onCheckoutRef,
@@ -560,6 +574,7 @@ export const CommitRow = memo(function CommitRow({
       width={REF_COL_WIDTH}
       worktrees={worktrees}
       resettableBranches={resettableBranches}
+      staleRemoteRefs={staleRemoteRefs}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={(e, ref) => onRefMenu(e, ref, commit)}
       onResetToRemote={(ref) => onResetToRemote(ref, commit)}

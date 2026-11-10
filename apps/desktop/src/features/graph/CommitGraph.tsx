@@ -60,6 +60,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   const worktrees = useRepo((s) => s.worktrees);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
+  const staleRemoteRefs = useRepo((s) => s.staleRemoteRefs);
   const { rows, commits, maxLane, hasMore, loading, error, filters, find, matchesOnly, onlyMatches, setOnlyMatches, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
     useGraph();
   const openDialog = useUi((s) => s.openDialog);
@@ -254,6 +255,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
         if (useRepo.getState().repo?.path !== path) return;
         await refresh();
         await reload(path);
+        if ((label.includes('推送') || label.startsWith('拉取')) && useRepo.getState().repo?.path === path) void useRepo.getState().checkStaleRemoteRefs();
       } catch (error) {
         if (retryWithoutHooks && isHookFailure(error)) {
           reportHookFailure({ repoPath: path, operation: 'push', error, retry: retryWithoutHooks });
@@ -718,6 +720,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                     headBranch={headBranch}
                     worktrees={worktreeBranches}
                     resettableBranches={localBranchNames}
+                    staleRemoteRefs={staleRemoteRefs}
                     onSelect={onRowSelect}
                     onContextMenu={onContextMenu}
                     onCheckoutRef={checkoutRef}
@@ -789,6 +792,24 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                   }}
                 >
                   <Trash2 /> 丢弃暂存…
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {refMenu.ref.kind === 'remoteBranch' && staleRemoteRefs.has(refMenu.ref.name) && (
+              <>
+                <DropdownMenuItem
+                  title="仅删除本地的远程跟踪引用，不影响本地分支或远端仓库"
+                  onClick={() => {
+                    const { ref, commit } = refMenu;
+                    void act('删除远程跟踪引用', async () => {
+                      const result = await ipc.deleteStaleRemoteRef(path, ref.name, commit.oid);
+                      if (useRepo.getState().repo?.path === path) await useRepo.getState().checkStaleRemoteRefs();
+                      return result;
+                    });
+                  }}
+                >
+                  <Trash2 /> 删除远程跟踪引用
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>

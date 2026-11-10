@@ -1858,7 +1858,9 @@ test('graph branch and tag chips offer the sidebar actions, with the checked-out
   await expect(menu.getByRole('menuitem', { name: '重命名 main…' })).toBeEnabled();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
-  await page.getByTitle('v0.4.0', { exact: true }).first().click({ button: 'right' });
+  // The remote prefix can fold the tag behind the row's overflow badge.
+  await page.getByTitle(/origin\/main——双击将 main 重置到此处/).first().hover();
+  await page.locator('[data-more-refs]').getByTitle('v0.4.0', { exact: true }).click({ button: 'right' });
   await expect(menu.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeEnabled();
   await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeEnabled();
   await menu.getByRole('menuitem', { name: '删除标签 v0.4.0', exact: true }).click();

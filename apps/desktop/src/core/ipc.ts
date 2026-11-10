@@ -611,6 +611,14 @@ export const ipc = {
     if (!isTauri()) return;
     return invoke('remote_remove', { path, name });
   },
+  async remoteStaleRefs(path: string, remote: string): Promise<string[]> {
+    if (!isTauri()) return [];
+    return invoke('remote_stale_refs', { path, remote });
+  },
+  async deleteStaleRemoteRef(path: string, refName: string, expectedOid: string): Promise<OpOutcome> {
+    if (!isTauri()) return { status: 'ok', message: '已删除远程跟踪引用（演示）' };
+    return invoke('remote_delete_stale_ref', { path, refName, expectedOid });
+  },
   async fetch(path: string, remote: string, tags: boolean, prune: boolean): Promise<OpOutcome> {
     if (!isTauri()) {
       await delay(400);

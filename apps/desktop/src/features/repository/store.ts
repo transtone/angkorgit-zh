@@ -28,6 +28,8 @@ interface RepoState {
   profileId: string | null;
   lastFetchAt: number | null;
   fetchFailures: string[];
+  staleRemoteRefs: ReadonlySet<string>;
+  checkStaleRemoteRefs: () => Promise<void>;
   loadRecents: () => Promise<void>;
   open: (path: string) => Promise<RepositoryInfo>;
   close: () => void;
@@ -43,18 +45,19 @@ interface RepoState {
 
 type RepoSnapshot = Pick<RepoState,
   'repo' | 'status' | 'branches' | 'tags' | 'stashes' | 'remotes' | 'submodules' |
-  'worktrees' | 'conflicts' | 'unpushed' | 'pullPreview' | 'profileId' | 'lastFetchAt' | 'fetchFailures'>;
+  'worktrees' | 'conflicts' | 'unpushed' | 'pullPreview' | 'profileId' | 'lastFetchAt' | 'fetchFailures' | 'staleRemoteRefs'>;
 
 const emptySnapshot = (): RepoSnapshot => ({
   repo: null, status: null, branches: [], tags: [], stashes: [], remotes: [],
   submodules: [], worktrees: [], conflicts: [], unpushed: [], pullPreview: null,
-  profileId: null, lastFetchAt: null, fetchFailures: [],
+  profileId: null, lastFetchAt: null, fetchFailures: [], staleRemoteRefs: new Set(),
 });
 const snapshot = (s: RepoState): RepoSnapshot => ({
   repo: s.repo, status: s.status, branches: s.branches, tags: s.tags, stashes: s.stashes,
   remotes: s.remotes, submodules: s.submodules, worktrees: s.worktrees,
   conflicts: s.conflicts, unpushed: s.unpushed, pullPreview: s.pullPreview,
   profileId: s.profileId, lastFetchAt: s.lastFetchAt, fetchFailures: s.fetchFailures,
+  staleRemoteRefs: s.staleRemoteRefs,
 });
 
 let openSeq = 0;
@@ -65,6 +68,19 @@ let previewSeq = 0;
 export const useRepo = create<RepoState>((set, get) => {
   const cache = new Map<string, RepoSnapshot>();
   let cacheCurrent = true;
+  let staleSeq = 0;
+  let staleSignature: string | null = null;
+  const remoteSignature = () => {
+    const { remotes, branches, lastFetchAt } = get();
+    return JSON.stringify([
+      remotes.map((r) => [r.name, r.url]).sort(),
+      branches.filter((b) => b.isRemote).map((b) => [b.name, b.targetOid]).sort(),
+      lastFetchAt,
+    ]);
+  };
+  const scheduleStaleCheck = () => {
+    if (staleSignature !== remoteSignature()) void get().checkStaleRemoteRefs();
+  };
   const activate = (repo: RepositoryInfo) => {
     const previous = get();
     if (previous.repo?.path !== repo.path) {
@@ -73,6 +89,8 @@ export const useRepo = create<RepoState>((set, get) => {
       fullSeq += 1;
       statusSeq += 1;
       previewSeq += 1;
+      staleSeq += 1;
+      staleSignature = null;
       useGraph.getState().activate(repo.path);
       set({ ...emptySnapshot(), ...cache.get(repo.path), repo, opening: null,
         refreshing: false, refreshError: null, statusVersion: previous.statusVersion + 1 });
@@ -145,6 +163,8 @@ export const useRepo = create<RepoState>((set, get) => {
       fullSeq += 1;
       statusSeq += 1;
       previewSeq += 1;
+      staleSeq += 1;
+      staleSignature = null;
       cache.clear();
       const path = get().repo?.path;
       if (path) useGraph.getState().forget(path);
@@ -173,6 +193,7 @@ export const useRepo = create<RepoState>((set, get) => {
         } else {
           set(data);
         }
+        scheduleStaleCheck();
         void get().loadPullPreview();
       } catch (error) {
         if (get().repo?.path === path && seq === fullSeq) {
@@ -211,8 +232,31 @@ export const useRepo = create<RepoState>((set, get) => {
       set({ pullPreview });
     },
 
+    checkStaleRemoteRefs: async () => {
+      const { repo, remotes, branches } = get();
+      if (!repo) return;
+      const path = repo.path;
+      const seq = ++staleSeq;
+      staleSignature = remoteSignature();
+      // A changed URL or ref tip makes the previous classification unknown.
+      set({ staleRemoteRefs: new Set() });
+      const results = await Promise.all(remotes.map(async (remote) => {
+        try {
+          return await ipc.remoteStaleRefs(path, remote.name);
+        } catch {
+          return [] as string[];
+        }
+      }));
+      if (get().repo?.path !== path || seq !== staleSeq) return;
+      const trackingRefs = new Set(branches.filter((b) => b.isRemote).map((b) => `refs/remotes/${b.name}`));
+      set({ staleRemoteRefs: new Set(results.flat().filter((ref) => trackingRefs.has(ref))) });
+    },
+
     setBusy: (busy) => set({ busy }),
-    markFetched: () => set({ lastFetchAt: Date.now() }),
+    markFetched: () => {
+      set((state) => ({ lastFetchAt: Math.max(Date.now(), (state.lastFetchAt ?? 0) + 1) }));
+      scheduleStaleCheck();
+    },
     setFetchFailures: (fetchFailures) => set({ fetchFailures }),
     setProfileId: (profileId) => set({ profileId }),
   };
