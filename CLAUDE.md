@@ -267,6 +267,12 @@ no build step for packages).
 | `pnpm website:images` | regenerate WebP screenshots + og.png from `docs/assets` (sharp) |
 | `pnpm icons` | regenerate placeholder icons (then `tauri icon` for .icns/.ico) |
 
+**验证门禁（功能与版本变更必须遵守）：**
+- 功能完成前，先更新受影响行为的单元/E2E 测试；UI 交互、页面状态或用户流程变更必须运行相关 E2E，不能以 typecheck 或单测代替。
+- 交付前运行 `bun run check:copy`、`bun run check:dict`、`bun run typecheck`、`bun run test`、`bun run test:localize` 和 `bun run test:e2e`。仅当改动范围明确不影响某项时才可跳过，并说明原因；Rust 改动另运行 fmt、clippy 和相关 cargo tests。
+- 更新版本号或创建/推送版本 tag 前，必须运行 `.github/workflows/release-zh.yml` 中全部验证步骤（含 E2E）；不得把“CI 会测”当作跳过本地验证的理由。若环境不支持某项，明确列为未验证，不得宣称验证通过。
+- 测试失败先修复或确认是环境问题；重试通过仍需报告首次失败和复测结果，不得把 flaky 记为首轮全绿。
+
 **Build gotchas (important):**
 - **Quit the running app before `tauri:build`** — the `.dmg` bundler script is flaky while the app runs (the `.app` itself still builds).
 - `source ~/.cargo/env` before cargo commands (rustup-installed toolchain).

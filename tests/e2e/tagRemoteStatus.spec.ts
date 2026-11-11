@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('tag states distinguish all remotes and refresh through the graph menu', async ({ page }) => {
+test('tag status shows sync state and keeps the local tag visible when remote check fails', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
@@ -25,8 +25,7 @@ test('tag states distinguish all remotes and refresh through the graph menu', as
   });
   const marker = page.locator('[data-tag-remote="v-test"]').first();
   await expect(marker).toHaveAttribute('data-tag-remote-status', 'synced');
-  await expect(marker).toHaveAttribute('title', /origin.*已同步/);
-  await expect(marker).toHaveAttribute('title', /upstream.*与远端不一致/);
+  await expect(marker).toHaveAttribute('title', 'Remote synced');
   await marker.click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: '检查远端状态', exact: true })).toHaveCount(0);
   const push = page.getByRole('menuitem', { name: '推送到远端', exact: true });
@@ -44,6 +43,6 @@ test('tag states distinguish all remotes and refresh through the graph menu', as
     await useRepo.getState().checkStaleRemoteRefs();
     return true;
   });
-  await expect(marker).toHaveCount(0);
-  await expect(page.locator('[data-ref-name="refs/tags/v-test"]').first()).toHaveAttribute('title', /状态未知/);
+  await expect(marker).toHaveAttribute('data-tag-remote-status', 'unknown');
+  await expect(marker).toHaveAttribute('title', 'Remote not synced');
 });
