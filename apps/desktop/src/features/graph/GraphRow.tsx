@@ -345,6 +345,7 @@ function RefChip({
   onRefMenu,
   onResetToRemote,
   showTitle = true,
+  overlay = false,
   refName,
 }: {
   group: RefGroup;
@@ -352,6 +353,7 @@ function RefChip({
   worktree?: string;
   separated: boolean;
   showTitle?: boolean;
+  overlay?: boolean;
   refName?: string;
   color: number;
   onCheckoutRef: (ref: RefInfo) => void;
@@ -366,13 +368,19 @@ function RefChip({
     : head
       ? { background: laneColor(color), borderColor: laneColor(color), color: 'hsl(var(--background))' }
       : { background: laneTint(color, 0.16), borderColor: laneTint(color, 0.45), color: laneColor(color) };
+  const chipStyle = overlay && !head
+    ? { ...laneStyle, background: group.stale
+      ? 'color-mix(in srgb, hsl(var(--muted)) 25%, hsl(var(--surface-overlay)))'
+      : group.stash ? 'hsl(var(--surface-raised))'
+      : `color-mix(in srgb, ${laneColor(color)} 16%, hsl(var(--surface-overlay)))` }
+    : laneStyle;
   return (
     <Badge
       tone="neutral"
       data-ref-name={refName}
       data-stale-remote-ref={group.stale ? group.primary.name : undefined}
       data-lane-chip={group.stash || group.stale ? undefined : color % 10}
-      style={laneStyle}
+      style={chipStyle}
       className={cn(
         'min-w-0 max-w-full shrink whitespace-nowrap',
         !group.tag && !group.stash && !head &&
@@ -491,6 +499,7 @@ function RefCell({
       color={color}
       separated={!group.stale && group.remote && !group.local && (resettableBranches?.has(group.primary.shorthand.split('/').slice(1).join('/')) ?? false)}
       showTitle={!more && !inOverlay}
+      overlay={inOverlay}
       refName={group.primary.name}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={(event, ref) => {
@@ -548,7 +557,7 @@ function RefCell({
         alignOffset={panelOffset.alignOffset}
         avoidCollisions={false}
         data-more-refs
-        style={{ animation: 'none', background: 'hsl(var(--surface-overlay))', border: 0, boxShadow: 'none', padding: 0 }}
+        style={{ animation: 'none', background: 'transparent', border: 0, boxShadow: 'none', padding: 0 }}
         className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-0 overflow-auto"
         {...stopRowGestures}
       >

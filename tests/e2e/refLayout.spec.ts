@@ -30,7 +30,11 @@ test('long remote refs overlay the original chip without moving the overflow cou
   if (!before.chip || !first || !panelBox) throw new Error('Missing reference geometry');
   expect(Math.abs(first.x - before.chip.x)).toBeLessThan(0.5);
   expect(Math.abs(first.y - before.chip.y)).toBeLessThan(0.5);
-  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgb\(/);
+  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  expect(await panel.locator('[data-ref-name="refs/remotes/upstream/main"]').evaluate((el) => {
+    const color = getComputedStyle(el).backgroundColor;
+    return color.includes(' / ') ? Number(color.split(' / ')[1].replace(')', '')) : color.startsWith('rgba(') ? Number(color.split(',')[3].replace(')', '')) : 1;
+  })).toBe(1);
   expect(panelBox.x).toBeGreaterThanOrEqual(0);
   await expect(chip).not.toHaveAttribute('title');
   await expect(panel.locator('[title]')).toHaveCount(0);

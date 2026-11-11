@@ -1712,9 +1712,11 @@ features/
 │                           trigger of a design-system HoverCard (Radix hover-card,
 │                           openDelay 200 / closeDelay 150, clicking the badge also opens
 │                           it via the controlled `more` state). The panel renders
-│                           content (data-more-refs) in an independent opaque themed Portal over
+│                           content (data-more-refs) in an independent transparent Portal over
 │                           the original chip, measuring its actual position to align the first
-│                           item's top-left exactly. No panel border, shadow, padding or animation.
+│                           item's top-left exactly. Overlay chips alone use opaque lane tints
+│                           composited with the theme surface; no rectangular panel background.
+│                           No panel border, shadow, padding or animation.
 │                           Hide original chips while open without changing their layout or +N.
 │                           Keep bounded width/height and scrolling. Show all groups
 │                           one per line with the SAME RefChip component and preserve its

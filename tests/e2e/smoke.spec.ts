@@ -1687,7 +1687,7 @@ test('hovering a crowded ref cell opens a separate panel without moving its chip
   expect(overflowBox).toEqual(before.overflow);
   expect(Math.abs(firstBox.x - rowBox.x)).toBeLessThan(0.5);
   expect(Math.abs(firstBox.y - rowBox.y)).toBeLessThan(0.5);
-  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgb\(/);
+  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
   await expect(first).not.toHaveAttribute('title');
   expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
@@ -1730,7 +1730,7 @@ test('the checked-out branch is the visible chip and the only one with the tick'
   expect(hotfixBox.y).toBeGreaterThan(mainBox.y);
   const opacity = (color: string) => Number(color.split(',')[3]?.replace(')', '') ?? '1');
   expect(opacity(await main.evaluate((el) => getComputedStyle(el).backgroundColor))).toBe(1);
-  expect(opacity(await hotfix.evaluate((el) => getComputedStyle(el).backgroundColor))).toBeLessThan(1);
+  expect(await hotfix.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await main.evaluate((el) => getComputedStyle(el).backgroundColor));
   await expect(main.locator('svg.lucide-check')).toHaveCount(1);
   await expect(hotfix.locator('svg.lucide-check')).toHaveCount(0);
 });
