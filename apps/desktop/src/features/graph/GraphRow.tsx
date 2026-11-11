@@ -378,6 +378,7 @@ function RefChip({
     <Badge
       tone="neutral"
       data-ref-name={refName}
+      data-ref-interactive
       data-stale-remote-ref={group.stale ? group.primary.name : undefined}
       data-lane-chip={group.stash || group.stale ? undefined : color % 10}
       style={chipStyle}
@@ -516,6 +517,7 @@ function RefCell({
       {hidden.length > 0 && (
         <Badge
           role="button"
+          data-ref-interactive
           aria-label={`还有 ${hidden.length} 个引用`}
           aria-expanded={more}
           className="shrink-0 cursor-pointer hover:!bg-surface-overlay"
@@ -633,7 +635,7 @@ export const CommitRow = memo(function CommitRow({
       className={cn(
         'flex h-8 cursor-pointer select-none items-center gap-2 pr-4 text-sm transition-colors',
         columns.refs ? 'pl-1' : 'pl-4',
-        selected ? 'bg-primary/10' : 'hover:bg-surface-raised',
+        selected ? 'bg-primary/10' : 'hover:bg-surface-raised [&:has([data-ref-interactive:hover])]:hover:bg-transparent',
         commit.isHead && 'font-medium',
       )}
       onClick={(e) => onSelect(commit.oid, e)}
