@@ -10730,35 +10730,17 @@
     ]
   },
   "tags.remoteStatus.synced": {
-    "source": "Synced",
-    "target": "已同步",
+    "source": "Remote synced",
+    "target": "与远端已同步",
     "locations": [
       {
         "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
       }
     ]
   },
-  "tags.remoteStatus.localOnly": {
-    "source": "Local only",
-    "target": "仅本地",
-    "locations": [
-      {
-        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
-      }
-    ]
-  },
-  "tags.remoteStatus.different": {
-    "source": "Different from remote",
-    "target": "与远端不一致",
-    "locations": [
-      {
-        "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
-      }
-    ]
-  },
-  "tags.remoteStatus.unknown": {
-    "source": "Status unknown",
-    "target": "状态未知",
+  "tags.remoteStatus.notSynced": {
+    "source": "Remote not synced",
+    "target": "与远端未同步",
     "locations": [
       {
         "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"

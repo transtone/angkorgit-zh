@@ -24,7 +24,7 @@ export function tagRemoteSummary(
     const entry = tagRemoteStatus[remoteName];
     return entry?.checkedAt != null && !entry.error ? entry.tags[name] ?? 'unknown' : 'unknown';
   };
-  const title = remote ? (statusFor(remote) === 'synced' ? '与远端已同步' : '与远端未同步') : '与远端未同步';
+  const title = statusFor(remote ?? '') === 'synced' ? 'Remote synced' : 'Remote not synced';
   return { status: remote ? statusFor(remote) : 'unknown', title, remote };
 }
 
