@@ -1,6 +1,6 @@
-import { CircleHelp, Cloud, Monitor, TriangleAlert } from 'lucide-react';
+import { Cloud } from 'lucide-react';
 import { pickRemote } from '@angkorgit/core';
-import type { BranchInfo, RemoteInfo, TagRemoteState } from '@angkorgit/core';
+import type { RemoteInfo, TagRemoteState } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
 import { useRepo } from './store';
 
@@ -19,34 +19,35 @@ const labels = {
 
 export function tagRemoteSummary(
   name: string,
-  { tagRemoteStatus, remotes, branches }: {
+  { tagRemoteStatus, remotes, remoteName }: {
     tagRemoteStatus: RemoteStatuses;
     remotes: RemoteInfo[];
-    branches: BranchInfo[];
+    remoteName?: string | null;
   },
 ): { status: TagRemoteState | 'unknown'; title: string; remote: string | null } {
-  const remote = pickRemote(remotes, branches.find((branch) => !branch.isRemote && branch.isHead)?.upstream)?.name ?? null;
+  const remote = remoteName ?? remotes[0]?.name ?? null;
   const statusFor = (remoteName: string) => {
     const entry = tagRemoteStatus[remoteName];
     return entry?.checkedAt != null && !entry.error ? entry.tags[name] ?? 'unknown' : 'unknown';
   };
   const orderedRemotes = [...remotes].sort((a, b) => Number(b.name === remote) - Number(a.name === remote));
-  const title = remotes.length === 0 ? `${name} · 未配置远端` : `${name} · ` + orderedRemotes.map(({ name: remoteName }) =>
+  const title = !remote ? `${name} · 未配置远端` : `${name} · ` + orderedRemotes.map(({ name: remoteName }) =>
     `${remoteName}：${labels[statusFor(remoteName)]}`,
   ).join('；');
   return { status: remote ? statusFor(remote) : 'unknown', title, remote };
 }
 
-export function useTagRemoteStatus(name: string) {
+export function useTagRemoteStatus(name: string, remoteName?: string) {
   const tagRemoteStatus = useRepo((state) => state.tagRemoteStatus);
   const remotes = useRepo((state) => state.remotes);
-  const branches = useRepo((state) => state.branches);
-  return tagRemoteSummary(name, { tagRemoteStatus, remotes, branches });
+  const upstream = useRepo((state) => state.branches.find((branch) => branch.isHead && !branch.isRemote)?.upstream);
+  const remote = remoteName ?? pickRemote(remotes, upstream)?.name;
+  return tagRemoteSummary(name, { tagRemoteStatus, remotes, remoteName: remote });
 }
 
-export function TagRemoteStatus({ name, className, showTitle = true }: { name: string; className?: string; showTitle?: boolean }) {
-  const { status, title } = useTagRemoteStatus(name);
-  const Icon = { synced: Cloud, localOnly: Monitor, different: TriangleAlert, unknown: CircleHelp }[status];
+export function TagRemoteStatus({ name, className, showTitle = true, remoteName }: { name: string; className?: string; showTitle?: boolean; remoteName?: string }) {
+  const { status, title } = useTagRemoteStatus(name, remoteName);
+  if (status !== 'synced') return null;
   return (
     <span
       data-tag-remote-status={status}
@@ -54,9 +55,9 @@ export function TagRemoteStatus({ name, className, showTitle = true }: { name: s
       role="img"
       aria-label={title}
       title={showTitle ? title : undefined}
-      className={cn('inline-flex shrink-0 items-center', status === 'different' ? 'text-amber-500' : 'text-muted-foreground', className)}
+      className={cn('inline-flex shrink-0 items-center text-muted-foreground', className)}
     >
-      <Icon className="size-3.5" aria-hidden="true" />
+      <Cloud className="size-3.5" aria-hidden="true" />
     </span>
   );
 }

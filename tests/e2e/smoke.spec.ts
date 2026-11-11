@@ -1691,7 +1691,7 @@ test('hovering a crowded ref cell opens a separate panel without moving its chip
   await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
   await expect(first).not.toHaveAttribute('title');
   expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
-  expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height);
+  expect(secondBox.y).toBeCloseTo(firstBox.y + firstBox.height, 1);
   const sourceColor = await second.evaluate((el) => getComputedStyle(el).color);
   await second.click({ button: 'right' });
   const menuTitle = page.locator('[data-ref-menu-title]');
@@ -1881,7 +1881,7 @@ test('graph branch and tag chips offer the sidebar actions, with the checked-out
   await page.getByTitle(/origin\/main——双击将 main 重置到此处/).first().hover();
   await page.locator('[data-more-refs] [data-ref-name="refs/tags/v0.4.0"]').click({ button: 'right' });
   await expect(menu.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeEnabled();
-  await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeDisabled();
+  await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeEnabled();
   await menu.getByRole('menuitem', { name: '删除标签 v0.4.0', exact: true }).click();
   await expect(page.getByText('删除标签 v0.4.0 已完成')).toBeVisible();
 });

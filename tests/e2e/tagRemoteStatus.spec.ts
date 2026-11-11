@@ -28,18 +28,22 @@ test('tag states distinguish all remotes and refresh through the graph menu', as
   await expect(marker).toHaveAttribute('title', /origin.*已同步/);
   await expect(marker).toHaveAttribute('title', /upstream.*与远端不一致/);
   await marker.click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: '检查远端状态', exact: true })).toBeVisible();
-  await page.getByRole('menuitem', { name: '推送到远端', exact: true }).hover();
-  await expect(page.getByRole('menuitem', { name: 'origin · 已同步', exact: true })).toBeDisabled();
-  await expect(page.getByRole('menuitem', { name: 'upstream · 与远端不一致', exact: true })).toHaveAttribute('title', /不会强制覆盖/);
+  await expect(page.getByRole('menuitem', { name: '检查远端状态', exact: true })).toHaveCount(0);
+  const push = page.getByRole('menuitem', { name: '推送到远端', exact: true });
+  await expect(push).toHaveCount(1);
+  await expect(push).toBeEnabled();
+  await expect(push).not.toHaveAttribute('aria-haspopup');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.evaluate(async () => {
     const { ipc } = await import('/src/core/ipc.ts');
     ipc.remoteRefStatus = async () => { throw new Error('offline'); };
   });
-  await marker.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: '检查远端状态', exact: true }).click();
-  await expect(marker).toHaveAttribute('data-tag-remote-status', 'unknown');
-  await expect(marker).toHaveAttribute('title', /状态未知/);
+  await page.evaluate(async () => {
+    const { useRepo } = await import('/src/features/repository/store.ts');
+    await useRepo.getState().checkStaleRemoteRefs();
+    return true;
+  });
+  await expect(marker).toHaveCount(0);
+  await expect(page.locator('[data-ref-name="refs/tags/v-test"]').first()).toHaveAttribute('title', /状态未知/);
 });

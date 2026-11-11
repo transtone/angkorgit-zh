@@ -1769,23 +1769,31 @@ features/
 │                           “删除远程跟踪引用” only for confirmed stale refs. Deletion rechecks
 │                           remote absence, locks the selected local ref, checks its expected OID
 │                           under that lock and removes only that tracking ref, then refreshes.
-│                           TAG REMOTE STATUS (ongoing): graph/sidebar share repository/
-│                           TagRemoteStatus.tsx: Cloud=synced, Monitor=local-only, gray
-│                           CircleHelp=unknown/failure, amber TriangleAlert=same-name different
-│                           tag object. Compare direct refs/tags OIDs, including annotated metadata
+│                           TAG REMOTE STATUS: graph/sidebar share repository/
+│                           TagRemoteStatus.tsx: only a tag confirmed synced to that entry's
+│                           actual push target gets a Cloud; local-only, unknown/failure and
+│                           different states render no trailing icon.
+│                           Compare direct refs/tags OIDs, including annotated metadata
 │                           and signatures, never peeled targets; TagInfo.refOid must survive
-│                           refresh signatures. Store results per remote with checkedAt/error;
-│                           default status and push use pickRemote (HEAD upstream → origin → first),
-│                           tooltips give a concise tag/remote/status summary, selected remote first,
-│                           without icon implementation notes or check timestamps. remote::ref_status shares
-│                           one authenticated read-only connection for tracking refs and tags.
-│                           Menus offer “检查远端状态” and remote choice for push; synced targets
-│                           disable push, mismatches never default to force. Preserve last-known
+│                           refresh signatures. Store results per remote with checkedAt/error.
+│                           Restore upstream 7afb6b6 tag handlers and menus: sidebar uses
+│                           remotes[0]?.name ?? 'origin'; graph uses
+│                           pickRemote(remotes, HEAD tracking branch) ?? 'origin'. That baseline
+│                           already includes graph tag push. Tooltips retain read-only states
+│                           for all remotes, selected target first, without icon notes or check
+│                           timestamps. remote::ref_status shares one authenticated read-only
+│                           connection for tracking refs and tags. Graph/sidebar tag menus retain
+│                           one direct “推送到远端” action; the status addon adds no manual
+│                           “检查远端状态” item, synced-state disablement or mismatch warning menu.
+│                           Toolbar “推送（含标签）” keeps the original selected default remote
+│                           and handler without overriding remote selection. Preserve last-known
 │                           tag status while refreshing; a failed result becomes unknown only
 │                           for that remote. New UI copy must be registered
 │                           in zh-dict/zh-CN.json. Source anchors and validation commands live in
-│                           docs/local-customizations/06-remote-ref-status.md; current new test
-│                           results must be recorded only after actual verification.
+│                           docs/local-customizations/06-remote-ref-status.md; the regression
+│                           entry is tests/e2e/tagPushUpstream.spec.ts for upstream graph/sidebar
+│                           push selection, toolbar defaults and absence of extra status menus.
+│                           Current new test results must be recorded only after actual verification.
 │                           Stash chips stay neutral and dashed; the chip→node connector
 │                           is 1.5px at 0.85 opacity (was 1px/0.45); a remote-only chip
 │                           whose base name matches an existing local branch is

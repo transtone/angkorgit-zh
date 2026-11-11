@@ -549,7 +549,7 @@ function RefCell({
         avoidCollisions={false}
         data-more-refs
         style={{ animation: 'none', background: 'hsl(var(--surface-overlay))', border: 0, boxShadow: 'none', padding: 0 }}
-        className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-1 overflow-auto"
+        className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-0 overflow-auto"
         {...stopRowGestures}
       >
         {groups.map((group, i) => chip(group, allHeads[i], true))}

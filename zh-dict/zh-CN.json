@@ -10764,19 +10764,5 @@
         "file": "apps/desktop/src/features/repository/TagRemoteStatus.tsx"
       }
     ]
-  },
-  "tags.checkRemoteStatus": {
-    "source": "Check remote status",
-    "target": "检查远端状态",
-    "scopes": [
-      "ui"
-    ]
-  },
-  "tags.remoteMismatchWarning": {
-    "source": "Different from remote; a normal push will not force overwrite the remote tag",
-    "target": "与远端不一致；普通推送不会强制覆盖远端标签",
-    "scopes": [
-      "ui"
-    ]
   }
 }
