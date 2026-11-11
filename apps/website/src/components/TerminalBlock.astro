@@ -87,18 +87,7 @@ const { label, lines, copy } = Astro.props;
 
     button?.addEventListener('click', async () => {
       const code = button.dataset.copyTarget ?? '';
-      try {
-        await navigator.clipboard.writeText(code);
-      } catch {
-        const textarea = document.createElement('textarea');
-        textarea.value = code;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        textarea.remove();
-      }
+      await navigator.clipboard.writeText(code);
 
       if (label && icon) {
         label.textContent = '已复制！';
