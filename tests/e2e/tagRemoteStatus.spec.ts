@@ -25,12 +25,22 @@ test('tag status shows sync state and keeps the local tag visible when remote ch
   });
   const marker = page.locator('[data-tag-remote="v-test"]').first();
   await expect(marker).toHaveAttribute('data-tag-remote-status', 'synced');
-  await expect(marker).toHaveAttribute('title', 'Remote synced');
+  await expect(marker).toHaveAttribute('title', '与远端已同步');
+  await expect(marker.locator('.lucide-monitor')).toBeVisible();
+  await expect(marker.locator('.lucide-cloud')).toBeVisible();
+  const bounds = await marker.evaluate((element) => {
+    const parent = element.getBoundingClientRect();
+    const icons = [...element.querySelectorAll('svg')].map((icon) => icon.getBoundingClientRect());
+    return { parentRight: parent.right, firstRight: icons[0].right, secondLeft: icons[1].left, secondRight: icons[1].right };
+  });
+  expect(bounds.secondLeft - bounds.firstRight).toBeGreaterThanOrEqual(4);
+  expect(bounds.secondRight).toBeLessThanOrEqual(bounds.parentRight);
   await marker.click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: '检查远端状态', exact: true })).toHaveCount(0);
   const push = page.getByRole('menuitem', { name: '推送到远端', exact: true });
+  await expect(page.getByRole('menuitem', { name: '复制标签名', exact: true })).toBeVisible();
   await expect(push).toHaveCount(1);
-  await expect(push).toBeEnabled();
+  await expect(push).toBeDisabled();
   await expect(push).not.toHaveAttribute('aria-haspopup');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
@@ -44,5 +54,5 @@ test('tag status shows sync state and keeps the local tag visible when remote ch
     return true;
   });
   await expect(marker).toHaveAttribute('data-tag-remote-status', 'unknown');
-  await expect(marker).toHaveAttribute('title', 'Remote not synced');
+  await expect(marker).toHaveAttribute('title', '与远端未同步');
 });

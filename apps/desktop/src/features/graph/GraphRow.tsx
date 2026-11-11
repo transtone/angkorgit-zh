@@ -315,7 +315,7 @@ export function groupRefs(refs: RefInfo[], headBranch: string | null = null, sta
 
 export function estimateChipWidth(group: RefGroup, head: boolean): number {
   const icons = (group.local ? 1 : 0) + (group.remote ? 1 : 0) + (group.tag ? 1 : 0) + (group.stash ? 1 : 0) + (head || group.detachedHead ? 1 : 0);
-  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tag ? 1 : 0)) * CHIP_ICON);
+  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tag ? 2 : 0)) * CHIP_ICON);
 }
 
 function fitGroups(groups: RefGroup[], available: number, isHead: boolean): RefGroup[] {
@@ -423,7 +423,7 @@ function RefChip({
       {group.local && !worktree && <Monitor className="size-2.5 shrink-0" />}
       {worktree && <FolderTree className="size-2.5 shrink-0" />}
       {group.remote && (group.stale ? <CloudOff className="size-2.5 shrink-0" /> : <Cloud className="size-2.5 shrink-0" />)}
-      {group.tag && <TagRemoteStatus name={group.label} showTitle={showTitle} className="size-2.5 shrink-0" />}
+      {group.tag && <TagRemoteStatus name={group.label} showTitle={showTitle} />}
     </Badge>
   );
 }
@@ -635,7 +635,7 @@ export const CommitRow = memo(function CommitRow({
       className={cn(
         'flex h-8 cursor-pointer select-none items-center gap-2 pr-4 text-sm transition-colors',
         columns.refs ? 'pl-1' : 'pl-4',
-        selected ? 'bg-primary/10' : 'hover:bg-surface-raised [&:has([data-ref-interactive:hover])]:hover:bg-transparent',
+        selected ? 'bg-primary/10' : 'hover:bg-surface-raised [&:has([data-ref-interactive]:hover)]:hover:bg-transparent',
         commit.isHead && 'font-medium',
       )}
       onClick={(e) => onSelect(commit.oid, e)}

@@ -340,11 +340,12 @@ export function Sidebar() {
     }
   };
 
-  const tagSummary = (name: string) => tagRemoteSummary(name, { tagRemoteStatus, remotes, remoteName: remotes[0]?.name });
+  const tagRemote = pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name;
+  const tagSummary = (name: string) => tagRemoteSummary(name, { tagRemoteStatus, remotes, remoteName: tagRemote });
   const pushTag = (tag: string, noVerify = false): void =>
     void act(
       `推送标签 ${tag}`,
-      () => ipc.pushTag(path, remotes[0]?.name ?? 'origin', tag, noVerify),
+      () => ipc.pushTag(path, tagRemote ?? 'origin', tag, noVerify),
       undefined,
       () => pushTag(tag, true),
     );
@@ -1188,7 +1189,7 @@ export function Sidebar() {
               >
                 {tag.name}
               </span>
-              <TagRemoteStatus name={tag.name} remoteName={remotes[0]?.name} />
+              <TagRemoteStatus name={tag.name} remoteName={tagRemote} />
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -1373,6 +1374,7 @@ export function Sidebar() {
               <Check /> 检出提交（游离状态）
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={['synced', 'different'].includes(tagSummary(tagMenu.tag.name).status)}
               onClick={() => {
                 pushTag(tagMenu.tag.name);
               }}
@@ -1385,7 +1387,7 @@ export function Sidebar() {
               onClick={() => {
                 const tag = tagMenu.tag;
                 void act(`删除标签 ${tag.name}`, async () => {
-                  const remote = remotes[0]?.name;
+                  const remote = tagRemote;
                   let remoteError: unknown;
                   if (remote && tagSummary(tag.name).status !== 'localOnly') {
                     try { await ipc.deleteRemoteTag(path, remote, tag.name); } catch (error) { remoteError = error; }

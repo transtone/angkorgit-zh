@@ -19,12 +19,12 @@ beforeEach(() => { state.current = { remotes, branches: [head], tagRemoteStatus:
 describe('tag remote summary', () => {
   it('uses the first remote for sidebar status without requiring origin', () => {
     expect(tagRemoteSummary('v1', { remotes, tagRemoteStatus: statuses })).toEqual({
-      remote: 'project', status: 'different', title: 'Remote not synced',
+      remote: 'project', status: 'different', title: '与远端未同步',
     });
   });
   it('summarizes the graph push destination independently of ordering', () => {
     expect(tagRemoteSummary('v1', { remotes, tagRemoteStatus: statuses, remoteName: 'source' })).toEqual({
-      remote: 'source', status: 'synced', title: 'Remote synced',
+      remote: 'source', status: 'synced', title: '与远端已同步',
     });
   });
   it('keeps failures unknown without exposing diagnostics', () => {
@@ -32,12 +32,12 @@ describe('tag remote summary', () => {
       project: { checkedAt: null, error: 'secret credential detail', tags: { v1: 'synced' } },
     } });
     expect(summary.status).toBe('unknown');
-    expect(summary.title).toBe('Remote not synced');
+    expect(summary.title).toBe('与远端未同步');
     expect(summary.title).not.toContain('secret');
   });
   it('explains missing remotes', () => {
     expect(tagRemoteSummary('v1', { remotes: [], tagRemoteStatus: {} })).toEqual({
-      remote: null, status: 'unknown', title: 'Remote not synced',
+      remote: null, status: 'unknown', title: '与远端未同步',
     });
   });
 });
@@ -49,14 +49,14 @@ describe('tag status icon', () => {
     } };
     const html = renderToStaticMarkup(createElement(TagRemoteStatus, { name: 'v1' }));
     expect(html).toContain(`data-tag-remote-status="${status}"`);
-    expect(html).toContain('lucide-git-branch');
+    expect(html).toContain('lucide-monitor');
     if (status === 'unknown' || status === 'localOnly') expect(html).not.toContain('lucide-cloud');
     else expect(html).toContain('lucide-cloud');
-    expect(html).toContain('title="Remote ' + (status === 'synced' ? 'synced' : 'not synced') + '"');
+    expect(html).toContain(status === 'synced' ? 'title="与远端已同步"' : 'title="与远端未同步"');
   });
   it('allows sidebar icons to follow its selected remote destination', () => {
     const projectHtml = renderToStaticMarkup(createElement(TagRemoteStatus, { name: 'v1', remoteName: 'project' }));
-    expect(projectHtml).toContain('lucide-git-branch');
+    expect(projectHtml).toContain('lucide-monitor');
     expect(projectHtml).toContain('lucide-cloud');
     expect(renderToStaticMarkup(createElement(TagRemoteStatus, { name: 'v1', remoteName: 'source' }))).toContain('lucide-cloud');
   });

@@ -17,6 +17,10 @@ test('long remote refs overlay the original chip without moving the overflow cou
   const row = page.getByRole('row').first();
   const chip = row.locator('[data-ref-name="refs/remotes/upstream/HEAD"]');
   const count = row.getByRole('button', { name: '还有 1 个引用' });
+  await count.hover();
+  await page.waitForTimeout(500);
+  await expect.poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  await page.mouse.move(0, 0);
   const before = { chip: await chip.boundingBox(), count: await count.boundingBox() };
   await chip.hover();
   expect(await count.boundingBox()).toEqual(before.count);

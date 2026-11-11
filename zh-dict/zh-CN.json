@@ -10729,6 +10729,15 @@
       "显示全部文件"
     ]
   },
+  "tags.copyName": {
+    "source": "Copy tag name",
+    "target": "复制标签名",
+    "locations": [
+      {
+        "file": "apps/desktop/src/features/graph/CommitGraph.tsx"
+      }
+    ]
+  },
   "tags.remoteStatus.synced": {
     "source": "Remote synced",
     "target": "与远端已同步",

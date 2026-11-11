@@ -1,4 +1,4 @@
-import { Cloud, GitBranch } from 'lucide-react';
+import { Cloud, Monitor } from 'lucide-react';
 import { pickRemote } from '@angkorgit/core';
 import type { RemoteInfo, TagRemoteState } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
@@ -24,7 +24,7 @@ export function tagRemoteSummary(
     const entry = tagRemoteStatus[remoteName];
     return entry?.checkedAt != null && !entry.error ? entry.tags[name] ?? 'unknown' : 'unknown';
   };
-  const title = statusFor(remote ?? '') === 'synced' ? 'Remote synced' : 'Remote not synced';
+  const title = statusFor(remote ?? '') === 'synced' ? '与远端已同步' : '与远端未同步';
   return { status: remote ? statusFor(remote) : 'unknown', title, remote };
 }
 
@@ -45,10 +45,10 @@ export function TagRemoteStatus({ name, className, showTitle = true, remoteName 
       role="img"
       aria-label={title}
       title={showTitle ? title : undefined}
-      className={cn('inline-flex shrink-0 items-center text-muted-foreground', className)}
+      className={cn('inline-flex shrink-0 items-center gap-1 text-muted-foreground', className)}
     >
-      <GitBranch className="size-3.5" aria-hidden="true" />
-      {status !== 'localOnly' && status !== 'unknown' && <Cloud className="size-3.5" aria-hidden="true" />}
+      <Monitor className="size-2.5 shrink-0" aria-hidden="true" />
+      {status !== 'localOnly' && status !== 'unknown' && <Cloud className="size-2.5 shrink-0" aria-hidden="true" />}
     </span>
   );
 }

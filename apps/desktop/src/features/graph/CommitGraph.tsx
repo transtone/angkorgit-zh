@@ -60,6 +60,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   const worktrees = useRepo((s) => s.worktrees);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
+  const tagRemoteStatus = useRepo((s) => s.tagRemoteStatus);
   const staleRemoteRefs = useRepo((s) => s.staleRemoteRefs);
   const { rows, commits, maxLane, hasMore, loading, error, filters, find, matchesOnly, onlyMatches, setOnlyMatches, locatedOid, selectedOid, selectedOids, pendingScrollIndex, loadMore, reload, setFilters, setFind, stepFind, select, toggleSelect, rangeSelect, clearPendingScroll } =
     useGraph();
@@ -833,7 +834,15 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                 >
                   <Check /> 检出提交（游离状态）
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => pushTag(refMenu.ref.shorthand)}>
+                <DropdownMenuItem
+                  disabled={(() => {
+                    const remote = pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name ?? 'origin';
+                    const entry = tagRemoteStatus[remote];
+                    const status = entry?.checkedAt != null && !entry.error ? entry.tags[refMenu.ref.shorthand] : undefined;
+                    return status === 'synced' || status === 'different';
+                  })()}
+                  onClick={() => pushTag(refMenu.ref.shorthand)}
+                >
                   <Cloud /> 推送到远端
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -841,7 +850,17 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                   destructive
                   onClick={() => {
                     const tag = refMenu.ref.shorthand;
-                    void act(`删除标签 ${tag}`, () => ipc.tagDelete(path, tag));
+                    void act(`删除标签 ${tag}`, async () => {
+                      const remote = pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name;
+                      const entry = remote ? tagRemoteStatus[remote] : undefined;
+                      const status = entry?.checkedAt != null && !entry.error ? entry.tags[tag] : undefined;
+                      let remoteError: unknown;
+                      if (remote && status !== 'localOnly') {
+                        try { await ipc.deleteRemoteTag(path, remote, tag); } catch (error) { remoteError = error; }
+                      }
+                      await ipc.tagDelete(path, tag);
+                      if (remoteError) throw remoteError;
+                    });
                   }}
                 >
                   <Trash2 /> 删除标签 {refMenu.ref.shorthand}
@@ -955,7 +974,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                 toast.success('名称已复制');
               }}
             >
-              <Copy /> {refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch' ? '将分支名称复制到剪贴板' : '将名称复制到剪贴板'}
+              <Copy /> {refMenu.ref.kind === 'tag' ? '复制标签名' : refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch' ? '将分支名称复制到剪贴板' : '将名称复制到剪贴板'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
