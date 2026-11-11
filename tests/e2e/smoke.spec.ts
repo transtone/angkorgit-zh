@@ -1881,7 +1881,7 @@ test('graph branch and tag chips offer the sidebar actions, with the checked-out
   await page.getByTitle(/origin\/main——双击将 main 重置到此处/).first().hover();
   await page.locator('[data-more-refs] [data-ref-name="refs/tags/v0.4.0"]').click({ button: 'right' });
   await expect(menu.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeEnabled();
-  await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeEnabled();
+  await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeDisabled();
   await menu.getByRole('menuitem', { name: '删除标签 v0.4.0', exact: true }).click();
   await expect(page.getByText('删除标签 v0.4.0 已完成')).toBeVisible();
 });

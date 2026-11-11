@@ -525,6 +525,8 @@ test('the real catalog restores the actual ChangeFilter tooltip without changing
       const componentFile = 'apps/desktop/src/features/inspector/CommitDetails.tsx';
       const tagStatusFile = 'apps/desktop/src/features/repository/TagRemoteStatus.tsx';
       write(repo, tagStatusFile, read(project, tagStatusFile));
+      const graphFile = 'apps/desktop/src/features/graph/CommitGraph.tsx';
+      write(repo, graphFile, read(project, graphFile));
       const actual = read(project, componentFile);
       assert.ok(actual.includes('title="显示全部变更"'));
       write(repo, componentFile, actual.replace('title="显示全部变更"', `title="${previous}"`));

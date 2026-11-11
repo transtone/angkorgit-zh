@@ -41,7 +41,7 @@ test('tag pushes retain upstream destination rules with custom remote names', as
     await expect(page.getByRole('menuitem', { name: '检查远端状态', exact: true })).toHaveCount(0);
     await push.click();
     await expect.poll(() => page.evaluate(() => (window as unknown as { __tagDestinations: string[] }).__tagDestinations))
-      .toEqual([entry === 'graph' ? 'source' : 'project']);
+      .toEqual(['source']);
     await expect(page.getByRole('menu')).toHaveCount(0);
   }
 });
