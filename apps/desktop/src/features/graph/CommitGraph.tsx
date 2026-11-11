@@ -28,7 +28,7 @@ import { useRepo } from '@/features/repository/store';
 import { useGraph } from './store';
 import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
-import { AUTHOR_COL_WIDTH, CommitRow, GUTTER_GAP, GraphTailDefs, GUTTER_DEFAULT_WIDTH, LANE_WIDTH, REF_COL_WIDTH, ROW_HEIGHT, clampGraphWidth, gutterOverflowFor, gutterWidthFor } from './GraphRow';
+import { AUTHOR_COL_WIDTH, CommitRow, GUTTER_GAP, GraphTailDefs, GUTTER_DEFAULT_WIDTH, LANE_WIDTH, REF_COL_WIDTH, ROW_HEIGHT, clampGraphWidth, gutterOverflowFor, gutterWidthFor, laneColor } from './GraphRow';
 import { GraphScrollbar } from './GraphScrollbar';
 import { WipRow } from './WipRow';
 import { confirmDialog } from '@/components/confirm';
@@ -768,9 +768,16 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
             <span style={{ position: 'fixed', left: refMenu.x, top: refMenu.y }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom">
-            <DropdownMenuLabel className={cn('max-w-64 truncate', refMenu.ref.kind === 'stash' ? 'font-normal' : 'font-mono')}>
+            <DropdownMenuLabel
+              data-ref-menu-title
+              className={cn('max-w-64 whitespace-normal py-2 font-semibold [overflow-wrap:anywhere]', refMenu.ref.kind === 'stash' ? 'font-sans' : 'font-mono')}
+              style={{ color: refMenu.ref.kind === 'stash' || staleRemoteRefs.has(refMenu.ref.name)
+                ? 'hsl(var(--muted-foreground))'
+                : laneColor(rows.find((row) => row.node.oid === refMenu.commit.oid)?.node.color ?? 0) }}
+            >
               {refMenu.ref.shorthand}
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
             {refMenu.ref.kind === 'stash' && (
               <>
                 <DropdownMenuItem

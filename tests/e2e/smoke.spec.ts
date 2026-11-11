@@ -1687,12 +1687,17 @@ test('hovering a crowded ref cell opens a separate panel without moving its chip
   expect(overflowBox).toEqual(before.overflow);
   expect(Math.abs(firstBox.x - rowBox.x)).toBeLessThan(0.5);
   expect(Math.abs(firstBox.y - rowBox.y)).toBeLessThan(0.5);
-  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgb\(/);
   await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
   await expect(first).not.toHaveAttribute('title');
   expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
   expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height);
+  const sourceColor = await second.evaluate((el) => getComputedStyle(el).color);
   await second.click({ button: 'right' });
+  const menuTitle = page.locator('[data-ref-menu-title]');
+  await expect(menuTitle).toHaveText('release/0.4');
+  expect(await menuTitle.evaluate((el) => getComputedStyle(el).color)).toBe(sourceColor);
+  await expect(menuTitle.locator('xpath=following-sibling::*[1]')).toHaveAttribute('role', 'separator');
   await expect(page.getByRole('menuitem', { name: '检出 release/0.4' })).toBeVisible();
   await page.getByRole('menuitem', { name: '检出 release/0.4' }).hover();
   await page.waitForTimeout(250);

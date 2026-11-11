@@ -29,7 +29,7 @@
 ## 引用单元格与更多引用面板
 
 - 移除引用芯片的 `hover:shrink-0`，悬停不得撑宽单元格；原芯片和 `+N` 的位置保持稳定。
-- 更多引用通过独立 Portal 覆盖原标签；测量原首个标签相对单元格的实际位置，保证首项左上角对齐，不使用固定偏移猜测。浮层背景透明，无边框、阴影、内边距及位移动画；显示时隐藏底层标签但保留布局，避免重叠加深颜色或挤动 `+N`。限制宽度和高度，超出可滚动。
+- 更多引用通过独立 Portal 覆盖原标签；测量原首个标签相对单元格的实际位置，保证首项左上角对齐，不使用固定偏移猜测。浮层使用不透明的主题底色，遮住下方标签和图线；无边框、阴影、内边距及位移动画；显示时隐藏底层标签但保留布局，避免重叠加深颜色或挤动 `+N`。限制宽度和高度，超出可滚动。
 - 从面板中的引用打开右键菜单时，将面板保持打开；鼠标移入右键菜单不得触发面板延迟关闭。右键菜单关闭或完成操作后释放面板，不影响普通悬停离开时关闭。
 - 面板打开期间禁用触发区域与面板内容的原生 `title`，避免浏览器提示遮住内容；保留既有简短标签状态摘要，以及双击检出/重置、右键菜单和 Portal 事件阻止冒泡的行为。产品提示只表达引用、远端与状态，不加入 Portal、图标名称、请求序号等实现说明。
 
@@ -46,7 +46,7 @@
 | `apps/desktop/src/features/repository/store.ts` | `checkStaleRemoteRefs`、`remoteSignature`、`scheduleStaleCheck`、`tagRemoteStatus`、`staleRemoteRefs`：刷新保留、各远端独立应用结果、失败处理、请求序号与项目代次保护 |
 | `apps/desktop/src/features/repository/TagRemoteStatus.tsx` | `tagRemoteSummary`、`TagRemoteStatus`：默认远端、所有远端提示、图标与可访问名 |
 | `apps/desktop/src/features/graph/GraphRow.tsx`、`CommitGraph.tsx`（同级） | 引用装饰、固定悬停布局、更多引用 Portal、原生提示抑制、删除/检查/推送菜单 |
-| `tests/e2e/smoke.spec.ts` | 更多引用交互验证：首项左上对齐、原布局与 `+N` 位置稳定、透明背景、无位移动画及原生提示遮挡；`tests/e2e/refLayout.spec.ts` 覆盖截图中的长远端引用 |
+| `tests/e2e/smoke.spec.ts` | 更多引用交互验证：首项左上对齐、原布局与 `+N` 位置稳定、不透明背景、无位移动画及原生提示遮挡；`tests/e2e/refLayout.spec.ts` 覆盖截图中的长远端引用 |
 | `apps/desktop/src/features/sidebar/Sidebar.tsx` | 与提交图一致的分支与标签状态、删除及远端选择 |
 | `apps/desktop/src-tauri/tests/stale_remote_refs.rs` | 只读性、refspec、远端恢复、OID 变化、直接标签对象比较 |
 | `tests/unit/staleRemoteRefs.test.ts` | 多远端结果、失败未知、项目切换、标签对象变化与旧响应保护 |
@@ -69,6 +69,6 @@ rtk cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check
 rtk cargo clippy --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
 
-计划补充核对：已有标签状态和过期标记在重查开始时不闪回未知；一个远端缓慢或失败不阻塞另一个远端的结果；失败远端标签变为未知但保留上次确认的过期分支标记；同一远端旧响应晚到不覆盖新结果。悬停长引用与 `+N` 时检查单元格、原芯片和计数位置不变，首项左上对齐、透明背景、尺寸限制与滚动可用，无位移动画或原生提示遮挡，双击和右键操作仍可用。
+计划补充核对：已有标签状态和过期标记在重查开始时不闪回未知；一个远端缓慢或失败不阻塞另一个远端的结果；失败远端标签变为未知但保留上次确认的过期分支标记；同一远端旧响应晚到不覆盖新结果。悬停长引用与 `+N` 时检查单元格、原芯片和计数位置不变，首项左上对齐、不透明背景、尺寸限制与滚动可用，无位移动画或原生提示遮挡，双击和右键操作仍可用。
 
 计划人工核对：两个远端同名标签分别同步/缺失/不同、附注或签名变化而目标不变、无远端、认证失败、删除前远端分支恢复、锁定前本地 OID 变化、快速切换项目。查询前后本地 refs、工作区及配置应保持不变；删除后仅所选跟踪引用消失。

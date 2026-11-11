@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('long remote refs overlay the original chip without moving the overflow count or showing a panel background', async ({ page }) => {
+test('long remote refs overlay the original chip without moving the overflow count or showing underlying labels', async ({ page }) => {
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await expect(page.getByPlaceholder('搜索提交…')).toBeVisible({ timeout: 10_000 });
@@ -30,7 +30,7 @@ test('long remote refs overlay the original chip without moving the overflow cou
   if (!before.chip || !first || !panelBox) throw new Error('Missing reference geometry');
   expect(Math.abs(first.x - before.chip.x)).toBeLessThan(0.5);
   expect(Math.abs(first.y - before.chip.y)).toBeLessThan(0.5);
-  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgb\(/);
   expect(panelBox.x).toBeGreaterThanOrEqual(0);
   await expect(chip).not.toHaveAttribute('title');
   await expect(panel.locator('[title]')).toHaveCount(0);
