@@ -1712,16 +1712,19 @@ features/
 │                           trigger of a design-system HoverCard (Radix hover-card,
 │                           openDelay 200 / closeDelay 150, clicking the badge also opens
 │                           it via the controlled `more` state). The panel renders
-│                           content (data-more-refs) in an independent Portal below the
-│                           reference cell with a 4px gap, bounded width/height and scrolling,
-│                           without a slide-up animation. Keep the original row chip visible
-│                           in place; no cloned first chip may overlap it. Show all groups
+│                           content (data-more-refs) in an independent transparent Portal over
+│                           the original chip, measuring its actual position to align the first
+│                           item's top-left exactly. No panel border, shadow, padding or animation.
+│                           Hide original chips while open without changing their layout or +N.
+│                           Keep bounded width/height and scrolling. Show all groups
 │                           one per line with the SAME RefChip component and preserve its
-│                           double-click checkout/reset and right-click ref menu. Disable
+│                           double-click checkout/reset and right-click ref menu. A ref menu
+│                           opened from the panel pins its source panel until that menu closes;
+│                           pointer/focus leaving for the menu cannot dismiss the source panel. Disable
 │                           native titles on the open trigger and panel content so browser
 │                           tooltips cannot cover the panel; keep the concise tag-status
 │                           summaries. Regression tests cover stable chip/badge positions,
-│                           separate placement, tooltip suppression and menu actions.
+│                           exact top-left overlay alignment, tooltip suppression and menu actions.
 │                           The content stopPropagation()s
 │                           click/dblclick/contextmenu because React portals bubble
 │                           synthetic events to the row and would select it; the ref

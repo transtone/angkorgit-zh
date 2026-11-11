@@ -727,6 +727,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                     worktrees={worktreeBranches}
                     resettableBranches={localBranchNames}
                     staleRemoteRefs={staleRemoteRefs}
+                    refMenuOpen={refMenu?.commit.oid === commit.oid}
                     onSelect={onRowSelect}
                     onContextMenu={onContextMenu}
                     onCheckoutRef={checkoutRef}

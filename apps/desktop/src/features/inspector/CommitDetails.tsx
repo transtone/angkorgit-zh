@@ -85,7 +85,7 @@ const entryPath = (entry: AllFilesEntry<CommitFileInfo>) => entry.path;
 type ChangeKind = CommitFileInfo['status'];
 
 const VIRTUAL_FILE_THRESHOLD = 200;
-const FILE_ROW_HEIGHT = 34;
+const FILE_ROW_HEIGHT = 28;
 
 
 function ChangeFilter({
@@ -597,7 +597,7 @@ export function CommitDetails({
         <div
           data-active-file={active || undefined}
           className={cn(
-            'group flex w-full items-center gap-2 rounded-md py-1.5 pl-2 pr-3 text-left text-xs transition-colors',
+            'group flex h-7 w-full items-center gap-2 rounded-md pl-2 pr-3 text-left text-xs transition-colors [&_[data-change-mark]]:size-3.5',
             active ? 'bg-primary/10 text-foreground' : 'hover:bg-surface-raised',
             stash && picked.has(diff.path) && !active && 'bg-primary/5',
           )}
@@ -616,6 +616,7 @@ export function CommitDetails({
         >
         {stash && (
           <Checkbox
+            className="size-[13px] [&_svg]:size-2.5"
             checked={picked.has(diff.path)}
             aria-label={`选择 ${diff.path} 以应用`}
             onCheckedChange={() => togglePick(diff.path, false)}
@@ -654,7 +655,7 @@ export function CommitDetails({
             variant="ghost"
             size="icon-sm"
             aria-label={`从暂存中应用 ${diff.path}`}
-            className="-my-1 -mr-1 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+            className="-mr-1 size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
             onClick={() => void restoreFromStash([diff.path])}
           >
             <ArchiveRestore className="size-3.5 text-primary" />
@@ -673,7 +674,7 @@ export function CommitDetails({
           data-active-file={active || undefined}
           data-unchanged-file
           className={cn(
-            'group flex w-full items-center gap-2 rounded-md py-1.5 pl-2 pr-3 text-left text-xs transition-colors',
+            'group flex h-7 w-full items-center gap-2 rounded-md pl-2 pr-3 text-left text-xs transition-colors',
             active ? 'bg-primary/10 text-foreground' : 'text-muted hover:bg-surface-raised',
           )}
           style={fileTree && depth !== undefined ? { paddingLeft: treeIndent(depth) } : undefined}
@@ -682,7 +683,7 @@ export function CommitDetails({
             setFileMenu({ x: e.clientX, y: e.clientY, path: file, oid: commit.oid, deleted: false, changed: false });
           }}
         >
-          {stash && <span className="size-4 shrink-0" />}
+          {stash && <span className="size-[13px] shrink-0" />}
           <button
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
             onClick={() => {

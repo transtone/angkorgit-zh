@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { GraphRow as GraphRowData, RefInfo } from '@angkorgit/core';
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@angkorgit/design-system';
 import { Archive, Check, Cloud, CloudOff, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
@@ -434,6 +434,7 @@ function RefCell({
   worktrees,
   resettableBranches,
   staleRemoteRefs,
+  refMenuOpen = false,
   onCheckoutRef,
   onRefMenu,
   onResetToRemote,
@@ -446,11 +447,28 @@ function RefCell({
   worktrees?: ReadonlyMap<string, string>;
   resettableBranches?: ReadonlySet<string>;
   staleRemoteRefs?: ReadonlySet<string>;
+  refMenuOpen?: boolean;
   onCheckoutRef: (ref: RefInfo) => void;
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
   const [more, setMore] = useState(false);
+  const [menuFromPanel, setMenuFromPanel] = useState(false);
+  useEffect(() => {
+    if (!refMenuOpen && menuFromPanel) {
+      setMenuFromPanel(false);
+      setMore(false);
+    }
+  }, [refMenuOpen, menuFromPanel]);
+  const panelOpen = more || (menuFromPanel && refMenuOpen);
+  const cellRef = useRef<HTMLSpanElement>(null);
+  const [panelOffset, setPanelOffset] = useState({ sideOffset: -27, alignOffset: 0 });
+  useLayoutEffect(() => {
+    if (!panelOpen) return;
+    const cell = cellRef.current?.getBoundingClientRect();
+    const first = cellRef.current?.querySelector('[data-ref-name]')?.getBoundingClientRect();
+    if (cell && first) setPanelOffset({ sideOffset: first.top - cell.bottom, alignOffset: first.left - cell.left });
+  }, [panelOpen]);
   const groups = groupRefs(refs, headBranch, staleRemoteRefs);
   const shown = fitGroups(groups, width - 8, isHead);
   const hidden = groups.slice(shown.length);
@@ -475,13 +493,16 @@ function RefCell({
       showTitle={!more && !inOverlay}
       refName={group.primary.name}
       onCheckoutRef={onCheckoutRef}
-      onRefMenu={onRefMenu}
+      onRefMenu={(event, ref) => {
+        if (inOverlay) setMenuFromPanel(true);
+        onRefMenu(event, ref);
+      }}
       onResetToRemote={onResetToRemote}
     />
   );
   const shownHeads = headOf(shown);
   const cell = (
-    <span className="-mr-2 flex h-full shrink-0 items-center gap-1" style={{ width }}>
+    <span ref={cellRef} className={cn('-mr-2 flex h-full shrink-0 items-center gap-1', panelOpen && '[&>[data-ref-name]]:invisible')} style={{ width }}>
       {shown.map((group, i) => chip(group, shownHeads[i]))}
       {hidden.length > 0 && (
         <Badge
@@ -515,15 +536,20 @@ function RefCell({
   if (hidden.length === 0) return cell;
   const allHeads = headOf(groups);
   return (
-    <HoverCard open={more} onOpenChange={setMore} openDelay={200} closeDelay={150}>
+    <HoverCard open={panelOpen} onOpenChange={(open) => {
+      if (!open && menuFromPanel && refMenuOpen) return;
+      setMore(open);
+    }} openDelay={200} closeDelay={150}>
       <HoverCardTrigger asChild>{cell}</HoverCardTrigger>
       <HoverCardContent
         side="bottom"
         align="start"
-        sideOffset={4}
+        sideOffset={panelOffset.sideOffset}
+        alignOffset={panelOffset.alignOffset}
+        avoidCollisions={false}
         data-more-refs
-        style={{ animation: 'none' }}
-        className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-1 overflow-auto p-1"
+        style={{ animation: 'none', background: 'transparent', border: 0, boxShadow: 'none', padding: 0 }}
+        className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-1 overflow-auto"
         {...stopRowGestures}
       >
         {groups.map((group, i) => chip(group, allHeads[i], true))}
@@ -545,6 +571,7 @@ interface Props {
   worktrees?: ReadonlyMap<string, string>;
   resettableBranches?: ReadonlySet<string>;
   staleRemoteRefs?: ReadonlySet<string>;
+  refMenuOpen?: boolean;
   onSelect: (oid: string, event: React.MouseEvent) => void;
   onContextMenu: (event: React.MouseEvent, commit: CommitInfo) => void;
   onCheckoutRef: (ref: RefInfo) => void;
@@ -565,6 +592,7 @@ export const CommitRow = memo(function CommitRow({
   worktrees,
   resettableBranches,
   staleRemoteRefs,
+  refMenuOpen,
   onSelect,
   onContextMenu,
   onCheckoutRef,
@@ -583,6 +611,7 @@ export const CommitRow = memo(function CommitRow({
       worktrees={worktrees}
       resettableBranches={resettableBranches}
       staleRemoteRefs={staleRemoteRefs}
+      refMenuOpen={refMenuOpen}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={(e, ref) => onRefMenu(e, ref, commit)}
       onResetToRemote={(ref) => onResetToRemote(ref, commit)}

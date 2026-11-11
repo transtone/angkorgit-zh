@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, FileText, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, FileText } from 'lucide-react';
 import type { CommitFileInfo, FileDiff } from '@angkorgit/core';
 import { Badge, Button, Hint, Kbd, Separator, Spinner, cn } from '@angkorgit/design-system';
 import { ChangeMark, statusMeta } from '@/components/ChangeMark';
@@ -331,7 +331,7 @@ export function AllChangesView({ target }: { target: CenterDiffTarget & { oid: s
           }
         >
           <Button variant="ghost" size="icon-sm" aria-label="关闭 diff" onClick={closeCenterDiff}>
-            <X className="size-4" />
+            <ArrowLeft className="size-4" />
           </Button>
         </Hint>
         <span className="text-xs font-medium">全部改动</span>

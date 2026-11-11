@@ -79,10 +79,10 @@ function FolderRow<T>({
   onToggle: () => void;
   control: React.ReactNode;
 }) {
-  const chevron = <ChevronRight className={cn('size-3 shrink-0 transition-transform', open && 'rotate-90')} />;
+  const chevron = <ChevronRight className={cn('size-[15px] shrink-0 transition-transform', open && 'rotate-90')} />;
   const label = (
     <>
-      <Folder className="size-3 shrink-0" />
+      <Folder className="size-3.5 shrink-0" />
       <span className="min-w-0 flex-1 truncate text-left font-medium">{folder.name}</span>
       <span className="text-[10px] text-faint">{folder.count}</span>
     </>
@@ -91,7 +91,7 @@ function FolderRow<T>({
     return (
       <button
         type="button"
-        className="flex w-full items-center gap-1.5 rounded-md py-1 pr-2 text-xs text-muted hover:bg-surface-raised"
+        className="flex h-7 w-full items-center gap-1.5 rounded-md pr-2 text-xs text-muted hover:bg-surface-raised"
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={onToggle}
       >
@@ -103,7 +103,7 @@ function FolderRow<T>({
   return (
     <div
       data-tree-folder={folder.path}
-      className="group/folder flex w-full items-center gap-1.5 rounded-md py-1 pr-2 text-xs text-muted hover:bg-surface-raised"
+      className="group/folder flex h-7 w-full items-center gap-1.5 rounded-md pr-2 text-xs text-muted hover:bg-surface-raised"
       style={{ paddingLeft: 8 + depth * 14 }}
     >
       <button

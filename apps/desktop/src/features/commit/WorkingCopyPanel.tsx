@@ -109,7 +109,7 @@ const FileRow = memo(function FileRow({
         data-submodule-drift={drift ? true : undefined}
         title={treeMode ? (drift ? `${file.path}\n${drift}` : file.path) : undefined}
         className={cn(
-          'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors',
+          'group flex h-7 cursor-pointer items-center gap-2 rounded-md px-2 text-xs transition-colors [&_[data-change-mark]]:size-3.5',
           selected ? 'bg-primary/10' : 'hover:bg-surface-raised',
         )}
         style={indent !== undefined ? { paddingLeft: indent } : undefined}
@@ -117,6 +117,7 @@ const FileRow = memo(function FileRow({
         onContextMenu={onContextMenu ? (e) => onContextMenu(e, file, staged) : undefined}
       >
         <Checkbox
+          className="size-[13px] [&_svg]:size-2.5"
           checked={staged}
           aria-label={staged ? `取消暂存 ${file.path}` : `暂存 ${file.path}`}
           onCheckedChange={() => onPrimary(file, staged)}
@@ -132,7 +133,7 @@ const FileRow = memo(function FileRow({
             variant="ghost"
             size="icon-sm"
             aria-label={`更新子模块 ${file.path}`}
-            className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+            className="size-6 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onUpdateSubmodule(file);
@@ -145,7 +146,7 @@ const FileRow = memo(function FileRow({
             variant="ghost"
             size="icon-sm"
             aria-label={`丢弃 ${file.path}`}
-            className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+            className="size-6 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onDiscard(file);
@@ -185,7 +186,7 @@ const COMMIT_BOX_MIN = 72;
 const COMMIT_BOX_AUTO_MAX = 260;
 const COMMIT_BOX_MAX = 600;
 
-const FILE_ROW_HEIGHT = 32;
+const FILE_ROW_HEIGHT = 28;
 
 function VirtualFileList({
   files,
@@ -897,7 +898,7 @@ export function WorkingCopyPanel() {
         data-unchanged-file
         title={file}
         className={cn(
-          'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors',
+          'flex h-7 cursor-pointer items-center gap-2 rounded-md px-2 text-xs transition-colors',
           active ? 'bg-primary/10 text-foreground' : 'text-muted hover:bg-surface-raised',
         )}
         style={treeIndent(depth) !== undefined ? { paddingLeft: treeIndent(depth) } : undefined}
@@ -907,7 +908,7 @@ export function WorkingCopyPanel() {
           openCenterDiff({ path: file, staged: false, unchanged: true });
         }}
       >
-        {changedFiles.length > 0 && <span className="size-4 shrink-0" />}
+        {changedFiles.length > 0 && <span className="size-[13px] shrink-0" />}
         <span className="flex w-4 shrink-0 justify-center">
           <FileIcon className="size-3.5 text-faint" />
         </span>
@@ -926,6 +927,7 @@ export function WorkingCopyPanel() {
   const stageableFiles = (files: FileStatus[]) => files.filter((file) => file.unstaged && file.unstaged !== 'conflicted');
   const folderCheckbox = (folder: TreeFolder<unknown>, label: string, state: boolean | 'indeterminate', onToggle: () => void) => (
     <Checkbox
+      className="size-[13px] [&_svg]:size-2.5"
       checked={state}
       aria-label={`${label} ${folder.path}`}
       data-folder-checkbox={folder.path}

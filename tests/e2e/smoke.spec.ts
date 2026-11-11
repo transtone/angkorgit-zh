@@ -1685,16 +1685,23 @@ test('hovering a crowded ref cell opens a separate panel without moving its chip
   if (!before.chip || !before.overflow || !rowBox || !overflowBox || !panelBox || !firstBox || !secondBox) throw new Error('chip geometry missing');
   expect(rowBox).toEqual(before.chip);
   expect(overflowBox).toEqual(before.overflow);
-  expect(panelBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height);
+  expect(Math.abs(firstBox.x - rowBox.x)).toBeLessThan(0.5);
+  expect(Math.abs(firstBox.y - rowBox.y)).toBeLessThan(0.5);
+  expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
   await expect(first).not.toHaveAttribute('title');
   expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
   expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height);
   await second.click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: '检出 release/0.4' })).toBeVisible();
+  await page.getByRole('menuitem', { name: '检出 release/0.4' }).hover();
+  await page.waitForTimeout(250);
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('[data-ref-name="refs/heads/release/0.4"]')).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /将 .* 重置为此提交/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menuitem')).toHaveCount(0);
+  await expect(panel).toBeHidden();
 });
 
 test('the checked-out branch is the visible chip and the only one with the tick', async ({ page }) => {

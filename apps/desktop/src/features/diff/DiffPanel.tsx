@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Copy, FileText, History, MapPin, Minus, Plus, SearchCheck, Space, Sparkles, TextSelect, Trash2, UserRoundSearch, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, FileText, History, MapPin, Minus, Plus, SearchCheck, Space, Sparkles, TextSelect, Trash2, UserRoundSearch } from 'lucide-react';
 import type { CommitFileInfo, FileDiff } from '@angkorgit/core';
 import { aiCapabilities, hasCommittedHistory, hasReviewableText, hashText, locateDiffLine, patchTextOf, PROJECT_REVIEW_FILE } from '@angkorgit/core';
 import {
@@ -462,7 +462,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           }
         >
           <Button variant="ghost" size="icon-sm" aria-label="关闭 diff" onClick={closeCenterDiff}>
-            <X className="size-4" />
+            <ArrowLeft className="size-4" />
           </Button>
         </Hint>
         <span className="flex min-w-0 flex-1 font-mono text-xs" title={target.path}>

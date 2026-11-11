@@ -1,4 +1,4 @@
-const FALLBACK_VERSION = '0.27.3';
+const FALLBACK_VERSION = '0.27.4';
 
 async function latestReleaseVersion(): Promise<string> {
   try {

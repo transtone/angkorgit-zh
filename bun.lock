@@ -13,7 +13,7 @@
     },
     "apps/desktop": {
       "name": "@angkorgit/desktop",
-      "version": "0.27.3",
+      "version": "0.27.4",
       "dependencies": {
         "@angkorgit/core": "workspace:*",
         "@angkorgit/design-system": "workspace:*",
