@@ -212,6 +212,7 @@ pub fn run() {
             commands::remote_pull_branch,
             commands::remote_push,
             commands::remote_push_tag,
+            commands::remote_delete_tag,
             commands::stash_list,
             commands::stash_create,
             commands::stash_apply,

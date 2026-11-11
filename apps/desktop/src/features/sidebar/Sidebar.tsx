@@ -1184,7 +1184,7 @@ export function Sidebar() {
             >
               <span
                 className="min-w-0 flex-1 truncate"
-                title={`${tag.message ?? tag.name} — 点击显示该提交，右键查看更多操作\n${tagSummary(tag.name).title}`}
+                title={`${tag.message ?? tag.name} — 点击显示该提交，右键查看更多操作`}
               >
                 {tag.name}
               </span>
@@ -1384,7 +1384,15 @@ export function Sidebar() {
               destructive
               onClick={() => {
                 const tag = tagMenu.tag;
-                void act(`删除标签 ${tag.name}`, () => ipc.tagDelete(path, tag.name));
+                void act(`删除标签 ${tag.name}`, async () => {
+                  const remote = remotes[0]?.name;
+                  let remoteError: unknown;
+                  if (remote && tagSummary(tag.name).status !== 'localOnly') {
+                    try { await ipc.deleteRemoteTag(path, remote, tag.name); } catch (error) { remoteError = error; }
+                  }
+                  await ipc.tagDelete(path, tag.name);
+                  if (remoteError) throw remoteError;
+                });
               }}
             >
               <Trash2 /> 删除标签 {tagMenu.tag.name}

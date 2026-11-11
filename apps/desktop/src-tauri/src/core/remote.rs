@@ -1632,6 +1632,16 @@ pub fn push_tag(path: &str, remote_name: &str, tag: &str, no_verify: bool) -> Ap
     )
 }
 
+pub fn delete_remote_tag(path: &str, remote_name: &str, tag: &str) -> AppResult<OpOutcome> {
+    push_specs_as(
+        path,
+        remote_name,
+        &[format!(":refs/tags/{tag}")],
+        true,
+        format!("已从 {remote_name} 删除标签 {tag}"),
+    )
+}
+
 pub fn clone(
     url: &str,
     into: &str,

@@ -685,6 +685,10 @@ export const ipc = {
     if (!isTauri()) return demoPushOutcome(`已推送标签 ${tag}（演示）`, noVerify, false);
     return invoke('remote_push_tag', { path, remote, tag, noVerify });
   },
+  async deleteRemoteTag(path: string, remote: string, tag: string): Promise<OpOutcome> {
+    if (!isTauri()) return { status: 'ok', message: `Deleted ${tag} from ${remote} (demo)` };
+    return invoke('remote_delete_tag', { path, remote, tag });
+  },
 
   async stashes(path: string): Promise<StashInfo[]> {
     if (!isTauri()) return demo.demoStashes;

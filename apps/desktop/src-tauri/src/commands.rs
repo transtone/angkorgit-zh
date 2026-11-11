@@ -644,6 +644,11 @@ pub async fn remote_push_tag(
 }
 
 #[tauri::command]
+pub async fn remote_delete_tag(path: String, remote: String, tag: String) -> AppResult<OpOutcome> {
+    blocking(move || remote::delete_remote_tag(&path, &remote, &tag)).await
+}
+
+#[tauri::command]
 pub async fn stash_list(path: String) -> AppResult<Vec<StashInfo>> {
     blocking(move || misc::stash_list(&path)).await
 }
