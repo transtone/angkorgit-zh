@@ -571,7 +571,7 @@ core/
 │                       FETCH TAGS: local tags and each remote's tags have independent refs.
 │                       History returns remoteTag decorations with an explicit remote source;
 │                       graph/details merge only the same tag name on the SAME commit, with
-│                       one monitor for local and one cloud for any remote, hover lists sources.
+│                       one cloud for any remote, no local monitor, hover lists all sources.
 │                       Same-name tags on different commits MUST both remain visible. Fetch
 │                       never replaces an existing local tag with another remote's tag.
 │                       Tests: tests/fetch_history_race.rs, remoteTagGroups, remoteTags E2E.
@@ -1721,13 +1721,13 @@ features/
 │                           chips by ESTIMATED width (6.4px/char + padding + 14px per
 │                           icon) reserving room for the "+n" badge — a lone chip may
 │                           still ellipsize if longer than the column, never two
-│                           crushed chips; the "+n" badge is NOT decoration (user report
-│                           2026-09-11: "+1 — I don't know what that is"): it is a
-│                           role=button (aria "n more refs", title lists them); when a
-│                           row has folded refs the WHOLE RefCell span becomes the
+│                           crushed chips; the "+n" badge is a static role=note count with
+│                           default cursor and no click/double-click/context-menu behavior.
+│                           Row handlers ignore these gestures on the count; hover remains.
+│                           When a row has folded refs the WHOLE RefCell span becomes the
 │                           trigger of a design-system HoverCard (Radix hover-card,
-│                           openDelay 200 / closeDelay 150, clicking the badge also opens
-│                           it via the controlled `more` state). The panel renders
+│                           openDelay 200 / closeDelay 150, controlled `more` state).
+│                           The panel renders
 │                           content (data-more-refs) in an independent transparent Portal over
 │                           the original chip, measuring its actual position to align the first
 │                           item's top-left exactly. Overlay chips alone use opaque lane tints
@@ -1737,7 +1737,10 @@ features/
 │                           Keep bounded width/height and scrolling. Show all groups
 │                           one per line with the SAME RefChip component and preserve its
 │                           double-click checkout/reset and right-click ref menu. A ref menu
-│                           opened from the panel pins its source panel until that menu closes;
+│                           opened from ANY chip pins its source panel until that menu closes;
+│                           only row context menus preserve the target's hover background;
+│                           ref menus do not highlight rows. Neither changes selection.
+│                           Context menus use z-60 above the reference HoverCard at z-50.
 │                           pointer/focus leaving for the menu cannot dismiss the source panel. Disable
 │                           native titles on the open trigger and panel content so browser
 │                           tooltips cannot cover the panel; keep the concise tag-status
@@ -1788,8 +1791,8 @@ features/
 │                           remote absence, locks the selected local ref, checks its expected OID
 │                           under that lock and removes only that tracking ref, then refreshes.
 │                           TAG SOURCES: graph and commit details use actual local/remoteTag
-│                           decorations. Merge sources only by commit + tag name, monitor for
-│                           local, one cloud for any remote, hover lists concrete source names.
+│                           decorations. Merge sources only by commit + tag name, no local
+│                           monitor, one cloud for any remote, hover lists concrete source names.
 │                           Same-name remote tags on different commits remain separate.
 │                           Sidebar local-tag status still uses repository/TagRemoteStatus.tsx.
 │                           Compare direct refs/tags OIDs, including annotated metadata
@@ -1800,8 +1803,10 @@ features/
 │                           remote::ref_status shares one authenticated read-only connection
 │                           for tracking refs and tags. Local-tag menus keep one direct
 │                           “推送到远端” action, disabled when that target already has the tag.
-│                           Remote-only graph tags offer checkout by commit OID and copy name;
-│                           never treat a remote tag as a local tag or branch for mutations.
+│                           All graph and sidebar tags offer immediate deletion by the selected
+│                           tag name and commit, removing only its corresponding sources.
+│                           Same-name tags on other commits are preserved; no confirmation or
+│                           success toast. Failed sources remain visible and errors are reported.
 │                           Toolbar “推送（含标签）” keeps the original selected default remote
 │                           and handler without overriding remote selection. Preserve last-known
 │                           tag status while refreshing; a failed result becomes unknown only

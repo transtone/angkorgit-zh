@@ -732,6 +732,10 @@ export const ipc = {
     if (!isTauri()) return;
     return invoke('tag_create', { path, name, target, message });
   },
+  async tagDeleteSources(path: string, name: string, oid: string): Promise<OpOutcome> {
+    if (!isTauri()) return { status: 'ok', message: `已删除标签 ${name}` };
+    return invoke('tag_delete_sources', { path, name, oid });
+  },
   async tagDelete(path: string, name: string): Promise<void> {
     if (!isTauri()) return;
     return invoke('tag_delete', { path, name });

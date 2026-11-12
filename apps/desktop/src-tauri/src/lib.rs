@@ -49,7 +49,7 @@ pub mod test_api {
         add as remote_add, checkout_remote_ref, delete_stale_ref as remote_delete_stale_ref, fetch,
         group_update, group_update_controlled, list as remote_list, pull, push, push_specs,
         push_tag, ref_status as remote_ref_status, stale_refs as remote_stale_refs,
-        RemoteRefStatus, RemoteTagStatus, TagSyncStatus,
+        tag_delete_sources, RemoteRefStatus, RemoteTagStatus, TagSyncStatus,
     };
     pub use crate::core::repo::{
         cleanup_state, discover, info as repo_info, init, ref_fingerprint, set_config, status,
@@ -223,6 +223,7 @@ pub fn run() {
             commands::tag_list,
             commands::tag_create,
             commands::tag_delete,
+            commands::tag_delete_sources,
             commands::submodule_list,
             commands::submodule_update,
             commands::worktree_list,

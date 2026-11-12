@@ -529,13 +529,22 @@ fn advertised_refs(
     repo: &Repository,
     remote: &mut git2::Remote<'_>,
 ) -> AppResult<HashMap<String, git2::Oid>> {
+    Ok(advertised_tag_refs(repo, remote)?
+        .into_iter()
+        .filter(|(name, _)| !name.ends_with("^{}"))
+        .collect())
+}
+
+fn advertised_tag_refs(
+    repo: &Repository,
+    remote: &mut git2::Remote<'_>,
+) -> AppResult<HashMap<String, git2::Oid>> {
     prime_account_bindings(Some(repo));
     // A connection guard disconnects on every exit; no fetch or local ref update occurs.
     let connection = remote.connect_auth(git2::Direction::Fetch, Some(make_callbacks()), None)?;
     Ok(connection
         .list()?
         .iter()
-        .filter(|head| !head.name().ends_with("^{}"))
         .map(|head| (head.name().to_owned(), head.oid()))
         .collect())
 }
@@ -627,6 +636,122 @@ pub fn delete_stale_ref(path: &str, ref_name: &str, expected_oid: &str) -> AppRe
         status: "ok".into(),
         message: format!("已删除远程跟踪引用 {ref_name}"),
     })
+}
+
+/// Deletes the selected commit's local and tracked remote tag sources.
+///
+/// Each remote is checked again before pushing; failed sources remain available for retry.
+pub fn tag_delete_sources(path: &str, name: &str, oid: &str) -> AppResult<OpOutcome> {
+    let tag_ref = format!("refs/tags/{name}");
+    if name.is_empty() || !git2::Reference::is_valid_name(&tag_ref) {
+        return Err(AppError::other("无效的标签名称"));
+    }
+    if oid.len() != 40 {
+        return Err(AppError::other("需要完整的提交对象 ID"));
+    }
+    let expected = git2::Oid::from_str(oid)?;
+    let repo = super::repo::open(path)?;
+    repo.find_commit(expected)?;
+    let mut failures = Vec::new();
+    let mut deleted = 0;
+    // Discover first, so partial failures cannot prevent other sources from being attempted.
+    let mut sources = Vec::new();
+    for remote in repo.remotes()?.iter().flatten() {
+        let tracking = format!("{}{name}", remote_tag_prefix(remote));
+        match repo.find_reference(&tracking) {
+            Ok(reference) => {
+                if reference.peel_to_commit()?.id() == expected {
+                    sources.push((remote.to_owned(), tracking, reference.resolve()?.target()));
+                }
+            }
+            Err(error) if error.code() == git2::ErrorCode::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    for (name, tracking, raw) in sources {
+        let result = (|| -> AppResult<()> {
+            let mut remote = repo.find_remote(&name)?;
+            // A separate push URL may point at a different repository from the fetch URL.
+            let url = remote
+                .pushurl()
+                .or_else(|| remote.url())
+                .ok_or_else(|| AppError::other("远端没有推送 URL"))?;
+            let mut endpoint = repo.remote_anonymous(url)?;
+            let advertised = advertised_tag_refs(&repo, &mut endpoint)?;
+            let Some(raw_remote) = advertised.get(&tag_ref) else {
+                // Already absent is a successful deletion; remove only our unchanged snapshot.
+                return remove_tag_ref(&repo, &tracking, raw);
+            };
+            let peeled = advertised
+                .get(&format!("{tag_ref}^{{}}"))
+                .unwrap_or(raw_remote);
+            if *peeled != expected {
+                return Err(AppError::other("远端标签已移至其他提交，已保留"));
+            }
+            let pre_push = PrePush::prepare(&repo, &remote, true)?;
+            send_with_lease(
+                &repo,
+                &mut remote,
+                &name,
+                &[format!(":{tag_ref}")],
+                &pre_push,
+                Some((&tag_ref, *raw_remote)),
+            )?;
+            remove_tag_ref(&repo, &tracking, raw)?;
+            Ok(())
+        })();
+        match result {
+            Ok(()) => deleted += 1,
+            Err(error) => failures.push(format!("{name}: {error}")),
+        }
+    }
+    let local = (|| -> AppResult<bool> {
+        let mut transaction = repo.transaction()?;
+        transaction.lock_ref(&tag_ref)?;
+        let reference = match repo.find_reference(&tag_ref) {
+            Ok(reference) => reference,
+            Err(error) if error.code() == git2::ErrorCode::NotFound => return Ok(false),
+            Err(error) => return Err(error.into()),
+        };
+        if reference.symbolic_target().is_some() || reference.peel_to_commit()?.id() != expected {
+            return Ok(false);
+        }
+        transaction.remove(&tag_ref)?;
+        transaction.commit()?;
+        Ok(true)
+    })();
+    match local {
+        Ok(true) => deleted += 1,
+        Ok(false) => {}
+        Err(error) => failures.push(format!("本地: {error}")),
+    }
+    if !failures.is_empty() {
+        return Err(AppError::other(format!(
+            "已删除 {deleted} 个标签来源；失败：{}",
+            failures.join("; ")
+        )));
+    }
+    Ok(OpOutcome {
+        status: if deleted == 0 { "skipped" } else { "ok" }.into(),
+        message: format!("已删除标签 {name} 的 {deleted} 个来源"),
+    })
+}
+
+fn remove_tag_ref(repo: &Repository, name: &str, expected: Option<git2::Oid>) -> AppResult<()> {
+    let mut transaction = repo.transaction()?;
+    transaction.lock_ref(name)?;
+    match repo.find_reference(name) {
+        Ok(reference) => {
+            if reference.symbolic_target().is_some() || reference.target() != expected {
+                return Err(AppError::other("远端删除成功，但跟踪引用已变化，请刷新"));
+            }
+            transaction.remove(name)?;
+            transaction.commit()?;
+        }
+        Err(error) if error.code() == git2::ErrorCode::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    Ok(())
 }
 
 pub(crate) fn remote_tag_prefix(remote: &str) -> String {
@@ -1464,12 +1589,39 @@ fn send(
     refspecs: &[String],
     pre_push: &PrePush,
 ) -> AppResult<()> {
+    send_with_lease(repo, remote, remote_name, refspecs, pre_push, None)
+}
+
+fn send_with_lease(
+    repo: &Repository,
+    remote: &mut git2::Remote<'_>,
+    remote_name: &str,
+    refspecs: &[String],
+    pre_push: &PrePush,
+    lease: Option<(&str, git2::Oid)>,
+) -> AppResult<()> {
     prime_account_bindings(Some(repo));
     let hook_failure: RefCell<Option<AppError>> = RefCell::new(None);
     let approved: RefCell<Option<String>> = RefCell::new(None);
-    let mut sent = send_once(repo, remote, refspecs, pre_push, &hook_failure, &approved);
+    let mut sent = send_once(
+        repo,
+        remote,
+        refspecs,
+        pre_push,
+        &hook_failure,
+        &approved,
+        lease,
+    );
     if sent.as_ref().is_err_and(connection_broke) && approved.borrow().is_some() {
-        sent = send_once(repo, remote, refspecs, pre_push, &hook_failure, &approved);
+        sent = send_once(
+            repo,
+            remote,
+            refspecs,
+            pre_push,
+            &hook_failure,
+            &approved,
+            lease,
+        );
     }
     if let Some(error) = hook_failure.take() {
         return Err(error);
@@ -1511,6 +1663,7 @@ fn send_once(
     pre_push: &PrePush,
     hook_failure: &RefCell<Option<AppError>>,
     approved: &RefCell<Option<String>>,
+    lease: Option<(&str, git2::Oid)>,
 ) -> Result<Sent, git2::Error> {
     let rejected: Arc<Mutex<Vec<(String, String)>>> = Default::default();
     let server_said: Arc<Mutex<Vec<u8>>> = Default::default();
@@ -1536,8 +1689,19 @@ fn send_once(
             true
         });
     }
-    if pre_push.active() {
+    {
         callbacks.push_negotiation(|updates| {
+            if let Some((name, expected)) = lease {
+                if !updates
+                    .iter()
+                    .any(|update| update.dst_refname() == Some(name) && update.src() == expected)
+                {
+                    return Err(git2::Error::from_str("远端标签已变化，已停止删除"));
+                }
+            }
+            if !pre_push.active() {
+                return Ok(());
+            }
             let refs: Vec<PushedRef> = updates
                 .iter()
                 .map(|update| {
@@ -1912,6 +2076,65 @@ mod tests {
                 super::remote_tag_prefix("origin-team")
             ))
             .is_ok());
+        drop(repo);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn delete_lease_rejects_remote_change_during_push_negotiation() {
+        let dir = std::env::temp_dir().join(format!(
+            "angkorgit-tag-lease-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let repo = Repository::init(dir.join("local")).unwrap();
+        let bare = Repository::init_bare(dir.join("remote.git")).unwrap();
+        let sig = git2::Signature::now("Test", "test@example.com").unwrap();
+        let tree = bare
+            .find_tree(bare.treebuilder(None).unwrap().write().unwrap())
+            .unwrap();
+        let commit = bare.commit(None, &sig, &sig, "commit", &tree, &[]).unwrap();
+        let object = bare.find_object(commit, None).unwrap();
+        let advertised = bare.tag("v1", &object, &sig, "before", false).unwrap();
+        let moved = bare
+            .tag("v1", &object, &sig, "changed annotation", true)
+            .unwrap();
+        let mut remote = repo
+            .remote("origin", bare.path().to_str().unwrap())
+            .unwrap();
+        let pre_push = PrePush::prepare(&repo, &remote, true).unwrap();
+        let error = send_with_lease(
+            &repo,
+            &mut remote,
+            "origin",
+            &[":refs/tags/v1".into()],
+            &pre_push,
+            Some(("refs/tags/v1", advertised)),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("远端标签已变化"), "{error}");
+        assert_eq!(
+            bare.find_reference("refs/tags/v1").unwrap().target(),
+            Some(moved)
+        );
+        // Accepting the refreshed raw tag OID proves annotated tags use the raw lease.
+        send_with_lease(
+            &repo,
+            &mut remote,
+            "origin",
+            &[":refs/tags/v1".into()],
+            &pre_push,
+            Some(("refs/tags/v1", moved)),
+        )
+        .unwrap();
+        assert!(bare.find_reference("refs/tags/v1").is_err());
+        drop(remote);
+        drop(object);
+        drop(tree);
+        drop(bare);
         drop(repo);
         std::fs::remove_dir_all(dir).unwrap();
     }

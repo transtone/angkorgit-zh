@@ -29,7 +29,7 @@ test('tag status shows sync state and keeps the local tag visible when remote ch
   const marker = page.locator('[data-tag-sources]').filter({ hasText: 'v-test' }).first();
   await expect(marker).toHaveAttribute('data-tag-sources', '本地、origin');
   await expect(marker).toHaveAttribute('title', 'v-test · 本地、origin');
-  await expect(marker.locator('.lucide-monitor')).toHaveCount(1);
+  await expect(marker.locator('.lucide-monitor')).toHaveCount(0);
   await expect(marker.locator('.lucide-cloud')).toHaveCount(1);
   const bounds = await marker.evaluate((element) => {
     const parent = element.getBoundingClientRect();
@@ -58,6 +58,6 @@ test('tag status shows sync state and keeps the local tag visible when remote ch
   });
   await expect(marker).toHaveAttribute('data-tag-sources', '本地、origin');
   await expect(marker).toHaveAttribute('title', 'v-test · 本地、origin');
-  await expect(marker.locator('.lucide-monitor')).toHaveCount(1);
+  await expect(marker.locator('.lucide-monitor')).toHaveCount(0);
   await expect(marker.locator('.lucide-cloud')).toHaveCount(1);
 });

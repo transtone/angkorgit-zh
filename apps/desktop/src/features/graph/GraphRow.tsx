@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import type { GraphRow as GraphRowData, RefInfo } from '@angkorgit/core';
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@angkorgit/design-system';
 import { Archive, Check, Cloud, CloudOff, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
@@ -330,7 +330,7 @@ export function groupRefs(refs: RefInfo[], headBranch: string | null = null, sta
 
 export function estimateChipWidth(group: RefGroup, head: boolean): number {
   const icons = (group.local ? 1 : 0) + (group.remote ? 1 : 0) + (group.tag ? 1 : 0) + (group.stash ? 1 : 0) + (head || group.detachedHead ? 1 : 0);
-  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tagLocal ? 1 : 0) + (group.tagRemotes?.length ? 1 : 0)) * CHIP_ICON);
+  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tagRemotes?.length ? 1 : 0)) * CHIP_ICON);
 }
 
 function fitGroups(groups: RefGroup[], available: number, isHead: boolean): RefGroup[] {
@@ -361,6 +361,8 @@ function RefChip({
   onResetToRemote,
   showTitle = true,
   overlay = false,
+  active = false,
+  menuOpen = false,
   refName,
 }: {
   group: RefGroup;
@@ -369,12 +371,17 @@ function RefChip({
   separated: boolean;
   showTitle?: boolean;
   overlay?: boolean;
+  active?: boolean;
+  menuOpen?: boolean;
   refName?: string;
   color: number;
   onCheckoutRef: (ref: RefInfo) => void;
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+  const emphasized = !head && !group.stale && !group.stash && (active || (!menuOpen && hovered));
+  const tint = emphasized ? 0.24 : 0.16;
   const tagSources = [...(group.tagLocal ? ['本地'] : []), ...(group.tagRemotes ?? [])].join('、');
   const laneStyle = group.stale
     ? { background: 'hsl(var(--muted) / 0.25)', borderColor: 'hsl(var(--muted-foreground) / 0.35)', color: 'hsl(var(--muted-foreground))' }
@@ -382,12 +389,13 @@ function RefChip({
     ? undefined
     : head
       ? { background: laneColor(color), borderColor: laneColor(color), color: 'hsl(var(--background))' }
-      : { background: laneTint(color, 0.16), borderColor: laneTint(color, 0.45), color: laneColor(color) };
+      : { background: laneTint(color, tint), borderColor: laneTint(color, emphasized ? 0.65 : 0.45),
+          color: emphasized ? `color-mix(in srgb, ${laneColor(color)} 88%, hsl(var(--foreground)))` : laneColor(color) };
   const chipStyle = overlay && !head
     ? { ...laneStyle, background: group.stale
       ? 'color-mix(in srgb, hsl(var(--muted)) 25%, hsl(var(--surface-overlay)))'
       : group.stash ? 'hsl(var(--surface-raised))'
-      : `color-mix(in srgb, ${laneColor(color)} 16%, hsl(var(--surface-overlay)))` }
+      : `color-mix(in srgb, ${laneColor(color)} ${tint * 100}%, hsl(var(--surface-overlay)))` }
     : laneStyle;
   return (
     <Badge
@@ -398,10 +406,11 @@ function RefChip({
       data-stale-remote-ref={group.stale ? group.primary.name : undefined}
       data-lane-chip={group.stash || group.stale ? undefined : color % 10}
       style={chipStyle}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       className={cn(
-        'min-w-0 max-w-full shrink whitespace-nowrap',
-        !group.tag && !group.stash && !head &&
-          'cursor-pointer hover:!bg-surface-overlay hover:shadow-soft',
+        'min-w-0 max-w-full shrink whitespace-nowrap transition-colors duration-[120ms]',
+        !group.tag && !group.stash && !head && 'cursor-pointer',
         group.stale && 'border-dashed',
         group.stash && 'max-w-[11rem] cursor-pointer border-dashed hover:!bg-surface-overlay',
         head && 'cursor-pointer shadow-soft',
@@ -439,7 +448,6 @@ function RefChip({
       {group.local && !worktree && <Monitor className="size-2.5 shrink-0" />}
       {worktree && <FolderTree className="size-2.5 shrink-0" />}
       {group.remote && (group.stale ? <CloudOff className="size-2.5 shrink-0" /> : <Cloud className="size-2.5 shrink-0" />)}
-      {group.tagLocal && <Monitor className="size-2.5 shrink-0" />}
       {!!group.tagRemotes?.length && <Cloud className="size-2.5 shrink-0" />}
     </Badge>
   );
@@ -461,6 +469,8 @@ function RefCell({
   resettableBranches,
   staleRemoteRefs,
   refMenuOpen = false,
+  activeRefName,
+  onCloseRefMenu,
   onCheckoutRef,
   onRefMenu,
   onResetToRemote,
@@ -474,19 +484,14 @@ function RefCell({
   resettableBranches?: ReadonlySet<string>;
   staleRemoteRefs?: ReadonlySet<string>;
   refMenuOpen?: boolean;
+  activeRefName?: string;
+  onCloseRefMenu?: () => void;
   onCheckoutRef: (ref: RefInfo) => void;
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
   const [more, setMore] = useState(false);
-  const [menuFromPanel, setMenuFromPanel] = useState(false);
-  useEffect(() => {
-    if (!refMenuOpen && menuFromPanel) {
-      setMenuFromPanel(false);
-      setMore(false);
-    }
-  }, [refMenuOpen, menuFromPanel]);
-  const panelOpen = more || (menuFromPanel && refMenuOpen);
+  const panelOpen = more || refMenuOpen;
   const cellRef = useRef<HTMLSpanElement>(null);
   const [panelOffset, setPanelOffset] = useState({ sideOffset: -27, alignOffset: 0 });
   useLayoutEffect(() => {
@@ -518,10 +523,12 @@ function RefCell({
       separated={!group.stale && group.remote && !group.local && (resettableBranches?.has(group.primary.shorthand.split('/').slice(1).join('/')) ?? false)}
       showTitle={group.tag ? inOverlay || !more : !more && !inOverlay}
       overlay={inOverlay}
+      active={activeRefName === group.primary.name}
+      menuOpen={refMenuOpen}
       refName={group.primary.name}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={(event, ref) => {
-        if (inOverlay) setMenuFromPanel(true);
+        setMore(false);
         onRefMenu(event, ref);
       }}
       onResetToRemote={onResetToRemote}
@@ -529,26 +536,15 @@ function RefCell({
   );
   const shownHeads = headOf(shown);
   const cell = (
-    <span ref={cellRef} className={cn('-mr-2 flex h-full shrink-0 items-center gap-1', panelOpen && '[&>[data-ref-name]]:invisible')} style={{ width }}>
+    <span ref={cellRef} className={cn('-mr-2 flex h-full shrink-0 items-center gap-1', hidden.length > 0 && panelOpen && '[&>[data-ref-name]]:invisible')} style={{ width }}>
       {shown.map((group, i) => chip(group, shownHeads[i]))}
       {hidden.length > 0 && (
         <Badge
-          role="button"
-          data-ref-interactive
+          role="note"
+          data-ref-overflow
           aria-label={`还有 ${hidden.length} 个引用`}
-          aria-expanded={more}
-          className="shrink-0 cursor-pointer hover:!bg-surface-overlay"
+          className="shrink-0 cursor-default"
           title={more ? undefined : hidden.map((g) => g.label).join(', ')}
-          onClick={(e) => {
-            e.stopPropagation();
-            setMore(true);
-          }}
-          onDoubleClick={(e) => e.stopPropagation()}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setMore(true);
-          }}
         >
           +{hidden.length}
         </Badge>
@@ -565,7 +561,7 @@ function RefCell({
   const allHeads = headOf(groups);
   return (
     <HoverCard open={panelOpen} onOpenChange={(open) => {
-      if (!open && menuFromPanel && refMenuOpen) return;
+      if (refMenuOpen) return;
       setMore(open);
     }} openDelay={200} closeDelay={150}>
       <HoverCardTrigger asChild>{cell}</HoverCardTrigger>
@@ -576,6 +572,12 @@ function RefCell({
         alignOffset={panelOffset.alignOffset}
         avoidCollisions={false}
         data-more-refs
+        onEscapeKeyDown={(event) => {
+          if (refMenuOpen) {
+            event.preventDefault();
+            onCloseRefMenu?.();
+          }
+        }}
         style={{ animation: 'none', background: 'transparent', border: 0, boxShadow: 'none', padding: 0 }}
         className="flex max-h-[min(24rem,70vh)] max-w-[min(32rem,calc(100vw-16px))] flex-col items-start gap-0 overflow-auto"
         {...stopRowGestures}
@@ -591,6 +593,8 @@ interface Props {
   row: GraphRowData;
   gutterWidth: number;
   selected: boolean;
+  contextMenuOpen?: boolean;
+  activeRefName?: string;
   laneWidth?: number;
   columns?: GraphColumns;
   showTail?: boolean;
@@ -600,6 +604,7 @@ interface Props {
   resettableBranches?: ReadonlySet<string>;
   staleRemoteRefs?: ReadonlySet<string>;
   refMenuOpen?: boolean;
+  onCloseRefMenu?: () => void;
   onSelect: (oid: string, event: React.MouseEvent) => void;
   onContextMenu: (event: React.MouseEvent, commit: CommitInfo) => void;
   onCheckoutRef: (ref: RefInfo) => void;
@@ -612,6 +617,7 @@ export const CommitRow = memo(function CommitRow({
   row,
   gutterWidth,
   selected,
+  contextMenuOpen = false,
   laneWidth = LANE_WIDTH,
   columns = DEFAULT_GRAPH_COLUMNS,
   showTail = true,
@@ -621,6 +627,8 @@ export const CommitRow = memo(function CommitRow({
   resettableBranches,
   staleRemoteRefs,
   refMenuOpen,
+  activeRefName,
+  onCloseRefMenu,
   onSelect,
   onContextMenu,
   onCheckoutRef,
@@ -629,6 +637,7 @@ export const CommitRow = memo(function CommitRow({
 }: Props) {
   const isMergeCommit = commit.parents.length > 1;
   const isStash = commit.refs.some((ref) => ref.kind === 'stash');
+  const rowMenuOpen = contextMenuOpen && !refMenuOpen;
   const refCell = columns.refs ? (
     <RefCell
       refs={commit.refs}
@@ -640,6 +649,8 @@ export const CommitRow = memo(function CommitRow({
       resettableBranches={resettableBranches}
       staleRemoteRefs={staleRemoteRefs}
       refMenuOpen={refMenuOpen}
+      activeRefName={activeRefName}
+      onCloseRefMenu={onCloseRefMenu}
       onCheckoutRef={onCheckoutRef}
       onRefMenu={(e, ref) => onRefMenu(e, ref, commit)}
       onResetToRemote={(ref) => onResetToRemote(ref, commit)}
@@ -652,11 +663,26 @@ export const CommitRow = memo(function CommitRow({
       className={cn(
         'flex h-8 cursor-pointer select-none items-center gap-2 pr-4 text-sm transition-colors',
         columns.refs ? 'pl-1' : 'pl-4',
-        selected ? 'bg-primary/10' : 'hover:bg-surface-raised [&:has([data-ref-interactive]:hover)]:hover:bg-transparent',
+        {
+          'bg-primary/10': selected && !rowMenuOpen,
+          'bg-surface-raised': rowMenuOpen,
+          'bg-transparent': refMenuOpen && !selected,
+          'hover:bg-surface-raised [&:has([data-ref-interactive]:hover)]:hover:bg-transparent':
+            !selected && !contextMenuOpen && !refMenuOpen,
+        },
         commit.isHead && 'font-medium',
       )}
-      onClick={(e) => onSelect(commit.oid, e)}
-      onContextMenu={(e) => onContextMenu(e, commit)}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-ref-overflow]')) return;
+        onSelect(commit.oid, e);
+      }}
+      onContextMenu={(e) => {
+        if ((e.target as HTMLElement).closest('[data-ref-overflow]')) {
+          e.preventDefault();
+          return;
+        }
+        onContextMenu(e, commit);
+      }}
     >
       {refCell}
       <GraphGutter

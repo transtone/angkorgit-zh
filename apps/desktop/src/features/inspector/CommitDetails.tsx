@@ -968,7 +968,6 @@ export function CommitDetails({
                   title={[...(group.tagLocal ? ['本地'] : []), ...(group.tagRemotes ?? [])].join('、')}>
                   <TagIcon className="size-2.5 shrink-0" />
                   <span className="truncate">{group.label}</span>
-                  {group.tagLocal && <Monitor className="size-2.5 shrink-0" />}
                   {!!group.tagRemotes?.length && <Cloud className="size-2.5 shrink-0" />}
                 </Badge>
               ))}

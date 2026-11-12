@@ -49,14 +49,14 @@ describe('tag status icon', () => {
     } };
     const html = renderToStaticMarkup(createElement(TagRemoteStatus, { name: 'v1' }));
     expect(html).toContain(`data-tag-remote-status="${status}"`);
-    expect(html).toContain('lucide-monitor');
+    expect(html).not.toContain('lucide-monitor');
     if (status === 'unknown' || status === 'localOnly') expect(html).not.toContain('lucide-cloud');
     else expect(html).toContain('lucide-cloud');
     expect(html).toContain(status === 'synced' ? 'title="与远端已同步"' : 'title="与远端未同步"');
   });
   it('allows sidebar icons to follow its selected remote destination', () => {
     const projectHtml = renderToStaticMarkup(createElement(TagRemoteStatus, { name: 'v1', remoteName: 'project' }));
-    expect(projectHtml).toContain('lucide-monitor');
+    expect(projectHtml).not.toContain('lucide-monitor');
     expect(projectHtml).toContain('lucide-cloud');
     expect(renderToStaticMarkup(createElement(TagRemoteStatus, { name: 'v1', remoteName: 'source' }))).toContain('lucide-cloud');
   });

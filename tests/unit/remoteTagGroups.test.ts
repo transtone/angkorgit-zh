@@ -21,13 +21,13 @@ const markup = (refs: RefInfo[]) => {
 };
 
 describe('tags grouped by commit and name', () => {
-  it('merges all sources on one commit with exactly one local and one cloud icon', () => {
+  it('shows one cloud icon for merged remote sources without a local icon', () => {
     for (const refs of [[local, remote('upstream'), remote('origin')], [remote('origin'), remote('upstream'), local]]) {
       const groups = groupRefs(refs);
       expect(groups).toHaveLength(1);
       expect(groups[0]).toMatchObject({ primary: local, tagLocal: true, tagRemotes: ['origin', 'upstream'] });
       const html = markup(refs);
-      expect(html.match(/lucide-monitor/g)).toHaveLength(1);
+      expect(html).not.toContain('lucide-monitor');
       expect(html.match(/lucide-cloud/g)).toHaveLength(1);
       expect(html).toContain('title="v0.27.0 · 本地、origin、upstream"');
     }
@@ -49,9 +49,9 @@ describe('tags grouped by commit and name', () => {
     expect(lower[0]).toMatchObject({ label: 'v0.27.0', tagLocal: false, tagRemotes: ['upstream'] });
   });
 
-  it('does not infer a cloud from the local tag name alone', () => {
+  it('does not show a local icon for a local-only tag', () => {
     const html = markup([local]);
-    expect(html).toContain('lucide-monitor');
+    expect(html).not.toContain('lucide-monitor');
     expect(html).not.toContain('lucide-cloud');
   });
 });

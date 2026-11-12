@@ -1,4 +1,4 @@
-import { Cloud, Monitor } from 'lucide-react';
+import { Cloud } from 'lucide-react';
 import { pickRemote } from '@angkorgit/core';
 import type { RemoteInfo, TagRemoteState } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
@@ -47,7 +47,6 @@ export function TagRemoteStatus({ name, className, showTitle = true, remoteName 
       title={showTitle ? title : undefined}
       className={cn('inline-flex shrink-0 items-center gap-1 text-muted-foreground', className)}
     >
-      <Monitor className="size-2.5 shrink-0" aria-hidden="true" />
       {status !== 'localOnly' && status !== 'unknown' && <Cloud className="size-2.5 shrink-0" aria-hidden="true" />}
     </span>
   );

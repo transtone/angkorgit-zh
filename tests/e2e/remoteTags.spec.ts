@@ -22,8 +22,16 @@ test('remote tags remain distinct across commits and merge sources only on the s
       shorthand: 'v0.27.0',
       remote: source,
     });
-    const tracker = window as unknown as { __remoteTagCheckouts: string[] };
+    const tracker = window as unknown as { __remoteTagCheckouts: string[]; __tagDeletions: unknown[][] };
     tracker.__remoteTagCheckouts = [];
+    tracker.__tagDeletions = [];
+    ipc.tagDeleteSources = async (_path, _name, oid) => {
+      tracker.__tagDeletions.push([_path, _name, oid]);
+      useGraph.setState({ commits: useGraph.getState().commits.map((commit) => commit.oid === oid
+        ? { ...commit, refs: commit.refs.filter((ref) => !(ref.shorthand === _name && (ref.kind === 'tag' || ref.kind === 'remoteTag'))) }
+        : commit) });
+      return { status: 'ok' };
+    };
     ipc.checkoutDetached = async (_path, target) => {
       tracker.__remoteTagCheckouts.push(target);
       return { status: 'ok' };
@@ -41,13 +49,14 @@ test('remote tags remain distinct across commits and merge sources only on the s
       ] },
       ...commits.slice(4),
     ] });
+    ipc.history = async () => ({ commits: useGraph.getState().commits, hasMore: false, total: null });
     return [first.oid, second.oid, merged.oid];
   });
 
   const chips = page.locator('[data-tag-sources]');
   await expect(chips).toHaveCount(3);
   const crowded = page.getByRole('row').nth(3);
-  await crowded.getByRole('button', { name: '还有 1 个引用' }).hover();
+  await crowded.getByRole('note', { name: '还有 1 个引用' }).hover();
   const panel = page.locator('[data-more-refs]');
   await expect(panel).toBeVisible();
   const overflowTag = panel.locator('[data-tag-sources="upstream"]');
@@ -57,16 +66,26 @@ test('remote tags remain distinct across commits and merge sources only on the s
   await expect(panel).toBeHidden();
   const mergedChip = chips.filter({ hasText: 'v0.27.0' }).last();
   await expect(mergedChip).toHaveAttribute('data-tag-sources', '本地、origin、upstream');
-  await expect(mergedChip.locator('.lucide-monitor')).toHaveCount(1);
+  await expect(mergedChip.locator('.lucide-monitor')).toHaveCount(0);
   await expect(mergedChip.locator('.lucide-cloud')).toHaveCount(1);
   const originOnly = chips.filter({ hasText: 'v0.27.0' }).first();
 
+  await originOnly.click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: /删除标签/ })).toBeVisible();
+  await page.getByRole('menuitem', { name: /删除标签/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Notifications alt+T' }).getByText(/删除标签 .*已完成/)).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __tagDeletions: unknown[][] }).__tagDeletions))
+    .toEqual([[expect.any(String), 'v0.27.0', oids[0]]]);
+  await expect(chips.filter({ hasText: 'v0.27.0' })).toHaveCount(2);
+  await expect(chips.filter({ hasText: 'v0.27.0' }).first()).toHaveAttribute('data-tag-sources', 'upstream');
+  await expect(chips.filter({ hasText: 'v0.27.0' }).last()).toHaveAttribute('data-tag-sources', '本地、origin、upstream');
   await originOnly.click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '复制标签名' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /合并|变基|新建分支|删除分支|重命名|推送|拉取/ })).toHaveCount(0);
   await page.getByRole('menuitem', { name: '检出提交（游离状态）' }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __remoteTagCheckouts: string[] }).__remoteTagCheckouts))
-    .toEqual([oids[0]]);
+    .toEqual([oids[1]]);
   expect(oids[1]).not.toBe(oids[0]);
 });

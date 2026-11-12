@@ -721,6 +721,11 @@ pub async fn tag_delete(path: String, name: String) -> AppResult<()> {
 }
 
 #[tauri::command]
+pub async fn tag_delete_sources(path: String, name: String, oid: String) -> AppResult<OpOutcome> {
+    blocking(move || remote::tag_delete_sources(&path, &name, &oid)).await
+}
+
+#[tauri::command]
 pub async fn submodule_list(path: String) -> AppResult<Vec<SubmoduleInfo>> {
     blocking(move || submodule::list(&path)).await
 }

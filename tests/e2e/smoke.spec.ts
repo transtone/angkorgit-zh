@@ -1668,8 +1668,8 @@ test('hovering a crowded ref cell opens a separate panel without moving its chip
   const row = page.getByRole('row').filter({ has: page.locator('[data-ref-name="refs/heads/feature/diff-viewer"]') }).first();
   const rowChip = row.locator('[data-ref-name="refs/heads/feature/diff-viewer"]');
   await expect(row.getByText('release/0.4', { exact: true })).toHaveCount(0);
-  await expect(row.getByRole('button', { name: '还有 1 个引用' })).toHaveText('+1');
-  const overflow = row.getByRole('button', { name: '还有 1 个引用' });
+  await expect(row.getByRole('note', { name: '还有 1 个引用' })).toHaveText('+1');
+  const overflow = row.getByRole('note', { name: '还有 1 个引用' });
   const before = { chip: await rowChip.boundingBox(), overflow: await overflow.boundingBox() };
   await rowChip.hover();
   const panel = page.locator('[data-more-refs]');
@@ -1717,7 +1717,7 @@ test('the checked-out branch is the visible chip and the only one with the tick'
   const top = rows.first();
   await expect(top.getByTitle(/^main · 本地/)).toBeVisible();
   await expect(top.getByText('hotfix/lane-colors', { exact: true })).toHaveCount(0);
-  await expect(top.getByRole('button', { name: '还有 1 个引用' })).toHaveText('+1');
+  await expect(top.getByRole('note', { name: '还有 1 个引用' })).toHaveText('+1');
   await top.getByTitle(/^main · 本地/).hover();
   const panel = page.locator('[data-more-refs]');
   const main = panel.locator('[data-ref-name="refs/heads/main"]');
@@ -1883,7 +1883,7 @@ test('graph branch and tag chips offer the sidebar actions, with the checked-out
   await expect(menu.getByRole('menuitem', { name: '检出提交（游离状态）' })).toBeEnabled();
   await expect(menu.getByRole('menuitem', { name: '推送到远端' })).toBeDisabled();
   await menu.getByRole('menuitem', { name: '删除标签 v0.4.0', exact: true }).click();
-  await expect(page.getByText('删除标签 v0.4.0 已完成')).toBeVisible();
+  await expect(page.getByText('删除标签 v0.4.0 已完成')).toHaveCount(0);
 });
 
 test('graph chips wear their lane colour, lines run as rails and the WIP banner hides the rows under it', async ({ page }) => {

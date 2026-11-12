@@ -86,6 +86,8 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
   }, [scrollTop, blocked]);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [refMenu, setRefMenu] = useState<RefMenuState | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const closeRefMenu = useCallback(() => setRefMenu(null), []);
   const [refMenuFf, setRefMenuFf] = useState<{
     head: string; source: string; current: boolean; selected: boolean;
   } | null>(null);
@@ -714,6 +716,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                     row={row}
                     gutterWidth={gutterWidth}
                     selected={selectedOid === commit.oid || selectedOids.includes(commit.oid)}
+                    contextMenuOpen={menu?.commit.oid === commit.oid}
                     laneWidth={laneWidth}
                     columns={graphColumns}
                     showTail={graphTail}
@@ -723,6 +726,8 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                     resettableBranches={localBranchNames}
                     staleRemoteRefs={staleRemoteRefs}
                     refMenuOpen={refMenu?.commit.oid === commit.oid}
+                    activeRefName={refMenu?.commit.oid === commit.oid ? refMenu.ref.name : undefined}
+                    onCloseRefMenu={closeRefMenu}
                     onSelect={onRowSelect}
                     onContextMenu={onContextMenu}
                     onCheckoutRef={checkoutRef}
@@ -758,11 +763,11 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
       />
 
       {refMenu && (
-        <DropdownMenu open onOpenChange={(o) => !o && setRefMenu(null)}>
+        <DropdownMenu open onOpenChange={(open) => !open && closeRefMenu()}>
           <DropdownMenuTrigger asChild>
             <span style={{ position: 'fixed', left: refMenu.x, top: refMenu.y }} />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="bottom">
+          <DropdownMenuContent className="z-[60]" align="start" side="bottom" onEscapeKeyDown={closeRefMenu}>
             <DropdownMenuLabel
               data-ref-menu-title
               className={cn('max-w-64 whitespace-normal px-2 py-1 font-semibold [overflow-wrap:anywhere]', refMenu.ref.kind === 'stash' ? 'font-sans' : 'font-mono')}
@@ -850,27 +855,30 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                   <Cloud /> 推送到远端
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                </>}
                 <DropdownMenuItem
                   destructive
                   onClick={() => {
-                    const tag = refMenu.ref.shorthand;
-                    void act(`删除标签 ${tag}`, async () => {
-                      const remote = pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name;
-                      const entry = remote ? tagRemoteStatus[remote] : undefined;
-                      const status = entry?.checkedAt != null && !entry.error ? entry.tags[tag] : undefined;
-                      let remoteError: unknown;
-                      if (remote && status !== 'localOnly') {
-                        try { await ipc.deleteRemoteTag(path, remote, tag); } catch (error) { remoteError = error; }
+                    const { shorthand: tag } = refMenu.ref;
+                    const oid = refMenu.commit.oid;
+                    void (async () => {
+                      try {
+                        await ipc.tagDeleteSources(path, tag, oid);
+                      } catch (error) {
+                        toast.error(`删除标签 ${tag} 失败：${(error as { message?: string }).message ?? error}`);
+                      } finally {
+                        // Some sources may succeed even if another remote fails.
+                        if (useRepo.getState().repo?.path === path) {
+                          await refresh();
+                          await reload(path);
+                        }
                       }
-                      await ipc.tagDelete(path, tag);
-                      if (remoteError) throw remoteError;
-                    });
+                    })().catch((error) => toast.error((error as { message?: string }).message ?? String(error)));
                   }}
                 >
                   <Trash2 /> 删除标签 {refMenu.ref.shorthand}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                </>}
               </>
             )}
             {refMenu.ref.kind !== 'tag' && refMenu.ref.kind !== 'remoteTag' && refMenu.ref.kind !== 'stash' && (
@@ -986,11 +994,11 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
       )}
 
       {menu && (
-        <DropdownMenu open onOpenChange={(o) => !o && setMenu(null)}>
+        <DropdownMenu open onOpenChange={(open) => !open && closeMenu()}>
           <DropdownMenuTrigger asChild>
             <span style={{ position: 'fixed', left: menu.x, top: menu.y }} />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="bottom">
+          <DropdownMenuContent className="z-[60]" align="start" side="bottom" onEscapeKeyDown={closeMenu}>
             <DropdownMenuLabel
               data-commit-menu-title
               className="max-w-64 whitespace-normal px-2 py-1 font-mono font-semibold [overflow-wrap:anywhere]"

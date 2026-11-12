@@ -1386,15 +1386,15 @@ export function Sidebar() {
               destructive
               onClick={() => {
                 const tag = tagMenu.tag;
-                void act(`删除标签 ${tag.name}`, async () => {
-                  const remote = tagRemote;
-                  let remoteError: unknown;
-                  if (remote && tagSummary(tag.name).status !== 'localOnly') {
-                    try { await ipc.deleteRemoteTag(path, remote, tag.name); } catch (error) { remoteError = error; }
+                void (async () => {
+                  try {
+                    await ipc.tagDeleteSources(path, tag.name, tag.targetOid);
+                  } catch (error) {
+                    toast.error(`删除标签 ${tag.name} 失败：${(error as { message?: string }).message ?? error}`);
+                  } finally {
+                    if (useRepo.getState().repo?.path === path) await refreshAll();
                   }
-                  await ipc.tagDelete(path, tag.name);
-                  if (remoteError) throw remoteError;
-                });
+                })().catch((error) => toast.error((error as { message?: string }).message ?? String(error)));
               }}
             >
               <Trash2 /> 删除标签 {tagMenu.tag.name}
