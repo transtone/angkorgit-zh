@@ -76,6 +76,8 @@ pub struct RefInfo {
     pub kind: String,
     pub name: String,
     pub shorthand: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote: Option<String>,
 }
 
 #[derive(Serialize, Clone)]

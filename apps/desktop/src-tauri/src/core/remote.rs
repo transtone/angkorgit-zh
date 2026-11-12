@@ -420,18 +420,24 @@ pub fn edit(path: &str, name: &str, new_name: &str, url: &str) -> AppResult<()> 
         return Err(crate::error::AppError::other("远端名称和 URL 均不能为空"));
     }
     let repo = super::repo::open(path)?;
+    let url_changed = repo.find_remote(name)?.url() != Some(url);
     let mut current = name.to_string();
     if new_name != name {
         let _ = repo.remote_rename(name, new_name)?;
+        move_remote_tags(&repo, name, Some(new_name))?;
         current = new_name.to_string();
     }
     repo.remote_set_url(&current, url)?;
+    if url_changed {
+        move_remote_tags(&repo, &current, None)?;
+    }
     Ok(())
 }
 
 pub fn remove(path: &str, name: &str) -> AppResult<()> {
     let repo = super::repo::open(path)?;
     repo.remote_delete(name)?;
+    move_remote_tags(&repo, name, None)?;
     Ok(())
 }
 
@@ -623,19 +629,135 @@ pub fn delete_stale_ref(path: &str, ref_name: &str, expected_oid: &str) -> AppRe
     })
 }
 
+pub(crate) fn remote_tag_prefix(remote: &str) -> String {
+    use std::fmt::Write;
+    let mut encoded = String::with_capacity(remote.len() * 2);
+    for byte in remote.bytes() {
+        write!(&mut encoded, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    format!("refs/angkorgit/remote-tags/{encoded}/tags/")
+}
+
+pub(crate) fn remote_tag_source(repo: &Repository, name: &str) -> Option<(String, String)> {
+    name.strip_prefix("refs/angkorgit/remote-tags/")?;
+    repo.remotes().ok()?.iter().flatten().find_map(|remote| {
+        name.strip_prefix(&remote_tag_prefix(remote))
+            .map(|tag| (remote.to_owned(), tag.to_owned()))
+    })
+}
+
+fn move_remote_tags(repo: &Repository, old: &str, new: Option<&str>) -> AppResult<()> {
+    let prefix = remote_tag_prefix(old);
+    for reference in repo.references_glob(&format!("{prefix}*"))? {
+        let mut reference = reference?;
+        if let Some(new) = new {
+            let suffix = reference
+                .name()
+                .and_then(|name| name.strip_prefix(&prefix))
+                .ok_or_else(|| AppError::other("invalid remote tag reference"))?;
+            reference.rename(
+                &format!("{}{suffix}", remote_tag_prefix(new)),
+                true,
+                "rename remote tags",
+            )?;
+        } else {
+            reference.delete()?;
+        }
+    }
+    Ok(())
+}
+
+fn sync_remote_tags(
+    repo: &Repository,
+    name: &str,
+    tags: &HashMap<String, git2::Oid>,
+) -> AppResult<()> {
+    let prefix = remote_tag_prefix(name);
+    for (reference, oid) in tags {
+        let Some(tag) = reference.strip_prefix(&prefix) else {
+            continue;
+        };
+        // Preserve Git's convenient creation of new local tags without moving existing tags.
+        match repo.reference(&format!("refs/tags/{tag}"), *oid, false, "fetch new tag") {
+            Ok(_) => {}
+            Err(error) if error.code() == git2::ErrorCode::Exists => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    for reference in repo.references_glob(&format!("{prefix}*"))? {
+        let mut reference = reference?;
+        if reference
+            .name()
+            .is_some_and(|name| !tags.contains_key(name))
+        {
+            reference.delete()?;
+        }
+    }
+    Ok(())
+}
+
 pub fn fetch(path: &str, remote_name: &str, tags: bool, prune: bool) -> AppResult<OpOutcome> {
     let repo = super::repo::open(path)?;
     prime_account_bindings(Some(&repo));
     let mut remote = repo.find_remote(remote_name)?;
     let mut opts = FetchOptions::new();
     opts.remote_callbacks(make_callbacks());
-    if tags {
-        opts.download_tags(AutotagOption::All);
-    }
+    // Override remote.tagOpt=--tags: implicit tag updates must never overwrite local tags.
+    opts.download_tags(AutotagOption::Auto);
     if prune {
         opts.prune(git2::FetchPrune::On);
     }
-    remote.fetch(&[] as &[&str], Some(&mut opts), None)?;
+    if tags {
+        let mut refspecs: Vec<String> = remote
+            .fetch_refspecs()?
+            .iter()
+            .flatten()
+            .map(str::to_owned)
+            .collect();
+        refspecs.push(format!("+refs/tags/*:{}*", remote_tag_prefix(remote_name)));
+        opts.download_tags(AutotagOption::None);
+        remote.download(&refspecs, Some(&mut opts))?;
+        remote.disconnect()?;
+        // Disable implicit tags so libgit2 honors the isolated tag destinations.
+        // Capture this operation's tag set, including unchanged refs, without shared FETCH_HEAD.
+        let prefix = remote_tag_prefix(remote_name);
+        let mut tags = HashMap::new();
+        let mut updates = RemoteCallbacks::new();
+        updates.update_tips(|name, _, oid| {
+            if name.starts_with(&prefix) {
+                tags.insert(name.to_owned(), oid);
+            }
+            true
+        });
+        remote.update_tips(
+            Some(&mut updates),
+            git2::RemoteUpdateFlags::UPDATE_FETCHHEAD | git2::RemoteUpdateFlags::REPORT_UNCHANGED,
+            AutotagOption::None,
+            Some(&format!("fetch {remote_name}")),
+        )?;
+        drop(updates);
+        sync_remote_tags(&repo, remote_name, &tags)?;
+        let config = repo.config()?;
+        let configured_prune = config
+            .get_bool(&format!("remote.{remote_name}.prune"))
+            .or_else(|error| {
+                if error.code() == git2::ErrorCode::NotFound {
+                    config.get_bool("fetch.prune")
+                } else {
+                    Err(error)
+                }
+            });
+        let configured_prune = match configured_prune {
+            Ok(value) => value,
+            Err(error) if error.code() == git2::ErrorCode::NotFound => false,
+            Err(error) => return Err(error.into()),
+        };
+        if prune || configured_prune {
+            remote.prune(None)?;
+        }
+    } else {
+        remote.fetch(&[] as &[&str], Some(&mut opts), None)?;
+    }
     Ok(OpOutcome {
         status: "ok".into(),
         message: format!("已拉取 {remote_name}"),
@@ -934,16 +1056,34 @@ fn group_fetch(
     callbacks.sideband_progress(|_| !control.is_cancelled());
     let mut options = FetchOptions::new();
     options.remote_callbacks(callbacks);
-    let refspecs: Vec<String> = upstream
+    options.download_tags(AutotagOption::Auto);
+    let mut refspecs: Vec<String> = upstream
         .map(|(source, target)| format!("+{source}:{target}"))
         .into_iter()
         .collect();
+    if upstream.is_none() {
+        refspecs = remote
+            .fetch_refspecs()?
+            .iter()
+            .flatten()
+            .map(str::to_owned)
+            .collect();
+    }
+    if !anonymous {
+        refspecs.push(format!("+refs/tags/*:{}*", remote_tag_prefix(name)));
+        options.download_tags(AutotagOption::None);
+    }
     remote.download(&refspecs, Some(&mut options))?;
     remote.disconnect()?;
     let mut apply = || -> AppResult<()> {
         let received = AtomicBool::new(upstream.is_none());
+        let prefix = remote_tag_prefix(name);
+        let mut tags = HashMap::new();
         let mut updates = RemoteCallbacks::new();
-        updates.update_tips(|name, _, _| {
+        updates.update_tips(|name, _, oid| {
+            if name.starts_with(&prefix) {
+                tags.insert(name.to_owned(), oid);
+            }
             if upstream.is_some_and(|(_, target)| name == target) {
                 received.store(true, Ordering::SeqCst);
             }
@@ -952,9 +1092,17 @@ fn group_fetch(
         remote.update_tips(
             Some(&mut updates),
             git2::RemoteUpdateFlags::UPDATE_FETCHHEAD | git2::RemoteUpdateFlags::REPORT_UNCHANGED,
-            AutotagOption::Unspecified,
+            if anonymous {
+                AutotagOption::Auto
+            } else {
+                AutotagOption::None
+            },
             None,
         )?;
+        drop(updates);
+        if !anonymous {
+            sync_remote_tags(repo, name, &tags)?;
+        }
         if !received.load(Ordering::SeqCst) {
             return Err(git2::Error::new(
                 git2::ErrorCode::NotFound,
@@ -1078,7 +1226,12 @@ fn fetched_refs(repo: &Repository) -> AppResult<HashMap<String, git2::Oid>> {
     let mut refs = HashMap::new();
     for reference in repo.references()? {
         let reference = reference?;
-        if reference.is_remote() || reference.is_tag() {
+        if reference.is_remote()
+            || reference.is_tag()
+            || reference
+                .name()
+                .is_some_and(|name| name.starts_with("refs/angkorgit/remote-tags/"))
+        {
             if let (Some(name), Some(oid)) = (reference.name(), reference.target()) {
                 refs.insert(name.to_string(), oid);
             }
@@ -1568,6 +1721,7 @@ pub fn checkout_remote_ref(
         let mut remote = repo.find_remote(remote_name)?;
         let mut opts = FetchOptions::new();
         opts.remote_callbacks(make_callbacks());
+        opts.download_tags(AutotagOption::Auto);
         remote.fetch(&[refspec.as_str()], Some(&mut opts), None)?;
         drop(remote);
         let target = repo
@@ -1585,6 +1739,7 @@ pub fn checkout_remote_ref(
         let mut remote = repo.find_remote(remote_name)?;
         let mut opts = FetchOptions::new();
         opts.remote_callbacks(make_callbacks());
+        opts.download_tags(AutotagOption::Auto);
         remote.fetch(&[refspec.as_str()], Some(&mut opts), None)?;
     }
     let target = repo.find_reference(PR_HEAD_TMP_REF)?.peel_to_commit()?.id();
@@ -1688,6 +1843,79 @@ pub fn checkout_head_force(repo: &Repository) -> AppResult<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn remote_tag_namespaces_follow_remote_lifecycle() {
+        let dir = std::env::temp_dir().join(format!(
+            "angkorgit-remote-tags-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let repo = git2::Repository::init(&dir).unwrap();
+        let oid = repo.blob(b"tag target").unwrap();
+        for name in ["origin", "origin/team", "origin-team"] {
+            repo.remote(name, "https://example.com/repo.git").unwrap();
+            let reference = format!("{}release/v1", super::remote_tag_prefix(name));
+            repo.reference(&reference, oid, false, "fixture").unwrap();
+            assert_eq!(
+                super::remote_tag_source(&repo, &reference),
+                Some((name.to_owned(), "release/v1".to_owned()))
+            );
+        }
+        let path = dir.to_str().unwrap();
+        super::edit(
+            path,
+            "origin/team",
+            "upstream/team",
+            "https://example.com/repo.git",
+        )
+        .unwrap();
+        assert!(repo
+            .find_reference(&format!(
+                "{}release/v1",
+                super::remote_tag_prefix("origin/team")
+            ))
+            .is_err());
+        assert!(repo
+            .find_reference(&format!(
+                "{}release/v1",
+                super::remote_tag_prefix("upstream/team")
+            ))
+            .is_ok());
+        super::remove(path, "upstream/team").unwrap();
+        assert!(repo
+            .find_reference(&format!(
+                "{}release/v1",
+                super::remote_tag_prefix("upstream/team")
+            ))
+            .is_err());
+        for name in ["origin", "origin-team"] {
+            assert!(repo
+                .find_reference(&format!("{}release/v1", super::remote_tag_prefix(name)))
+                .is_ok());
+        }
+        super::edit(
+            path,
+            "origin",
+            "origin",
+            "https://example.com/different.git",
+        )
+        .unwrap();
+        assert!(repo
+            .find_reference(&format!("{}release/v1", super::remote_tag_prefix("origin")))
+            .is_err());
+        assert!(repo
+            .find_reference(&format!(
+                "{}release/v1",
+                super::remote_tag_prefix("origin-team")
+            ))
+            .is_ok());
+        drop(repo);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn rejection_message_names_each_ref_like_git_does() {
         let message = super::rejection_message(

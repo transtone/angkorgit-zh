@@ -68,13 +68,18 @@ fn ref_decorations(repo: &Repository) -> HashMap<Oid, Vec<RefInfo>> {
             kind: "stash".to_string(),
             name: format!("stash@{{{}}}", entry.index),
             shorthand: entry.message,
+            remote: None,
         });
     }
     if let Ok(refs) = repo.references() {
         for reference in refs.flatten() {
             let name = reference.name().unwrap_or("").to_string();
-            let shorthand = reference.shorthand().unwrap_or("").to_string();
-            let kind = if name.starts_with("refs/heads/") {
+            let mut shorthand = reference.shorthand().unwrap_or("").to_string();
+            let remote_tag = super::remote::remote_tag_source(repo, &name);
+            let kind = if let Some((_, tag)) = &remote_tag {
+                shorthand = tag.clone();
+                "remoteTag"
+            } else if name.starts_with("refs/heads/") {
                 "localBranch"
             } else if name.starts_with("refs/remotes/") {
                 "remoteBranch"
@@ -93,6 +98,7 @@ fn ref_decorations(repo: &Repository) -> HashMap<Oid, Vec<RefInfo>> {
                     kind: kind.to_string(),
                     name,
                     shorthand,
+                    remote: remote_tag.map(|(remote, _)| remote),
                 });
             }
         }
@@ -148,6 +154,14 @@ fn open_walk<'r>(
             let _ = walk.push_glob("refs/heads/*");
             let _ = walk.push_glob("refs/remotes/*");
             let _ = walk.push_glob("refs/tags/*");
+            for remote in repo.remotes()?.iter().flatten() {
+                let prefix = super::remote::remote_tag_prefix(remote);
+                for reference in repo.references_glob(&format!("{prefix}*"))?.flatten() {
+                    if let Ok(commit) = reference.peel_to_commit() {
+                        walk.push(commit.id())?;
+                    }
+                }
+            }
             let _ = walk.push_head();
             let stashes = push_stashes(repo, &mut walk);
             Ok((walk, stashes))

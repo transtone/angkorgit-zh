@@ -4,7 +4,6 @@ import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@angko
 import { Archive, Check, Cloud, CloudOff, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
 import type { CommitInfo } from '@angkorgit/core';
 import { Avatar } from '@/components/Avatar';
-import { TagRemoteStatus, useTagRemoteStatus } from '@/features/repository/TagRemoteStatus';
 import { toast } from 'sonner';
 import { formatDate, timeAgo } from '@/shared/utils';
 import { DEFAULT_GRAPH_COLUMNS, type GraphColumns } from '@/features/ui/store';
@@ -270,6 +269,8 @@ export interface RefGroup {
   stash?: boolean;
   stale?: boolean;
   remoteNames?: string[];
+  tagLocal?: boolean;
+  tagRemotes?: string[];
 }
 
 const groupRank = (g: RefGroup, headBranch: string | null) =>
@@ -278,6 +279,7 @@ const groupRank = (g: RefGroup, headBranch: string | null) =>
 export function groupRefs(refs: RefInfo[], headBranch: string | null = null, staleRemoteRefs?: ReadonlySet<string>): RefGroup[] {
   const out: RefGroup[] = [];
   const index = new Map<string, number>();
+  const tags = new Map<string, RefGroup>();
   const hasLocal = refs.some((r) => r.kind === 'localBranch');
   for (const ref of [...refs].sort((a, b) => Number(b.kind === 'localBranch') - Number(a.kind === 'localBranch'))) {
     if (ref.kind === 'head') {
@@ -306,16 +308,29 @@ export function groupRefs(refs: RefInfo[], headBranch: string | null = null, sta
       }
     } else if (ref.kind === 'stash') {
       out.push({ label: ref.shorthand, primary: ref, local: false, remote: false, tag: false, detachedHead: false, stash: true });
-    } else {
-      out.push({ label: ref.shorthand, primary: ref, local: false, remote: false, tag: true, detachedHead: false });
+    } else if (ref.kind === 'tag' || ref.kind === 'remoteTag') {
+      let group = tags.get(ref.shorthand);
+      if (!group) {
+        group = { label: ref.shorthand, primary: ref, local: false, remote: false, tag: true,
+          detachedHead: false, tagLocal: false, tagRemotes: [] };
+        tags.set(ref.shorthand, group);
+        out.push(group);
+      }
+      if (ref.kind === 'tag') {
+        group.tagLocal = true;
+        group.primary = ref;
+      } else if (ref.remote && !group.tagRemotes!.includes(ref.remote)) {
+        group.tagRemotes!.push(ref.remote);
+      }
     }
   }
+  for (const group of tags.values()) group.tagRemotes!.sort();
   return out.sort((a, b) => groupRank(a, headBranch) - groupRank(b, headBranch));
 }
 
 export function estimateChipWidth(group: RefGroup, head: boolean): number {
   const icons = (group.local ? 1 : 0) + (group.remote ? 1 : 0) + (group.tag ? 1 : 0) + (group.stash ? 1 : 0) + (head || group.detachedHead ? 1 : 0);
-  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tag ? 2 : 0)) * CHIP_ICON);
+  return Math.round(group.label.length * CHAR_WIDTH + CHIP_PADDING + (icons + (group.tagLocal ? 1 : 0) + (group.tagRemotes?.length ? 1 : 0)) * CHIP_ICON);
 }
 
 function fitGroups(groups: RefGroup[], available: number, isHead: boolean): RefGroup[] {
@@ -360,7 +375,7 @@ function RefChip({
   onRefMenu: (event: React.MouseEvent, ref: RefInfo) => void;
   onResetToRemote: (ref: RefInfo) => void;
 }) {
-  const tagStatus = useTagRemoteStatus(group.tag ? group.label : '');
+  const tagSources = [...(group.tagLocal ? ['本地'] : []), ...(group.tagRemotes ?? [])].join('、');
   const laneStyle = group.stale
     ? { background: 'hsl(var(--muted) / 0.25)', borderColor: 'hsl(var(--muted-foreground) / 0.35)', color: 'hsl(var(--muted-foreground))' }
     : group.stash
@@ -379,6 +394,7 @@ function RefChip({
       tone="neutral"
       data-ref-name={refName}
       data-ref-interactive
+      data-tag-sources={group.tag ? tagSources : undefined}
       data-stale-remote-ref={group.stale ? group.primary.name : undefined}
       data-lane-chip={group.stash || group.stale ? undefined : color % 10}
       style={chipStyle}
@@ -398,7 +414,7 @@ function RefChip({
           : group.tag || group.detachedHead
           ? group.detachedHead
             ? 'HEAD 游离在该提交处'
-            : tagStatus.title
+            : `${group.label} · ${tagSources}`
           : separated
             ? `${group.primary.shorthand}——双击将 ${group.primary.shorthand.split('/').slice(1).join('/')} 重置到此处，右键显示操作`
             : `${group.label}${group.local ? ' · 本地' : ''}${group.remote ? ` · ${group.remoteNames?.join('、') ?? group.primary.shorthand}` : ''}${worktree ? ` · 位于工作树 ${worktree}` : ''}——${worktree ? '双击切换到该工作树' : group.local ? '双击检出' : `双击从此处检出 ${group.primary.shorthand.split('/').slice(1).join('/')}（本地分支落后时会快进）`}，右键显示操作`
@@ -423,7 +439,8 @@ function RefChip({
       {group.local && !worktree && <Monitor className="size-2.5 shrink-0" />}
       {worktree && <FolderTree className="size-2.5 shrink-0" />}
       {group.remote && (group.stale ? <CloudOff className="size-2.5 shrink-0" /> : <Cloud className="size-2.5 shrink-0" />)}
-      {group.tag && <TagRemoteStatus name={group.label} showTitle={showTitle} />}
+      {group.tagLocal && <Monitor className="size-2.5 shrink-0" />}
+      {!!group.tagRemotes?.length && <Cloud className="size-2.5 shrink-0" />}
     </Badge>
   );
 }
@@ -499,7 +516,7 @@ function RefCell({
       worktree={group.local ? worktrees?.get(group.label) : undefined}
       color={color}
       separated={!group.stale && group.remote && !group.local && (resettableBranches?.has(group.primary.shorthand.split('/').slice(1).join('/')) ?? false)}
-      showTitle={!more && !inOverlay}
+      showTitle={group.tag ? inOverlay || !more : !more && !inOverlay}
       overlay={inOverlay}
       refName={group.primary.name}
       onCheckoutRef={onCheckoutRef}

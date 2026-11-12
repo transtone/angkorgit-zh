@@ -57,6 +57,9 @@ angkorgit/
 ├── pnpm-workspace.yaml        ← apps/*, packages/*
 ├── tsconfig.base.json         ← strict TS + path aliases for both packages
 ├── vitest.config.ts           ← unit tests live at repo root (tests/unit)
+│                       tests/unit imports use package names, never physical node_modules
+│                       paths; vitest.config.ts resolves desktop dependencies via createRequire
+│                       so clean Bun installs work with either hoisted or isolated layouts.
 ├── apps/desktop/              ← THE app (@angkorgit/desktop)
 │   ├── index.html · vite.config.ts · tailwind.config.ts · postcss.config.js
 │   ├── src/                   ← React frontend (see §6)
@@ -565,6 +568,13 @@ core/
 ├── remote.rs         ← credential chain (see below), add/edit/remove/list remotes (add refuses a
 │                       duplicate name; the sidebar fetches the new remote in the same action, issue #26),
 │                       fetch/pull/push(+branch param)/clone,
+│                       FETCH TAGS: local tags and each remote's tags have independent refs.
+│                       History returns remoteTag decorations with an explicit remote source;
+│                       graph/details merge only the same tag name on the SAME commit, with
+│                       one monitor for local and one cloud for any remote, hover lists sources.
+│                       Same-name tags on different commits MUST both remain visible. Fetch
+│                       never replaces an existing local tag with another remote's tag.
+│                       Tests: tests/fetch_history_race.rs, remoteTagGroups, remoteTags E2E.
 │                       PULL MODE (issue #18): pull(path, remote, mode) — Some("rebase")
 │                       rebases the local commits onto the upstream, Some("merge") merges,
 │                       None follows the repo's effective `pull.rebase` (git semantics:
@@ -1777,22 +1787,21 @@ features/
 │                           “删除远程跟踪引用” only for confirmed stale refs. Deletion rechecks
 │                           remote absence, locks the selected local ref, checks its expected OID
 │                           under that lock and removes only that tracking ref, then refreshes.
-│                           TAG REMOTE STATUS: graph/sidebar share repository/
-│                           TagRemoteStatus.tsx: only a tag confirmed synced to that entry's
-│                           actual push target gets a Cloud; local-only, unknown/failure and
-│                           different states render no trailing icon.
+│                           TAG SOURCES: graph and commit details use actual local/remoteTag
+│                           decorations. Merge sources only by commit + tag name, monitor for
+│                           local, one cloud for any remote, hover lists concrete source names.
+│                           Same-name remote tags on different commits remain separate.
+│                           Sidebar local-tag status still uses repository/TagRemoteStatus.tsx.
 │                           Compare direct refs/tags OIDs, including annotated metadata
 │                           and signatures, never peeled targets; TagInfo.refOid must survive
 │                           refresh signatures. Store results per remote with checkedAt/error.
-│                           Restore upstream 7afb6b6 tag handlers and menus: sidebar uses
-│                           remotes[0]?.name ?? 'origin'; graph uses
-│                           pickRemote(remotes, HEAD tracking branch) ?? 'origin'. That baseline
-│                           already includes graph tag push. Tooltips retain read-only states
-│                           for all remotes, selected target first, without icon notes or check
-│                           timestamps. remote::ref_status shares one authenticated read-only
-│                           connection for tracking refs and tags. Graph/sidebar tag menus retain
-│                           one direct “推送到远端” action; the status addon adds no manual
-│                           “检查远端状态” item, synced-state disablement or mismatch warning menu.
+│                           Local-tag push/delete use pickRemote(remotes, HEAD tracking
+│                           branch); status probes do not determine graph source icons.
+│                           remote::ref_status shares one authenticated read-only connection
+│                           for tracking refs and tags. Local-tag menus keep one direct
+│                           “推送到远端” action, disabled when that target already has the tag.
+│                           Remote-only graph tags offer checkout by commit OID and copy name;
+│                           never treat a remote tag as a local tag or branch for mutations.
 │                           Toolbar “推送（含标签）” keeps the original selected default remote
 │                           and handler without overriding remote selection. Preserve last-known
 │                           tag status while refreshing; a failed result becomes unknown only

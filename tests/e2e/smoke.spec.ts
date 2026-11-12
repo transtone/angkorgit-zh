@@ -3305,7 +3305,7 @@ test('dragging a diff selection past the right edge pans the long lines and exte
 });
 
 test('long diff lines have a sticky horizontal scrollbar and support Shift+wheel', async ({ page }) => {
-  await page.setViewportSize({ width: 800, height: 900 });
+  await page.setViewportSize({ width: 600, height: 900 });
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await page.getByText('palette-seed.sql').first().click();
@@ -3317,7 +3317,7 @@ test('long diff lines have a sticky horizontal scrollbar and support Shift+wheel
   for (const view of ['内联 diff', '并排 diff']) {
     await diff.getByRole('button', { name: view, exact: true }).click();
     await expect(scrollbar).toBeVisible();
-    expect(await scrollbar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(100);
+    await expect.poll(() => scrollbar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(200);
     const viewport = await scroller.boundingBox();
     const bar = await scrollbar.boundingBox();
     expect(bar!.y + bar!.height).toBeLessThanOrEqual(viewport!.y + viewport!.height + 1);
@@ -3349,7 +3349,7 @@ test('long diff lines have a sticky horizontal scrollbar and support Shift+wheel
 });
 
 test('a trackpad pan moves the long-line diff by the whole gesture without stepping back', async ({ page }) => {
-  await page.setViewportSize({ width: 800, height: 900 });
+  await page.setViewportSize({ width: 600, height: 900 });
   await page.goto('/');
   await page.getByText('angkorgit', { exact: true }).first().click();
   await page.getByText('palette-seed.sql').first().click();
@@ -3357,6 +3357,7 @@ test('a trackpad pan moves the long-line diff by the whole gesture without stepp
   const diff = page.locator('section[aria-label^="文件差异："]');
   await diff.getByRole('button', { name: '内联 diff', exact: true }).click();
   await expect(diff.getByLabel('水平滚动差异')).toBeVisible();
+  await expect.poll(() => diff.getByLabel('水平滚动差异').evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(200);
 
   const steps = await diff.locator('[data-diff-pane]').first().evaluate(async (pane) => {
     const layer = pane.querySelector('[data-diff-layer]') as HTMLElement;
@@ -3417,6 +3418,8 @@ test('the code diff opened from a selected commit scrolls horizontally in both v
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => scrollbar.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
     const offset = await scrollbar.evaluate((el) => el.scrollLeft);
+    await expect.poll(() => diff.locator('[data-diff-layer]').evaluateAll((els, offset) =>
+      els.every((el) => (el as HTMLElement).style.transform === `translateX(-${offset}px)`), offset)).toBe(true);
     await diff.locator('[data-diff-pane]').first().evaluate((el) => {
       el.dispatchEvent(new WheelEvent('wheel', { deltaY: 160, shiftKey: true, bubbles: true, cancelable: true }));
     });
@@ -3905,7 +3908,7 @@ test('tabs shrink to share a narrow window like browser tabs and scroll only pas
   await expect(strip).toHaveAttribute('data-tab-strip', 'compact');
   await expect(page.locator('[data-tab-overflow]')).toHaveCount(0);
   const narrow = (await longTab.boundingBox())!;
-  expect(narrow.width).toBeLessThan(wide.width - 40);
+  expect(narrow.width).toBeLessThan(wide.width * 0.8);
   const bar = (await strip.boundingBox())!;
   for (let i = 0; i < 11; i++) {
     const box = (await tabs.nth(i).boundingBox())!;
@@ -3915,7 +3918,7 @@ test('tabs shrink to share a narrow window like browser tabs and scroll only pas
   await expect(page.getByRole('button', { name: '关闭 angkorgit' })).toBeVisible();
   await page.setViewportSize({ width: 480, height: 900 });
   await expect(page.locator('[data-tab-overflow]')).toBeVisible();
-  expect((await longTab.boundingBox())!.width).toBeGreaterThanOrEqual(44);
+  expect(Math.round((await longTab.boundingBox())!.width)).toBeGreaterThanOrEqual(44);
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(strip).toHaveAttribute('data-tab-strip', 'full');
   await expect(page.getByRole('button', { name: '关闭 tycho' })).toBeVisible();

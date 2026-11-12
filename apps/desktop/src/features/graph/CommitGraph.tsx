@@ -765,7 +765,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
           <DropdownMenuContent align="start" side="bottom">
             <DropdownMenuLabel
               data-ref-menu-title
-              className={cn('max-w-64 whitespace-normal py-2 font-semibold [overflow-wrap:anywhere]', refMenu.ref.kind === 'stash' ? 'font-sans' : 'font-mono')}
+              className={cn('max-w-64 whitespace-normal px-2 py-1 font-semibold [overflow-wrap:anywhere]', refMenu.ref.kind === 'stash' ? 'font-sans' : 'font-mono')}
               style={{ color: refMenu.ref.kind === 'stash' || staleRemoteRefs.has(refMenu.ref.name)
                 ? 'hsl(var(--muted-foreground))'
                 : laneColor(rows.find((row) => row.node.oid === refMenu.commit.oid)?.node.color ?? 0) }}
@@ -823,17 +823,21 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                 <DropdownMenuSeparator />
               </>
             )}
-            {refMenu.ref.kind === 'tag' && (
+            {(refMenu.ref.kind === 'tag' || refMenu.ref.kind === 'remoteTag') && (
               <>
                 <DropdownMenuItem
                   onClick={() =>
-                    void act(`检出 ${refMenu.ref.shorthand}`, () => ipc.checkoutDetached(path, refMenu.ref.shorthand), {
+                    void act(`检出 ${refMenu.ref.shorthand}`, () => ipc.checkoutDetached(
+                      path,
+                      refMenu.ref.kind === 'remoteTag' ? refMenu.commit.oid : refMenu.ref.shorthand,
+                    ), {
                       kind: 'checkout',
                     })
                   }
                 >
                   <Check /> 检出提交（游离状态）
                 </DropdownMenuItem>
+                {refMenu.ref.kind === 'tag' && <>
                 <DropdownMenuItem
                   disabled={(() => {
                     const remote = pickRemote(remotes, branches.find((b) => b.isHead && !b.isRemote)?.upstream)?.name ?? 'origin';
@@ -866,9 +870,10 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                   <Trash2 /> 删除标签 {refMenu.ref.shorthand}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                </>}
               </>
             )}
-            {refMenu.ref.kind !== 'tag' && refMenu.ref.kind !== 'stash' && (
+            {refMenu.ref.kind !== 'tag' && refMenu.ref.kind !== 'remoteTag' && refMenu.ref.kind !== 'stash' && (
               <>
                 <DropdownMenuItem disabled={refMenuIsHead} onClick={() => checkoutRef(refMenu.ref)}>
                   <Check /> 检出 {refMenu.ref.shorthand}
@@ -974,7 +979,7 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
                 toast.success('名称已复制');
               }}
             >
-              <Copy /> {refMenu.ref.kind === 'tag' ? '复制标签名' : refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch' ? '将分支名称复制到剪贴板' : '将名称复制到剪贴板'}
+              <Copy /> {refMenu.ref.kind === 'tag' || refMenu.ref.kind === 'remoteTag' ? '复制标签名' : refMenu.ref.kind === 'localBranch' || refMenu.ref.kind === 'remoteBranch' ? '将分支名称复制到剪贴板' : '将名称复制到剪贴板'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -986,7 +991,14 @@ export function CommitGraph({ foregroundLoading = false }: { foregroundLoading?:
             <span style={{ position: 'fixed', left: menu.x, top: menu.y }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom">
-            <DropdownMenuLabel className="font-mono">{menu.commit.shortOid}</DropdownMenuLabel>
+            <DropdownMenuLabel
+              data-commit-menu-title
+              className="max-w-64 whitespace-normal px-2 py-1 font-mono font-semibold [overflow-wrap:anywhere]"
+              style={{ color: laneColor(rows.find((row) => row.node.oid === menu.commit.oid)?.node.color ?? 0) }}
+            >
+              {menu.commit.shortOid}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => void act(`检出 ${menu.commit.shortOid}`, () => ipc.checkoutDetached(path, menu.commit.oid), { kind: 'checkout' })}
             >

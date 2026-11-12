@@ -20,14 +20,17 @@ test('tag status shows sync state and keeps the local tag visible when remote ch
     useRepo.setState({ remotes });
     await useRepo.getState().checkStaleRemoteRefs();
     useGraph.setState({ commits: useGraph.getState().commits.map((commit, i) => i === 0 ? {
-      ...commit, refs: [{ kind: 'tag', name: 'refs/tags/v-test', shorthand: 'v-test' }],
+      ...commit, refs: [
+        { kind: 'tag', name: 'refs/tags/v-test', shorthand: 'v-test' },
+        { kind: 'remoteTag', name: 'refs/angkorgit/remote-tags/origin/tags/v-test', shorthand: 'v-test', remote: 'origin' },
+      ],
     } : commit) });
   });
-  const marker = page.locator('[data-tag-remote="v-test"]').first();
-  await expect(marker).toHaveAttribute('data-tag-remote-status', 'synced');
-  await expect(marker).toHaveAttribute('title', '与远端已同步');
-  await expect(marker.locator('.lucide-monitor')).toBeVisible();
-  await expect(marker.locator('.lucide-cloud')).toBeVisible();
+  const marker = page.locator('[data-tag-sources]').filter({ hasText: 'v-test' }).first();
+  await expect(marker).toHaveAttribute('data-tag-sources', '本地、origin');
+  await expect(marker).toHaveAttribute('title', 'v-test · 本地、origin');
+  await expect(marker.locator('.lucide-monitor')).toHaveCount(1);
+  await expect(marker.locator('.lucide-cloud')).toHaveCount(1);
   const bounds = await marker.evaluate((element) => {
     const parent = element.getBoundingClientRect();
     const icons = [...element.querySelectorAll('svg')].map((icon) => icon.getBoundingClientRect());
@@ -53,6 +56,8 @@ test('tag status shows sync state and keeps the local tag visible when remote ch
     await useRepo.getState().checkStaleRemoteRefs();
     return true;
   });
-  await expect(marker).toHaveAttribute('data-tag-remote-status', 'unknown');
-  await expect(marker).toHaveAttribute('title', '与远端未同步');
+  await expect(marker).toHaveAttribute('data-tag-sources', '本地、origin');
+  await expect(marker).toHaveAttribute('title', 'v-test · 本地、origin');
+  await expect(marker.locator('.lucide-monitor')).toHaveCount(1);
+  await expect(marker.locator('.lucide-cloud')).toHaveCount(1);
 });

@@ -4,11 +4,11 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(), loading: vi.fn(), success: vi.fn(), error: vi.fn(),
   openExternal: vi.fn(), check: vi.fn(), relaunch: vi.fn(),
 }));
-// Resolve dependency mocks from the desktop workspace, just like check.ts.
-vi.mock('../../apps/desktop/node_modules/sonner', () => ({ toast: mocks }));
+// Vitest resolves these packages from the desktop workspace.
+vi.mock('sonner', () => ({ toast: mocks }));
 vi.mock('@/core/ipc', () => ({ isTauri: () => true, openExternal: mocks.openExternal }));
-vi.mock('../../apps/desktop/node_modules/@tauri-apps/plugin-updater', () => ({ check: mocks.check }));
-vi.mock('../../apps/desktop/node_modules/@tauri-apps/plugin-process', () => ({ relaunch: mocks.relaunch }));
+vi.mock('@tauri-apps/plugin-updater', () => ({ check: mocks.check }));
+vi.mock('@tauri-apps/plugin-process', () => ({ relaunch: mocks.relaunch }));
 
 describe('updater failures', () => {
   it('keeps a signature failure visible and offers manual download without relaunching', async () => {

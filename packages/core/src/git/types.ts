@@ -74,12 +74,13 @@ export interface CommitInfo {
   isHead: boolean;
 }
 
-export type RefKind = 'localBranch' | 'remoteBranch' | 'tag' | 'head' | 'stash';
+export type RefKind = 'localBranch' | 'remoteBranch' | 'tag' | 'remoteTag' | 'head' | 'stash';
 
 export interface RefInfo {
   kind: RefKind;
   name: string;
   shorthand: string;
+  remote?: string;
 }
 
 export interface BranchInfo {

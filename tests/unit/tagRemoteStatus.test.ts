@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createElement } from '../../apps/desktop/node_modules/react';
-import { renderToStaticMarkup } from '../../apps/desktop/node_modules/react-dom/server';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { TagRemoteStatus, tagRemoteSummary } from '../../apps/desktop/src/features/repository/TagRemoteStatus';
 
 const state = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));

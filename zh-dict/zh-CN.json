@@ -10738,6 +10738,13 @@
       }
     ]
   },
+  "tags.source.local": {
+    "source": "Local",
+    "target": "本地",
+    "scopes": ["ui"],
+    "mode": "whole",
+    "anchor": "tagLocal"
+  },
   "tags.remoteStatus.synced": {
     "source": "Remote synced",
     "target": "与远端已同步",

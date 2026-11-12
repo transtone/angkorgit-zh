@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { groupRefs } from '@/features/graph/GraphRow';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import {
@@ -951,16 +952,24 @@ export function CommitDetails({
               {commit.refs.length > 0 && commit.parents.length > 0 && (
                 <span className="mx-0.5 h-3 w-px bg-border-subtle" />
               )}
-              {commit.refs.map((ref) => (
+              {commit.refs.filter((ref) => ref.kind !== 'tag' && ref.kind !== 'remoteTag').map((ref) => (
                 <Badge
                   key={ref.name}
-                  tone={ref.kind === 'tag' ? 'primary' : ref.kind === 'remoteBranch' ? 'info' : 'success'}
+                  tone={ref.kind === 'remoteBranch' ? 'info' : 'success'}
                   className="max-w-48"
                 >
-                  {ref.kind === 'tag' && <TagIcon className="size-2.5 shrink-0" />}
                   {ref.kind === 'remoteBranch' && <Cloud className="size-2.5 shrink-0" />}
                   {(ref.kind === 'localBranch' || ref.kind === 'head') && <Monitor className="size-2.5 shrink-0" />}
                   <span className="truncate">{ref.shorthand}</span>
+                </Badge>
+              ))}
+              {groupRefs(commit.refs.filter((ref) => ref.kind === 'tag' || ref.kind === 'remoteTag')).map((group) => (
+                <Badge key={group.primary.name} tone="primary" className="max-w-48"
+                  title={[...(group.tagLocal ? ['本地'] : []), ...(group.tagRemotes ?? [])].join('、')}>
+                  <TagIcon className="size-2.5 shrink-0" />
+                  <span className="truncate">{group.label}</span>
+                  {group.tagLocal && <Monitor className="size-2.5 shrink-0" />}
+                  {!!group.tagRemotes?.length && <Cloud className="size-2.5 shrink-0" />}
                 </Badge>
               ))}
             </div>

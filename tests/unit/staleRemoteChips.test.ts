@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { renderToStaticMarkup } from '../../apps/desktop/node_modules/react-dom/server';
-import { createElement } from '../../apps/desktop/node_modules/react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
 import type { RefInfo } from '@angkorgit/core';
 import { groupRefs, CommitRow } from '../../apps/desktop/src/features/graph/GraphRow';
 import { layoutGraph } from '@angkorgit/core';
